@@ -73,8 +73,9 @@ migration-baseline: ## Regenerate 0001 from the ORM (only while it is the sole r
 	$(PYTHON) -m backend.models.migrations baseline
 	$(PYTHON) -m backend.models.migrations check
 
-openapi: ## Regenerate docs/openapi.json and docs/api.md from the FastAPI app
+openapi: ## Regenerate docs/openapi.json, docs/api.md and the settings table in docs/deployment.md
 	$(PYTHON) scripts/export_openapi.py
+	$(PYTHON) scripts/export_settings.py
 
 sandbox-image: ## Build the runtime sandbox image (needs Docker)
 	docker build --file docker/sandbox.Dockerfile --tag $(SANDBOX_IMAGE) \

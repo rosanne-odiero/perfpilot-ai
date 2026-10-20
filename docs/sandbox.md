@@ -37,6 +37,14 @@ a reason. There is no host fallback.
 The Runtime Audit (API routes, the `runtime.profile` job, correlation and reporting) is built on
 top of these services; see [runtime-audit.md](runtime-audit.md).
 
+### Mount sources must be host paths
+
+The worker passes bind-mount sources to the Docker daemon, which resolves them on the **host**.
+Every source therefore lives under the data dir (workspaces, `artifacts/`), including the
+profiling harness, which is copied to `artifacts/runtime-runs/<run>/in/` per run rather than
+mounted from the installed package. When the worker itself runs in a container, the data dir is
+mounted at the same absolute path as on the host ([deployment.md](deployment.md)).
+
 ## Container hardening
 
 Every container (execution and dependency install) gets these flags from `hardening_flags()`:
