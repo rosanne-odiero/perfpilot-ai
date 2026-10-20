@@ -218,4 +218,4 @@ and rule.
   `__init__.py`), the package's own absolute self-imports (`import pkg.x` inside `pkg/`) are counted
   as external.
 * Throughput, measured on this machine: a 148-file FastAPI backend takes about 1.1 s; a very large
-  codebase (pandas, 1,421 files) takes about 40 s.
+  codebase (pandas, 1,421 files) takes about 35 s.
