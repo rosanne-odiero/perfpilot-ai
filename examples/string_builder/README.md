@@ -18,9 +18,10 @@ Collecting lines in a list and calling `"".join(...)` once is the textbook fix.
 * The speed-up is implementation-dependent: on CPython it may be negligible or even negative,
   while on PyPy or when another reference to `report` exists, `+=` can be truly quadratic.
 
-This workload exists to show that a plausible optimization is **not automatically a win**:
-PerfPilot reports whatever the paired benchmark measures (often `NO_CLEAR_DIFFERENCE`) instead of
-assuming a benefit.
+This workload tests whether the textbook advice still pays off on the interpreter at hand. The
+paired benchmark reports the measured speed difference, which may be modest rather than the
+asymptotic win the textbook promises. The memory comparison shows the cost of the temporary list
+(higher traced peak). PerfPilot does not assume a benefit.
 
 `reference/optimized.py` is a hand-written **reference implementation for tests**, not output of
 the platform.

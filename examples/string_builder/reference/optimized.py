@@ -5,8 +5,8 @@ by the platform's optimizer. The benchmark labels any run against this file as
 "reference implementation (bundled, for testing)".
 
 Change: build a list of lines and ``"".join`` them once, the textbook fix for ``+=`` in a loop.
-On CPython the in-place ``+=`` optimisation often makes the original nearly as fast, so this
-"optimization" may show no clear benefit; that is exactly what the benchmark must reveal.
+On CPython the in-place ``+=`` optimisation can make the original nearly as fast, so the gain
+may be far below the textbook promise; the benchmark measures it instead of assuming it.
 Trade-off: holds every line in a temporary list (extra memory) before joining.
 """
 
