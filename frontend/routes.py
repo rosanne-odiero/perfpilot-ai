@@ -10,3 +10,5 @@ SYSTEM_STATUS = "app_pages/system_status.py"
 
 AUDIT_PARAM = "audit"
 WORKLOAD_PARAM = "workload"
+
+LAB_TAB_KEY = "lab_tab"

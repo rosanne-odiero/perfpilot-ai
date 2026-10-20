@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from frontend import api_client as api
-from frontend import data
+from frontend import data, routes
 from frontend.api_client import ApiError
 from frontend.components.job_progress import render_job_error, track_job
 from frontend.components.metric_cards import Card, render_cards
@@ -18,6 +18,7 @@ from frontend.components.provenance import provenance_html
 from frontend.formatting import fmt_dt, fmt_ms, human_bytes
 from frontend.theme import plotly_template, status_badge
 from frontend.views.run_history import runs
+from frontend.views.workload_optimize import start_analysis
 
 JOB_KEY = "profile_job_{workload_id}"
 SELECT_KEY = "profile_run_{workload_id}"
@@ -141,6 +142,26 @@ def _memory(profile: dict[str, Any]) -> None:
         st.caption("Unavailable on this platform: " + ", ".join(map(str, memory["unavailable"])))
 
 
+def _optimize_from_profile(workload_id: str, profile_id: str) -> None:
+    start_analysis(workload_id, profile_id, None)
+    st.session_state[routes.LAB_TAB_KEY] = "Optimize"
+
+
+def _optimize_link(profile: dict[str, Any]) -> None:
+    """Deep-dive entry point from this profile's hotspots (when the optimization API exists)."""
+    if not data.optimization_api_available():
+        return
+    st.button(
+        "Optimize this hotspot",
+        icon="🛠️",
+        key=f"optimize_{profile['id']}",
+        help="Analyze the workload with this profile as MEASURED evidence, then review a "
+        "candidate patch in the Optimize tab.",
+        on_click=_optimize_from_profile,
+        args=(profile["workload_id"], profile["id"]),
+    )
+
+
 def _show(profile: dict[str, Any]) -> None:
     if profile["status"] in {"PENDING", "QUEUED", "RUNNING"}:
         st.info("This profile is still running; results appear when it finishes.")
@@ -206,6 +227,7 @@ def _show(profile: dict[str, Any]) -> None:
             },
         )
         right.plotly_chart(_hotspot_chart(hotspots, sort), theme=None)
+    _optimize_link(profile)
     st.markdown("##### Memory " + provenance_html("MEASURED"), unsafe_allow_html=True)
     _memory(profile)
     for warning in profile.get("warnings") or []:

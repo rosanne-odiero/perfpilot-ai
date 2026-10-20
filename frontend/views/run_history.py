@@ -9,8 +9,12 @@ from frontend import data
 from frontend.api_client import ApiError
 from frontend.formatting import TERMINAL_JOB_STATES
 
-RunKind = Literal["profile", "benchmark"]
-JOB_TYPES: dict[RunKind, str] = {"profile": "workload.profile", "benchmark": "workload.benchmark"}
+RunKind = Literal["profile", "benchmark", "analysis"]
+JOB_TYPES: dict[RunKind, str] = {
+    "profile": "workload.profile",
+    "benchmark": "workload.benchmark",
+    "analysis": "optimization.analyze",
+}
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,8 @@ class RunRef:
 
 
 def _load(kind: RunKind, run_id: str, terminal: bool) -> dict[str, Any]:
+    if kind == "analysis":
+        return data.analysis(run_id)
     if kind == "profile":
         return data.finished_profile(run_id) if terminal else data.profile(run_id)
     return data.finished_benchmark(run_id) if terminal else data.benchmark(run_id)

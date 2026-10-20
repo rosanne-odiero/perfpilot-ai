@@ -252,7 +252,7 @@ def _environment(run: dict[str, Any]) -> None:
             st.json({**summary["formulas"], "ci": summary.get("ci")})
 
 
-def _show(run: dict[str, Any]) -> None:
+def show_run(run: dict[str, Any]) -> None:
     if run["status"] in {"PENDING", "QUEUED", "RUNNING"}:
         st.info("This benchmark is still running; results appear when it finishes.")
         return
@@ -303,4 +303,4 @@ def render(detail: dict[str, Any]) -> None:
     benchmark_id = st.selectbox(
         "Benchmark run", list(labels), format_func=labels.__getitem__, key=select_key
     )
-    _show(next(ref.run for ref in history if ref.id == benchmark_id))
+    show_run(next(ref.run for ref in history if ref.id == benchmark_id))
