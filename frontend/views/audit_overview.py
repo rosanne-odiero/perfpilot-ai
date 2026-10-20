@@ -146,7 +146,9 @@ def _repository_panel(context: AuditContext) -> None:
         "Commit": row.commit_sha or "— (not a git checkout)",
         "Branch": row.branch or "—",
         "Commit date": fmt_dt(git.get("commit_date")),
-        "Uncommitted changes": {True: "yes", False: "no"}.get(git.get("is_dirty"), "—"),
+        "Uncommitted changes": "—"
+        if git.get("is_dirty") is None
+        else ("yes" if git["is_dirty"] else "no"),
         "Content hash": short_sha(snapshot.get("content_hash"), 16),
         "Imported": fmt_dt(snapshot.get("created_at")),
     }
@@ -160,9 +162,8 @@ def _repository_panel(context: AuditContext) -> None:
 def _languages(languages: dict[str, int]) -> None:
     if not languages:
         return
-    frame = pd.DataFrame(
-        sorted(languages.items(), key=lambda kv: (-kv[1], kv[0])), columns=["Language", "Files"]
-    )
+    ranked = sorted(languages.items(), key=lambda kv: (-kv[1], kv[0]))
+    frame = pd.DataFrame(ranked, columns=["Language", "Files"])
     st.dataframe(frame, hide_index=True, width="stretch")
 
 
@@ -198,7 +199,8 @@ def _limits_and_warnings(context: AuditContext) -> None:
         st.markdown("**Skipped files by reason**")
         st.dataframe(
             pd.DataFrame(
-                sorted(skipped.items(), key=lambda kv: -kv[1]), columns=["Reason", "Files"]
+                sorted(skipped.items(), key=lambda kv: (-int(kv[1]), str(kv[0]))),
+                columns=["Reason", "Files"],
             ),
             hide_index=True,
             width="stretch",

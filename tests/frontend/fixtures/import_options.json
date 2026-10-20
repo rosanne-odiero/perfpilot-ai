@@ -1,0 +1,16 @@
+{
+ "github_allowed_hosts": [
+  "github.com"
+ ],
+ "github_enabled": true,
+ "limits": {
+  "clone_timeout_seconds": 180,
+  "max_file_bytes": 2097152,
+  "max_python_files": 5000,
+  "max_repo_bytes": 524288000,
+  "max_repo_files": 20000,
+  "max_upload_bytes": 104857600
+ },
+ "local_allowlist_roots": 2,
+ "local_directory_enabled": true
+}

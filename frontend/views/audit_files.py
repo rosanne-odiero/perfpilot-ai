@@ -42,7 +42,7 @@ def _filters(frame_languages: list[str], all_folders: list[str]) -> FileFilters:
     )
 
 
-def _source(context: AuditContext, row: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+def _source(context: AuditContext, row: dict[Any, Any], findings: list[dict[str, Any]]) -> None:
     path = str(row["Path"])
     status = str(row["Status"])
     if status.startswith("skipped"):

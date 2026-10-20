@@ -1,0 +1,10 @@
+{
+ "content": "\"\"\"Async request handlers.\"\"\"\n\nfrom __future__ import annotations\n\nimport asyncio\nimport json\nimport time\nimport urllib.request\n\nfrom shopfast.app import router\nfrom shopfast.catalog import Product\n\nRATE_LIMIT_SECONDS = 0.002\nEXCHANGE_URL = \"https://rates.example.invalid/latest?base={currency}\"\n\n\n@router.get(\"/products/{sku}\")\nasync def get_product(catalog: list[Product], sku: str) -> Product | None:\n    time.sleep(RATE_LIMIT_SECONDS)\n    return next((p for p in catalog if p.sku == sku), None)\n\n\n@router.get(\"/products/{sku}/polite\")\nasync def get_product_polite(catalog: list[Product], sku: str) -> Product | None:\n    await asyncio.sleep(RATE_LIMIT_SECONDS)\n    return next((p for p in catalog if p.sku == sku), None)\n\n\n@router.get(\"/rates/{currency}\")\nasync def fetch_exchange_rate(currency: str) -> float:\n    with urllib.request.urlopen(EXCHANGE_URL.format(currency=currency), timeout=5) as response:\n        payload = json.load(response)\n    return float(payload[\"rate\"])\n\n\nasync def fetch_exchange_rate_offloaded(currency: str) -> float:\n    def blocking_fetch() -> float:\n        with urllib.request.urlopen(EXCHANGE_URL.format(currency=currency), timeout=5) as response:\n            return float(json.load(response)[\"rate\"])\n\n    return await asyncio.to_thread(blocking_fetch)\n\n\ndef fetch_rates(currencies: list[str]) -> dict[str, float]:\n    rates = {}\n    for currency in currencies:\n        with urllib.request.urlopen(EXCHANGE_URL.format(currency=currency), timeout=5) as response:\n            rates[currency] = float(json.load(response)[\"rate\"])\n    return rates\n",
+ "language": "Python",
+ "path": "shopfast/api.py",
+ "redaction_kinds": {},
+ "redactions": 0,
+ "sha256": "5fa56a7e905466520094fb2f30fbef7864bce787ba532432d161ce05d566709d",
+ "size_bytes": 1582,
+ "snapshot_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced"
+}

@@ -1,0 +1,62 @@
+[
+ {
+  "cumulative_percentage": 96.0832,
+  "cumulative_time_ms": 1.4112220000000002,
+  "file_path": "<built-in>",
+  "function_name": "<method 'count' of 'list' objects>",
+  "internal_time_ms": 1.4112220000000002,
+  "is_user_code": false,
+  "line_number": 0,
+  "location_kind": "builtin",
+  "percentage_of_profiled_time": 96.0832,
+  "primitive_calls": 500,
+  "rank": 1,
+  "source_available": false,
+  "total_calls": 500
+ },
+ {
+  "cumulative_percentage": 99.20565106382978,
+  "cumulative_time_ms": 1.4570830000000001,
+  "file_path": "workload.py",
+  "function_name": "count_duplicates",
+  "internal_time_ms": 0.045861,
+  "is_user_code": true,
+  "line_number": 10,
+  "location_kind": "workspace",
+  "percentage_of_profiled_time": 3.1224510638297867,
+  "primitive_calls": 1,
+  "rank": 2,
+  "source_available": true,
+  "total_calls": 1
+ },
+ {
+  "cumulative_percentage": 0.6893617021276596,
+  "cumulative_time_ms": 0.010125,
+  "file_path": "<built-in>",
+  "function_name": "<method 'disable' of '_lsprof.Profiler' objects>",
+  "internal_time_ms": 0.010125,
+  "is_user_code": false,
+  "line_number": 0,
+  "location_kind": "harness",
+  "percentage_of_profiled_time": 0.6893617021276596,
+  "primitive_calls": 1,
+  "rank": 3,
+  "source_available": false,
+  "total_calls": 1
+ },
+ {
+  "cumulative_percentage": 99.31063829787233,
+  "cumulative_time_ms": 1.458625,
+  "file_path": "<harness>/harness_entry.py",
+  "function_name": "call",
+  "internal_time_ms": 0.001542,
+  "is_user_code": false,
+  "line_number": 202,
+  "location_kind": "harness",
+  "percentage_of_profiled_time": 0.10498723404255318,
+  "primitive_calls": 1,
+  "rank": 4,
+  "source_available": false,
+  "total_calls": 1
+ }
+]

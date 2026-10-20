@@ -1,0 +1,16 @@
+{
+ "database": "ok",
+ "job_types": [
+  "audit.run",
+  "report.generate",
+  "repository.ingest",
+  "system.echo",
+  "workload.benchmark",
+  "workload.profile"
+ ],
+ "llm_configured": false,
+ "llm_model": null,
+ "sandbox_backend": "docker",
+ "status": "ok",
+ "version": "0.1.0"
+}

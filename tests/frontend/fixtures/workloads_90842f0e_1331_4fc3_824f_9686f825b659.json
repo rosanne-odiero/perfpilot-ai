@@ -1,0 +1,86 @@
+{
+ "default_size": "medium",
+ "description": "Sum order amounts per customer by scanning every order for every customer.",
+ "entrypoint": "workload:customer_totals",
+ "entrypoint_source": {
+  "content": "\"\"\"Nested loop workload (deliberately inefficient, but correct).\n\n``customer_totals`` returns ``(customer name, total order amount)`` for every customer, in\ncustomer order. For each customer it scans every order: O(len(customers) * len(orders)).\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef customer_totals(customers: list[dict], orders: list[dict]) -> list[tuple[str, float]]:\n    totals: list[tuple[str, float]] = []\n    for customer in customers:\n        total = 0.0\n        for order in orders:\n            if order[\"customer_id\"] == customer[\"id\"]:\n                total += order[\"amount\"]\n        totals.append((customer[\"name\"], total))\n    return totals\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "fixture_description": "customers: n_customers dicts with unique ids; orders: n_orders dicts with a customer_id (about orphan_ratio unknown ids) and a 2-decimal float amount.",
+ "fixture_id": "fixtures:make_input",
+ "fixture_source": {
+  "content": "\"\"\"Deterministic input generator for the nested loop workload.\"\"\"\n\nfrom __future__ import annotations\n\nimport random\n\n\ndef make_input(n_customers: int, n_orders: int, orphan_ratio: float = 0.05, seed: int = 0) -> dict:\n    \"\"\"Return keyword arguments for ``customer_totals``.\n\n    Customers have unique ids; order amounts are floats with 2 decimals. About ``orphan_ratio``\n    of the orders reference a customer id that does not exist, and some customers have no orders.\n    \"\"\"\n    rng = random.Random(seed)\n    customers = [{\"id\": 1000 + i, \"name\": f\"customer-{i:05d}\"} for i in range(n_customers)]\n    orders = []\n    for i in range(n_orders):\n        if not customers or rng.random() < orphan_ratio:\n            customer_id = -1 - i\n        else:\n            customer_id = rng.choice(customers)[\"id\"]\n        orders.append(\n            {\"id\": i, \"customer_id\": customer_id, \"amount\": round(rng.uniform(1, 500), 2)}\n        )\n    return {\"customers\": customers, \"orders\": orders}\n",
+  "path": "fixtures.py",
+  "truncated": false
+ },
+ "has_reference_candidate": true,
+ "id": "90842f0e-1331-4fc3-824f-9686f825b659",
+ "invocation_mode": "keyword",
+ "name": "Nested loop join",
+ "project_id": "532fd1fa-c0ea-4258-9d1a-1b6c78def203",
+ "readme": "# Nested loop join\n\n`workload.customer_totals(customers, orders)` returns `(name, total amount)` for each customer.\n\n## Suspected bottleneck\n\nThe inner `for order in orders` runs once per customer, so the call does\n`len(customers) \u00d7 len(orders)` dictionary lookups and comparisons. cProfile attributes nearly all\nexclusive time to `customer_totals` itself.\n\n## Plausible optimization and its semantic trade-offs\n\nIndex the orders once (`customer_id -> running total`), then read the index per customer:\nO(customers + orders).\n\n* Customer ids must be hashable and their equality must be consistent with hashing.\n* Floating-point addition is not associative. The reference adds each customer's amounts in the\n  same order as the original, so results match exactly here, but the output contract compares\n  totals with `math.isclose(rel_tol=1e-9, abs_tol=1e-9)` so a reordering change would still be\n  judged fairly.\n* Orders for unknown customers are ignored in both versions; customers with no orders get `0.0`.\n* The index costs memory proportional to the number of distinct customers.\n\n`reference/optimized.py` is a hand-written **reference implementation for tests**, not output of\nthe platform.\n",
+ "size_parameters": {
+  "large": {
+   "n_customers": 1500,
+   "n_orders": 15000
+  },
+  "medium": {
+   "n_customers": 600,
+   "n_orders": 6000
+  },
+  "small": {
+   "n_customers": 50,
+   "n_orders": 500
+  }
+ },
+ "sizes": [
+  "large",
+  "medium",
+  "small"
+ ],
+ "slug": "nested_loop",
+ "spec": {
+  "default_size": "medium",
+  "description": "Sum order amounts per customer by scanning every order for every customer.",
+  "entrypoint": "workload:customer_totals",
+  "expected_output": {
+   "abs_tol": 1e-09,
+   "comparison": "float_tolerance",
+   "description": "(name, total) per customer in customer order; totals compared with math.isclose.",
+   "rel_tol": 1e-09,
+   "type": "list[tuple[str, float]]"
+  },
+  "fixture_description": "customers: n_customers dicts with unique ids; orders: n_orders dicts with a customer_id (about orphan_ratio unknown ids) and a 2-decimal float amount.",
+  "fixture_id": "fixtures:make_input",
+  "id": "90842f0e-1331-4fc3-824f-9686f825b659",
+  "input_dataset_id": null,
+  "invocation_mode": "keyword",
+  "memory_limit_mb": 1024,
+  "name": "Nested loop join",
+  "permitted_env_vars": [],
+  "project_id": "532fd1fa-c0ea-4258-9d1a-1b6c78def203",
+  "reference_candidate": "reference/optimized.py",
+  "seed": 99,
+  "sizes": {
+   "large": {
+    "n_customers": 1500,
+    "n_orders": 15000
+   },
+   "medium": {
+    "n_customers": 600,
+    "n_orders": 6000
+   },
+   "small": {
+    "n_customers": 50,
+    "n_orders": 500
+   }
+  },
+  "slug": "nested_loop",
+  "suspected_bottleneck": "Inner loop over all orders for every customer: O(customers * orders).",
+  "timeout_seconds": 120,
+  "working_dir_id": "c564be17-02c1-4089-bf6f-0bb0b68d3ca5"
+ },
+ "suspected_bottleneck": "Inner loop over all orders for every customer: O(customers * orders).",
+ "tree_sha256": "183371446b8f26dcc3140de8a40f79f120c320b8983aac26c984e931c78b5666"
+}

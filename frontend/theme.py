@@ -168,9 +168,9 @@ def status_badge(status: str) -> str:
     return badge(status, STATUS_COLORS.get(status, "#64748b"))
 
 
-def severity_cell_style(value: str) -> str:
+def severity_cell_style(value: object) -> str:
     """pandas Styler rule colouring a severity cell."""
-    color = SEVERITY_COLORS.get(value)
+    color = SEVERITY_COLORS.get(str(value))
     return f"color:{color};font-weight:700" if color else ""
 
 

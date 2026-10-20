@@ -5,63 +5,104 @@ Rendering is pure (``code_html``) so it can be unit-tested; ``render_code`` only
 
 from __future__ import annotations
 
+import builtins
+import io
+import keyword
+import tokenize
 from collections.abc import Iterable
 
 import streamlit as st
-from pygments.lexer import Lexer
-from pygments.lexers import TextLexer, get_lexer_by_name, get_lexer_for_filename
-from pygments.styles import get_style_by_name
-from pygments.token import _TokenType
-from pygments.util import ClassNotFound
 
 from frontend.theme import esc
 
-STYLE = get_style_by_name("github-dark")
 MAX_RENDERED_LINES = 4000
+PYTHON_LANGUAGES = {"python", "py"}
+
+KEYWORD = "color:#ff7b72"
+STRING = "color:#a5d6ff"
+COMMENT = "color:#8b949e;font-style:italic"
+NUMBER = "color:#79c0ff"
+BUILTIN = "color:#ffa657"
+DEFINITION = "color:#d2a8ff;font-weight:600"
+_BUILTINS = frozenset(dir(builtins))
+_STRING_TOKENS = {tokenize.STRING} | {
+    getattr(tokenize, name)
+    for name in ("FSTRING_START", "FSTRING_MIDDLE", "FSTRING_END")
+    if hasattr(tokenize, name)
+}
 
 
-def _lexer(language: str | None, filename: str | None) -> Lexer:
+def _is_python(language: str | None, filename: str | None) -> bool:
     if language:
-        try:
-            return get_lexer_by_name(language.lower(), stripnl=False, ensurenl=False)
-        except ClassNotFound:
-            pass
-    if filename:
-        try:
-            return get_lexer_for_filename(filename, stripnl=False, ensurenl=False)
-        except ClassNotFound:
-            pass
-    return TextLexer(stripnl=False, ensurenl=False)
+        return language.lower() in PYTHON_LANGUAGES
+    return bool(filename and filename.endswith((".py", ".pyi")))
 
 
-def _span(token: _TokenType, text: str) -> str:
-    if not text:
-        return ""
-    style = STYLE.style_for_token(token)
-    css = []
-    if style["color"]:
-        css.append(f"color:#{style['color']}")
-    if style["bold"]:
-        css.append("font-weight:600")
-    if style["italic"]:
-        css.append("font-style:italic")
-    escaped = esc(text)
-    return f'<span style="{";".join(css)}">{escaped}</span>' if css else escaped
+def _python_spans(source: str) -> list[tuple[int, int, str]]:
+    """(start, end, css) character spans for Python tokens worth colouring."""
+    offsets = [0]
+    for line in source.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+
+    def at(position: tuple[int, int]) -> int:
+        row, col = position
+        return offsets[row - 1] + col if row - 1 < len(offsets) else len(source)
+
+    spans: list[tuple[int, int, str]] = []
+    previous = ""
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        style = None
+        if token.type in _STRING_TOKENS:
+            style = STRING
+        elif token.type == tokenize.COMMENT:
+            style = COMMENT
+        elif token.type == tokenize.NUMBER:
+            style = NUMBER
+        elif token.type == tokenize.NAME:
+            if previous in {"def", "class"} or previous == "@":
+                style = DEFINITION
+            elif keyword.iskeyword(token.string) or keyword.issoftkeyword(token.string):
+                style = KEYWORD
+            elif token.string in _BUILTINS:
+                style = BUILTIN
+        if style:
+            spans.append((at(token.start), at(token.end), style))
+        if token.type not in {tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT}:
+            previous = token.string
+    return spans
+
+
+def _render(text: str, css: str | None) -> list[str]:
+    """Escaped fragments of ``text`` per line (a span crossing lines is split)."""
+    return [
+        f'<span style="{css}">{esc(part)}</span>' if css and part else esc(part)
+        for part in text.split("\n")
+    ]
 
 
 def highlight_lines(
     source: str, language: str | None = None, filename: str | None = None
 ) -> list[str]:
-    """One HTML fragment per source line (tokens spanning lines are split per line)."""
-    lines: list[str] = [""]
-    for token, value in _lexer(language, filename).get_tokens(source.expandtabs(4)):
-        parts = value.split("\n")
-        for index, part in enumerate(parts):
-            if index:
-                lines.append("")
-            lines[-1] += _span(token, part)
-    if source.endswith("\n") and len(lines) > 1 and lines[-1] == "":
-        lines.pop()
+    """One HTML fragment per source line. Python is coloured with the stdlib tokenizer;
+    anything else (or Python that does not tokenize) is shown as escaped plain text."""
+    text = "\n".join(source.expandtabs(4).splitlines())
+    spans: list[tuple[int, int, str]] = []
+    if _is_python(language, filename):
+        try:
+            spans = _python_spans(text + "\n")
+        except (tokenize.TokenError, SyntaxError, IndentationError):
+            spans = []
+    lines = [""]
+    cursor = 0
+    for start, end, css in [*spans, (len(text), len(text), "")]:
+        start, end = min(start, len(text)), min(end, len(text))
+        if start < cursor:
+            continue
+        for chunk, style in ((text[cursor:start], None), (text[start:end], css)):
+            fragments = _render(chunk, style)
+            lines[-1] += fragments[0]
+            lines.extend(fragments[1:])
+        cursor = end
     return lines
 
 

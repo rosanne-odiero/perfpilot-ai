@@ -1,0 +1,80 @@
+{
+ "default_size": "medium",
+ "description": "Count how often each repeated item occurs (list.count called for every element).",
+ "entrypoint": "workload:count_duplicates",
+ "entrypoint_source": {
+  "content": "\"\"\"Duplicate counter workload (deliberately inefficient, but correct).\n\n``count_duplicates`` maps every item that occurs more than once to its number of occurrences.\nIt calls ``list.count`` for every element, which rescans the whole list each time: O(n^2).\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef count_duplicates(items: list[str]) -> dict[str, int]:\n    duplicates: dict[str, int] = {}\n    for item in items:\n        occurrences = items.count(item)\n        if occurrences > 1:\n            duplicates[item] = occurrences\n    return duplicates\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "fixture_description": "items: n_items lowercase words drawn from a vocabulary of about unique_ratio*n_items words with Zipf-like frequencies (exponent skew).",
+ "fixture_id": "fixtures:make_input",
+ "fixture_source": {
+  "content": "\"\"\"Deterministic input generator for the duplicate counter workload.\"\"\"\n\nfrom __future__ import annotations\n\nimport random\nimport string\n\n\ndef _word(rng: random.Random) -> str:\n    return \"\".join(rng.choices(string.ascii_lowercase, k=rng.randint(4, 10)))\n\n\ndef make_input(n_items: int, unique_ratio: float = 0.3, skew: float = 1.0, seed: int = 0) -> list:\n    \"\"\"Return the ``items`` list for ``count_duplicates``.\n\n    About ``unique_ratio * n_items`` distinct words are drawn; item frequencies follow a Zipf-like\n    law with exponent ``skew`` (0 = uniform), so some words repeat a lot and many appear once.\n    \"\"\"\n    rng = random.Random(seed)\n    vocabulary_size = max(1, round(n_items * unique_ratio))\n    vocabulary: list[str] = []\n    seen: set[str] = set()\n    while len(vocabulary) < vocabulary_size:\n        word = _word(rng)\n        if word not in seen:\n            seen.add(word)\n            vocabulary.append(word)\n    weights = [1.0 / (rank + 1) ** skew for rank in range(vocabulary_size)]\n    return rng.choices(vocabulary, weights=weights, k=n_items)\n",
+  "path": "fixtures.py",
+  "truncated": false
+ },
+ "has_reference_candidate": true,
+ "id": "76807679-f8d8-4ffd-b388-be93387627e2",
+ "invocation_mode": "single",
+ "name": "Duplicate counter",
+ "project_id": "532fd1fa-c0ea-4258-9d1a-1b6c78def203",
+ "readme": "# Duplicate counter\n\n`workload.count_duplicates(items)` returns `{item: count}` for every item that occurs more than\nonce.\n\n## Suspected bottleneck\n\n`items.count(item)` runs inside the loop over `items`, so every element triggers a full rescan:\nO(n\u00b2). In a cProfile the exclusive time is split between `count_duplicates` and the built-in\n`list.count` method, which is called once per element (the call count equals `len(items)`).\n\n## Plausible optimization and its semantic trade-offs\n\nA single pass with `collections.Counter` is O(n).\n\n* Items must be hashable; `list.count` only needs `==`.\n* `Counter` groups by `hash` + `==`, so objects whose equality is inconsistent with their hash\n  (or `NaN`-like values that are not equal to themselves) can be counted differently.\n* The original assigns `duplicates[item]` repeatedly for each occurrence; the result is the same\n  dict (same keys, values and first-occurrence key order).\n* Peak memory grows by one counter entry per distinct item.\n\n`reference/optimized.py` is a hand-written **reference implementation for tests**, not output of\nthe platform.\n",
+ "size_parameters": {
+  "large": {
+   "n_items": 15000
+  },
+  "medium": {
+   "n_items": 4000
+  },
+  "small": {
+   "n_items": 500
+  }
+ },
+ "sizes": [
+  "large",
+  "medium",
+  "small"
+ ],
+ "slug": "duplicate_counter",
+ "spec": {
+  "default_size": "medium",
+  "description": "Count how often each repeated item occurs (list.count called for every element).",
+  "entrypoint": "workload:count_duplicates",
+  "expected_output": {
+   "abs_tol": 0.0,
+   "comparison": "exact",
+   "description": "Mapping of every item that occurs more than once to its occurrence count (dict equality, key order ignored).",
+   "rel_tol": 1e-09,
+   "type": "dict[str, int]"
+  },
+  "fixture_description": "items: n_items lowercase words drawn from a vocabulary of about unique_ratio*n_items words with Zipf-like frequencies (exponent skew).",
+  "fixture_id": "fixtures:make_input",
+  "id": "76807679-f8d8-4ffd-b388-be93387627e2",
+  "input_dataset_id": null,
+  "invocation_mode": "single",
+  "memory_limit_mb": 1024,
+  "name": "Duplicate counter",
+  "permitted_env_vars": [],
+  "project_id": "532fd1fa-c0ea-4258-9d1a-1b6c78def203",
+  "reference_candidate": "reference/optimized.py",
+  "seed": 2024,
+  "sizes": {
+   "large": {
+    "n_items": 15000
+   },
+   "medium": {
+    "n_items": 4000
+   },
+   "small": {
+    "n_items": 500
+   }
+  },
+  "slug": "duplicate_counter",
+  "suspected_bottleneck": "`items.count(item)` rescans the whole list for every element: O(n^2).",
+  "timeout_seconds": 120,
+  "working_dir_id": "f8fb9a8b-8bc4-416b-bae4-8f9850f7718c"
+ },
+ "suspected_bottleneck": "`items.count(item)` rescans the whole list for every element: O(n^2).",
+ "tree_sha256": "86f08014e3226b9344aa384d56fc04124f18f8c0502cf5eb0d0d2298e9638504"
+}

@@ -27,7 +27,7 @@ class GraphView:
 
 def node_score(node: dict[str, Any]) -> float:
     """Importance used to keep the most relevant modules when the graph is capped."""
-    return (
+    return float(
         2.0 * node.get("fan_in", 0)
         + node.get("fan_out", 0)
         + 3.0 * node.get("finding_count", 0)

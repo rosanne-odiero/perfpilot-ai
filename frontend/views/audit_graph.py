@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from frontend import data
-from frontend.components.dependency_graph import build_figure, selected_module
+from frontend.components.dependency_graph import Layout, build_figure, selected_module
 from frontend.components.notices import empty_state
 from frontend.components.provenance import provenance_html
 from frontend.theme import plotly_template
@@ -62,12 +62,13 @@ def render(context: AuditContext) -> None:
         top_n = controls[1].slider(
             "Most relevant modules", 5, len(nodes), min(DEFAULT_TOP, len(nodes)), 5
         )
-    layout = controls[2].radio(
+    choice = controls[2].radio(
         "Layout",
         ["spring", "kamada_kawai"],
         horizontal=True,
         format_func=lambda v: v.replace("_", "-"),
     )
+    layout: Layout = "kamada_kawai" if choice == "kamada_kawai" else "spring"
     previous = st.session_state.get(FINDINGS_MODULE_KEY)
     by_path = {n["file_path"]: n["module_name"] for n in nodes}
     view = build_figure(graph, top_n=top_n, algorithm=layout, selected=by_path.get(previous or ""))

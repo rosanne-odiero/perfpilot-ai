@@ -1,0 +1,357 @@
+{
+ "cycles": [
+  [
+   "shopfast.api",
+   "shopfast.app"
+  ]
+ ],
+ "edges": [
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.api"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.db"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.inventory_sync"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.orders"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.pricing"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.reporting"
+  },
+  {
+   "line": 20,
+   "source": "benchmarks.run_workload",
+   "target": "shopfast.utils"
+  },
+  {
+   "line": 1,
+   "source": "shopfast.__main__",
+   "target": "shopfast.app"
+  },
+  {
+   "line": 10,
+   "source": "shopfast.api",
+   "target": "shopfast.app"
+  },
+  {
+   "line": 11,
+   "source": "shopfast.api",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 33,
+   "source": "shopfast.app",
+   "target": "shopfast.api"
+  },
+  {
+   "line": 33,
+   "source": "shopfast.app",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 33,
+   "source": "shopfast.app",
+   "target": "shopfast.db"
+  },
+  {
+   "line": 33,
+   "source": "shopfast.app",
+   "target": "shopfast.orders"
+  },
+  {
+   "line": 33,
+   "source": "shopfast.app",
+   "target": "shopfast.reporting"
+  },
+  {
+   "line": 5,
+   "source": "shopfast.inventory_sync",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 8,
+   "source": "shopfast.pricing",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 5,
+   "source": "tests.conftest",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 5,
+   "source": "tests.conftest",
+   "target": "shopfast.db"
+  },
+  {
+   "line": 9,
+   "source": "tests.test_api",
+   "target": "shopfast.api"
+  },
+  {
+   "line": 10,
+   "source": "tests.test_api",
+   "target": "shopfast.app"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_catalog",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_inventory_sync",
+   "target": "shopfast.inventory_sync"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_orders",
+   "target": "shopfast.orders"
+  },
+  {
+   "line": 4,
+   "source": "tests.test_pricing",
+   "target": "shopfast.catalog"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_pricing",
+   "target": "shopfast.pricing"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_reporting",
+   "target": "shopfast.reporting"
+  },
+  {
+   "line": 3,
+   "source": "tests.test_utils",
+   "target": "shopfast.utils"
+  }
+ ],
+ "external_imports": {
+  "argparse": 2,
+  "asyncio": 4,
+  "collections": 2,
+  "copy": 1,
+  "dataclasses": 2,
+  "functools": 1,
+  "hashlib": 1,
+  "io": 1,
+  "json": 4,
+  "pathlib": 3,
+  "pytest": 2,
+  "random": 2,
+  "re": 1,
+  "sqlite3": 2,
+  "sys": 1,
+  "time": 2,
+  "typing": 1,
+  "urllib": 1
+ },
+ "nodes": [
+  {
+   "fan_in": 0,
+   "fan_out": 8,
+   "file_path": "benchmarks/run_workload.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": true,
+   "module_name": "benchmarks.run_workload"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 0,
+   "file_path": "shopfast/__init__.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "shopfast/__main__.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": true,
+   "module_name": "shopfast.__main__"
+  },
+  {
+   "fan_in": 3,
+   "fan_out": 2,
+   "file_path": "shopfast/api.py",
+   "finding_count": 3,
+   "in_cycle": true,
+   "is_entrypoint": true,
+   "module_name": "shopfast.api"
+  },
+  {
+   "fan_in": 3,
+   "fan_out": 5,
+   "file_path": "shopfast/app.py",
+   "finding_count": 0,
+   "in_cycle": true,
+   "is_entrypoint": true,
+   "module_name": "shopfast.app"
+  },
+  {
+   "fan_in": 8,
+   "fan_out": 0,
+   "file_path": "shopfast/catalog.py",
+   "finding_count": 3,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.catalog"
+  },
+  {
+   "fan_in": 3,
+   "fan_out": 0,
+   "file_path": "shopfast/db.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.db"
+  },
+  {
+   "fan_in": 2,
+   "fan_out": 1,
+   "file_path": "shopfast/inventory_sync.py",
+   "finding_count": 5,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.inventory_sync"
+  },
+  {
+   "fan_in": 3,
+   "fan_out": 0,
+   "file_path": "shopfast/orders.py",
+   "finding_count": 3,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.orders"
+  },
+  {
+   "fan_in": 2,
+   "fan_out": 1,
+   "file_path": "shopfast/pricing.py",
+   "finding_count": 4,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.pricing"
+  },
+  {
+   "fan_in": 3,
+   "fan_out": 0,
+   "file_path": "shopfast/reporting.py",
+   "finding_count": 5,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.reporting"
+  },
+  {
+   "fan_in": 2,
+   "fan_out": 0,
+   "file_path": "shopfast/utils.py",
+   "finding_count": 1,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "shopfast.utils"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 2,
+   "file_path": "tests/conftest.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.conftest"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 2,
+   "file_path": "tests/test_api.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_api"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "tests/test_catalog.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_catalog"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "tests/test_inventory_sync.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_inventory_sync"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "tests/test_orders.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_orders"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 2,
+   "file_path": "tests/test_pricing.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_pricing"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "tests/test_reporting.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_reporting"
+  },
+  {
+   "fan_in": 0,
+   "fan_out": 1,
+   "file_path": "tests/test_utils.py",
+   "finding_count": 0,
+   "in_cycle": false,
+   "is_entrypoint": false,
+   "module_name": "tests.test_utils"
+  }
+ ]
+}
