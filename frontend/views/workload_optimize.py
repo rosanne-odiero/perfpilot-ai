@@ -8,24 +8,35 @@ import streamlit as st
 
 from frontend import api_client as api
 from frontend import data
-from frontend.api_client import ApiError
+from frontend.api_client import ApiError, Unsupported
 from frontend.components.benchmark_charts import CLASSIFICATION_COLORS
-from frontend.components.diff_view import render_side_by_side, render_unified
 from frontend.components.job_progress import render_job_error, stepper_html, track_job
 from frontend.components.metric_cards import Card, render_cards
-from frontend.components.notices import empty_state, not_available, show_api_error
+from frontend.components.notices import empty_state, not_available
 from frontend.components.optimization import (
     VALIDATION_COLORS,
-    allowed_actions,
-    approval_status,
     benchmark_block_reason,
     checks_frame,
     history_frame,
     lifecycle_steps,
 )
 from frontend.components.provenance import provenance_html
+from frontend.components.report_export import ExportTarget, render_export
 from frontend.formatting import fmt_dt, fmt_ms, fmt_pct, fmt_ratio
 from frontend.theme import badge, esc, status_badge
+from frontend.views.candidate_review import (
+    ACTION_ERROR_KEY,
+    CandidateApi,
+    candidate_header,
+    patch_validator_badges,
+    post_action,
+    rejection_text,
+    render_checks,
+    render_diff,
+    render_review,
+    show_action_error,
+    track_candidate_job,
+)
 from frontend.views.run_history import runs
 from frontend.views.workload_benchmark import show_run
 
@@ -33,8 +44,11 @@ ANALYSIS_KEY = "opt_analysis_{wid}"
 ANALYSIS_JOB_KEY = "opt_analysis_job_{wid}"
 CANDIDATE_KEY = "opt_candidate_{wid}"
 CREATED_KEY = "opt_created_{wid}"
-JOB_KEY = "opt_job_{cid}"
-ACTION_ERROR_KEY = "opt_action_error"
+CANDIDATES = CandidateApi(
+    base="/optimizations",
+    load_diff=data.candidate_diff,
+    clear=data.clear_optimization_caches,
+)
 IMPACT_COLORS = {"high": "#16a34a", "moderate": "#0891b2", "low": "#64748b"}
 
 
@@ -183,15 +197,29 @@ def _impact(rec: dict[str, Any]) -> None:
         st.caption(impact["note"])
 
 
-def _create_candidate(rec_id: str, wid: str) -> None:
+def _create_candidate(rec_id: str, wid: str, use_llm: bool) -> None:
+    body: dict[str, Any] = {"recommendation_id": rec_id}
+    if use_llm:
+        body["use_llm"] = True
     try:
-        candidate = api.post("/optimizations", json={"recommendation_id": rec_id})
+        candidate = api.post("/optimizations", json=body)
     except ApiError as exc:
         st.session_state[ACTION_ERROR_KEY] = exc
         return
     st.session_state[CANDIDATE_KEY.format(wid=wid)] = candidate["id"]
     st.session_state[CREATED_KEY.format(wid=wid)] = candidate["id"]
     data.clear_optimization_caches()
+
+
+def _llm_model() -> str | None:
+    """The configured model id, if the server has an LLM (the LLM proposer needs one)."""
+    try:
+        status = data.ai_status()
+    except ApiError:
+        return None
+    if isinstance(status, dict) and status.get("configured"):
+        return str(status.get("model"))
+    return None
 
 
 def _recommendation(rec: dict[str, Any], wid: str, existing: list[dict[str, Any]]) -> None:
@@ -244,115 +272,29 @@ def _recommendation(rec: dict[str, Any], wid: str, existing: list[dict[str, Any]
                 "Candidates: "
                 + ", ".join(f"{c['id'][:8]} ({c['state'].lower()})" for c in existing)
             )
+        use_llm = False
+        model = _llm_model()
+        if not available:
+            st.caption(f"No safe deterministic patch: {strategy.get('reason') or 'unknown'}")
+            if model:
+                use_llm = st.checkbox(
+                    f"Ask `{model}` for a patch instead. I consent to sending this function's "
+                    "source (redacted) and its evidence; the result is an AI_HYPOTHESIS that "
+                    "still goes through the patch validator, approval and validation.",
+                    key=f"llm_{rec['id']}",
+                )
         st.button(
             "Generate candidate patch",
             key=f"gen_{rec['id']}",
             type="secondary" if existing else "primary",
             icon="🩹",
-            disabled=not available,
+            disabled=not (available or use_llm),
             on_click=_create_candidate,
-            args=(rec["id"], wid),
+            args=(rec["id"], wid, use_llm),
         )
-        if not available:
-            st.caption(f"No safe deterministic patch: {strategy.get('reason') or 'unknown'}")
 
 
 # --- candidate ------------------------------------------------------------------------------
-
-
-def _post_action(path: str, body: dict[str, Any] | None, cid: str, job: bool = False) -> None:
-    """Widget callback for candidate actions; API errors are shown on the next run."""
-    try:
-        response = api.post(path, json=body) if body is not None else api.post(path)
-    except ApiError as exc:
-        st.session_state[ACTION_ERROR_KEY] = exc
-        return
-    if job and isinstance(response, dict) and response.get("job_id"):
-        action = "benchmark" if path == "/benchmarks" else "validate"
-        st.session_state[JOB_KEY.format(cid=cid)] = (response["job_id"], action)
-    data.clear_optimization_caches()
-
-
-def _diff(cid: str) -> None:
-    try:
-        diff = data.candidate_diff(cid)
-    except ApiError as exc:
-        st.caption(f"No diff to review: {exc.message}")
-        return
-    st.markdown(
-        "##### Proposed diff " + badge(f"by {diff.get('generated_by', '?')}", "#1e293b"),
-        unsafe_allow_html=True,
-    )
-    for file in diff.get("files") or []:
-        render_side_by_side(
-            file["original"],
-            file["patched"],
-            before_title=f"Original · {file['path']}",
-            after_title=f"Candidate · {file['path']}",
-        )
-    with st.expander("Unified diff", expanded=False):
-        render_unified(diff.get("unified_diff") or "", title="git-style unified diff")
-
-
-def _reject_form(cid: str) -> None:
-    reason = st.text_area("Rejection reason", key=f"reason_{cid}", height=80)
-    st.button(
-        "Reject candidate",
-        icon="⛔",
-        key=f"reject_{cid}",
-        disabled=not reason.strip(),
-        on_click=_post_action,
-        args=(f"/optimizations/{cid}/reject", {"reason": reason.strip()}, cid),
-    )
-
-
-def _review(candidate: dict[str, Any]) -> None:
-    cid = candidate["id"]
-    actions = allowed_actions(candidate)
-    if "approve" in actions:
-        with st.container(border=True):
-            st.markdown("##### Review")
-            st.caption(
-                "Approval is explicit and recorded. Nothing is applied until you approve; the "
-                "patch is then applied only to an isolated copy of the workload."
-            )
-            left, right = st.columns(2, gap="large")
-            with left:
-                who = st.text_input("Approved by", value="local-user", key=f"who_{cid}")
-                reviewed = st.checkbox("I reviewed the diff above.", key=f"reviewed_{cid}")
-                st.button(
-                    "Approve candidate",
-                    type="primary",
-                    icon="✅",
-                    key=f"approve_{cid}",
-                    disabled=not reviewed or not who.strip(),
-                    on_click=_post_action,
-                    args=(f"/optimizations/{cid}/approve", {"approved_by": who.strip()}, cid),
-                )
-            with right:
-                _reject_form(cid)
-    elif "validate" in actions:
-        approval = candidate.get("approval") or {}
-        st.success(
-            f"Approved by {approval.get('approved_by')} at {fmt_dt(approval.get('approved_at'))}.",
-            icon="✅",
-        )
-        cols = st.columns([1, 2])
-        cols[0].button(
-            "Validate candidate",
-            type="primary",
-            icon="🧪",
-            key=f"validate_{cid}",
-            on_click=_post_action,
-            args=(f"/optimizations/{cid}/validate", None, cid, True),
-        )
-        with cols[1], st.popover("Reject instead", icon="⛔"):
-            _reject_form(cid)
-
-
-def _status_style(value: object) -> str:
-    color = VALIDATION_COLORS.get(str(value))
-    return f"color:{color};font-weight:700" if color else ""
 
 
 def _validation(candidate: dict[str, Any]) -> None:
@@ -371,17 +313,7 @@ def _validation(candidate: dict[str, Any]) -> None:
     )
     checks = validation.get("checks") or []
     if checks:
-        st.dataframe(
-            checks_frame(checks).style.map(_status_style, subset=["Status"]),
-            hide_index=True,
-            width="stretch",
-            column_config={"Detail": st.column_config.TextColumn(width="large")},
-        )
-        with st.expander("Check details"):
-            for check in checks:
-                st.markdown(f"**{check.get('name')}** · {check.get('status')}")
-                if check.get("data"):
-                    st.json(check["data"], expanded=False)
+        render_checks(checks_frame(checks), checks)
     if validation.get("error"):
         st.error(validation["error"])
     st.caption(
@@ -424,8 +356,8 @@ def _benchmark_form(candidate: dict[str, Any], detail: dict[str, Any]) -> None:
         icon="🏁",
         key=f"bench_{cid}",
         disabled=reason is not None,
-        on_click=_post_action,
-        args=("/benchmarks", body, cid, True),
+        on_click=post_action,
+        args=(CANDIDATES, "/benchmarks", body, cid, "benchmark"),
     )
 
 
@@ -478,58 +410,44 @@ def _running_job(candidate: dict[str, Any]) -> tuple[str, str] | None:
     return None
 
 
-def _track(candidate: dict[str, Any]) -> bool:
-    """Live tracker for this candidate's validation or benchmark job; True while it runs."""
-    key = JOB_KEY.format(cid=candidate["id"])
-    pending = st.session_state.get(key) or _running_job(candidate)
-    if not pending:
-        return False
-    job_id, action = pending
-    label = "Validating" if action == "validate" else "Benchmarking"
-    job = track_job(job_id, label)
-    if job is None:
-        return True
-    st.session_state.pop(key, None)
-    data.clear_optimization_caches()
-    if not job.succeeded:
-        render_job_error(job, label)
-    return False
+def _experiment_reports(candidate: dict[str, Any]) -> None:
+    with st.expander("Experiment report", icon="📄"):
+        st.caption(
+            "The engineering write-up of this experiment: recommendation, diff, validation "
+            "checks, benchmark with raw samples, provenance and reproduction commands."
+        )
+        blocked = None
+        if candidate["state"] in {"VALIDATING", "BENCHMARKING"}:
+            blocked = f"Reports are available once the candidate is no longer {candidate['state']}."
+        render_export(
+            ExportTarget(
+                key=f"optimization_{candidate['id']}",
+                path=f"/optimizations/{candidate['id']}/reports",
+                empty_message="No experiment reports yet. Pick formats and press Generate reports.",
+            ),
+            blocked=blocked,
+        )
 
 
 def _candidate(candidate: dict[str, Any], detail: dict[str, Any]) -> None:
-    transform = candidate.get("transform")
-    st.markdown(
-        f"#### Candidate `{candidate['id'][:8]}` {status_badge(candidate['state'])} "
-        + badge(f"approval {approval_status(candidate)}", "#334155")
-        + " "
-        + badge(f"by {candidate.get('generated_by')}", "#1e293b")
-        + (" " + badge(str(transform), "#312e81") if transform else ""),
-        unsafe_allow_html=True,
-    )
+    candidate_header(candidate)
     st.write(candidate.get("summary") or "")
     for note in candidate.get("notes") or []:
         st.caption(f"• {note}")
-    checks = (candidate.get("patch_validation") or {}).get("checks") or {}
-    if checks:
-        st.markdown(
-            "Patch validator: "
-            + " ".join(
-                badge(name.replace("_", " "), "#16a34a" if result == "passed" else "#dc2626")
-                for name, result in checks.items()
-            ),
-            unsafe_allow_html=True,
-        )
+    patch_validator_badges(candidate)
     for reason in candidate.get("rejection_reasons") or []:
-        st.error(f"Rejected: {reason}", icon="⛔")
+        st.error(f"Rejected: {rejection_text(reason)}", icon="⛔")
     if candidate.get("error"):
         st.error(candidate["error"])
-    _diff(candidate["id"])
-    if _track(candidate):
+    render_diff(CANDIDATES, candidate["id"])
+    if track_candidate_job(CANDIDATES, candidate["id"], _running_job(candidate)):
         return
-    _review(candidate)
+    render_review(CANDIDATES, candidate)
     _validation(candidate)
     _benchmark_form(candidate, detail)
     _benchmark_result(candidate)
+    if not isinstance(data.experiments(1), Unsupported):
+        _experiment_reports(candidate)
     with st.expander("Lifecycle history"):
         st.dataframe(history_frame(candidate.get("state_history") or []), hide_index=True)
 
@@ -561,12 +479,6 @@ def _select_candidate(wid: str, mine: list[dict[str, Any]]) -> dict[str, Any] | 
         st.session_state[key] = mine[0]["id"]
     chosen = st.selectbox("Candidate", list(labels), format_func=labels.__getitem__, key=key)
     return data.candidate(chosen)
-
-
-def show_action_error() -> None:
-    error = st.session_state.pop(ACTION_ERROR_KEY, None)
-    if isinstance(error, ApiError):
-        show_api_error(error, "Request rejected")
 
 
 def render(detail: dict[str, Any]) -> None:

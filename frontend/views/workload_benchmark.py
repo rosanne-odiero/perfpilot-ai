@@ -9,7 +9,7 @@ import streamlit as st
 
 from frontend import api_client as api
 from frontend import data
-from frontend.api_client import ApiError
+from frontend.api_client import ApiError, Unsupported
 from frontend.components.benchmark_charts import (
     CLASSIFICATION_COLORS,
     distribution_figure,
@@ -24,6 +24,7 @@ from frontend.components.job_progress import render_job_error, track_job
 from frontend.components.metric_cards import Card, render_cards
 from frontend.components.notices import NOT_AVAILABLE, empty_state, show_api_error
 from frontend.components.provenance import provenance_html
+from frontend.components.report_export import ExportTarget, render_export
 from frontend.formatting import fmt_dt, fmt_ms, fmt_pct, fmt_ratio, human_bytes
 from frontend.theme import badge, esc
 from frontend.views.run_history import runs
@@ -303,4 +304,27 @@ def render(detail: dict[str, Any]) -> None:
     benchmark_id = st.selectbox(
         "Benchmark run", list(labels), format_func=labels.__getitem__, key=select_key
     )
-    show_run(next(ref.run for ref in history if ref.id == benchmark_id))
+    run = next(ref.run for ref in history if ref.id == benchmark_id)
+    show_run(run)
+    _reference_reports(run)
+
+
+def _reference_reports(run: dict[str, Any]) -> None:
+    """Experiment reports exist for reference benchmarks; candidate benchmarks are reported on
+    through their candidate (Optimize tab)."""
+    if (run.get("candidate") or {}).get("kind") != "reference":
+        return
+    if isinstance(data.experiments(1), Unsupported):
+        return
+    with st.expander("Experiment report for this benchmark", icon="📄"):
+        blocked = None
+        if run["status"] not in {"SUCCEEDED", "FAILED"}:
+            blocked = "Reports are available once the benchmark has finished."
+        render_export(
+            ExportTarget(
+                key=f"benchmark_{run['id']}",
+                path=f"/benchmarks/{run['id']}/reports",
+                empty_message="No experiment reports yet. Pick formats and press Generate reports.",
+            ),
+            blocked=blocked,
+        )
