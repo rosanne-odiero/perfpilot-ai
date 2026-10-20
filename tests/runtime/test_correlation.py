@@ -13,6 +13,7 @@ from backend.audit.correlation import (
     MEASURED_WEIGHT,
     CorrelationHotspot,
     correlate,
+    exercised_path_factor,
     measured_factor,
     reset_to_static,
 )
@@ -76,7 +77,10 @@ def test_exact_symbol_match_attaches_evidence_and_reranks(audit: StaticAuditResu
     assert finding.measured.provenance == "MEASURED"
     assert finding.measured.profile_id == "run-1"
     assert finding.measured.measured_factor == pytest.approx(1.8)
-    assert finding.priority_score == round(static.priority_score * 1.8, 2)
+    path_factor = exercised_path_factor(static)
+    assert path_factor >= 1.0
+    assert finding.priority_factors["exercised_path_factor"] == pytest.approx(path_factor, abs=1e-4)
+    assert finding.priority_score == round(static.priority_score * path_factor * 1.8, 2)
     assert finding.priority_factors["static_priority_score"] == static.priority_score
     assert result.findings[0].id == finding.id
     [link] = result.correlations
@@ -197,3 +201,29 @@ def test_correlation_is_idempotent_and_resettable(audit: StaticAuditResult) -> N
     restored = reset_to_static(first.findings[0])
     assert restored.measured is None
     assert "measured_factor" not in restored.priority_factors
+
+
+def test_exercised_path_factor_lifts_static_path_guess_to_floor() -> None:
+    from backend.audit.correlation import EXERCISED_PATH_FLOOR
+
+    def _with(reach: float, role: float) -> Finding:
+        return Finding.model_validate(
+            {
+                "id": "f",
+                "rule_id": "R",
+                "title": "t",
+                "category": "NESTED_LOOPS",
+                "description": "d",
+                "severity": "HIGH",
+                "confidence": "HIGH",
+                "location": {"file_path": "a.py", "line_start": 1, "line_end": 1},
+                "snippet": "x",
+                "suggestion": "s",
+                "tradeoffs": "t",
+                "priority_factors": {"entrypoint_reachability": reach, "path_role": role},
+            }
+        )
+
+    assert exercised_path_factor(_with(0.5, 0.5)) == pytest.approx(EXERCISED_PATH_FLOOR / 0.25)
+    assert exercised_path_factor(_with(1.0, 1.0)) == 1.0
+    assert exercised_path_factor(_with(1.0, 0.9)) == 1.0

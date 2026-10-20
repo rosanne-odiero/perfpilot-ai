@@ -150,16 +150,24 @@ belongs to a builtin. Attributed shares overlap and are never summed.
 3. **Evidence and re-ranking.** For every finding whose symbol was measured:
 
    ```
-   measured_factor = 1 + 2.0 × attributed_share          (1.0 … 3.0, MEASURED_WEIGHT = 2.0)
-   priority_score  = static_priority_score × measured_factor
+   measured_factor       = 1 + 2.0 × attributed_share          (1.0 … 3.0, MEASURED_WEIGHT = 2.0)
+   exercised_path_factor = max(reach × role, 0.9) / (reach × role)
+   priority_score        = static_priority_score × exercised_path_factor × measured_factor
    ```
+
+   `reach × role` are the static `entrypoint_reachability` and `path_role` factors, which are
+   guesses about whether the code sits on a hot path. A profile of the approved workload is direct
+   evidence that it does, so their product is lifted to at least `EXERCISED_PATH_FLOOR = 0.9`.
+   Without this, measured hot code in a script or internal module would stay below unmeasured
+   request-handler findings.
 
    `attributed_share` sums the attributed time of every hotspot mapped to the symbol (capped at
    the function's cumulative time). The finding **keeps its own provenance (`STATIC`)** for the
    static claim. A `MeasuredEvidence` block with provenance `MEASURED` is attached (run id,
    function, internal/cumulative/attributed time, calls, exclusive and attributed share,
    `measured_factor`, hotspot file and line). `priority_factors` gains `static_priority_score`,
-   `measured_factor` and `measured_attributed_share`, and the finding rows are re-sorted.
+   `measured_factor`, `measured_attributed_share` and `exercised_path_factor`, and the finding
+   rows are re-sorted.
 4. **Runtime-only hotspots.** Repository functions with at least 1% attributed share and no static
    finding (import-time `<module>` code excluded), up to 25.
 

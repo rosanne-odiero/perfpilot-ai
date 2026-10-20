@@ -35,10 +35,6 @@ from backend.models.orm.platform import Job
 AUDIT_JOB_TYPE = "audit.run"
 _FINDING_NAMESPACE = uuid.UUID("6f1e2c1a-3b7d-4c55-9a51-0f4f3d6f2a10")
 RUNTIME_NOT_CONFIGURED = "This audit mode has no stage pipeline in this build."
-LLM_UNAVAILABLE_WARNING = (
-    "AI-assisted analysis was requested, but this build has no AI analysis stage; only "
-    "deterministic static analysis ran and no code was sent to any model."
-)
 
 
 def finding_record_id(audit_id: str, finding_id: str) -> str:
@@ -107,7 +103,7 @@ def create_audit(
         stage=AuditStage.QUEUED,
         use_llm=use_llm,
         llm_consent=llm_consent,
-        warnings=[LLM_UNAVAILABLE_WARNING] if use_llm else [],
+        warnings=[],
     )
     session.add(audit)
     session.flush()

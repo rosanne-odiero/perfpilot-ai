@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from backend.ai.analysis import AIAnalysisResult
+from backend.audit.ai_stage import AI_STAGE
 from backend.audit.pipeline import STATIC_STAGES, AuditState, PipelineStage, run_pipeline
 from backend.audit.static_audit import StaticAuditResult, summarize
 from backend.core.exceptions import NotConfiguredError, ValidationFailedError
@@ -16,13 +18,15 @@ from backend.models.enums import AuditMode, AuditStage, AuditStatus
 from backend.models.orm.audit import AuditRun
 from backend.runtime.discovery import RUNTIME_DISCOVERY_STAGE, finish_runtime_discovery
 from backend.services import audits as audit_service
+from backend.services import recommendations as recommendation_service
 
 log = get_logger(__name__)
 
-# Ordered stages for a STATIC audit. Later phases extend this tuple (AI_ANALYSIS after
-# PRIORITIZING; runtime stages for RUNTIME mode) without changing the handler.
-AUDIT_STAGES: dict[AuditMode, tuple[PipelineStage, ...]] = {AuditMode.STATIC: STATIC_STAGES}
-# RUNTIME = the static stages plus static command discovery; execution waits for an approval.
+# Ordered stages per audit mode. AI_ANALYSIS always follows PRIORITIZING; RUNTIME adds
+# static command discovery, and execution waits for an explicit approval.
+AUDIT_STAGES: dict[AuditMode, tuple[PipelineStage, ...]] = {
+    AuditMode.STATIC: (*STATIC_STAGES, AI_STAGE)
+}
 AUDIT_STAGES[AuditMode.RUNTIME] = (*AUDIT_STAGES[AuditMode.STATIC], RUNTIME_DISCOVERY_STAGE)
 
 
@@ -45,6 +49,7 @@ def _load(ctx: JobContext, audit_id: str) -> tuple[AuditState, AuditMode, list[s
         root = audit_service.resolve_workspace(ctx.settings, workspace_path)
         inventory = RepositoryInventory.model_validate(inventory_json)
         warnings = list(audit.warnings or [])
+        use_llm, llm_consent = bool(audit.use_llm), bool(audit.llm_consent)
         audit.status = AuditStatus.RUNNING
         audit.error = None
         audit.job_id = ctx.job_id
@@ -53,11 +58,18 @@ def _load(ctx: JobContext, audit_id: str) -> tuple[AuditState, AuditMode, list[s
         inventory=inventory,
         settings=ctx.settings,
         progress=lambda stage, fraction, message: ctx.progress(stage.value, fraction, message),
+        use_llm=use_llm,
+        llm_consent=llm_consent,
     )
     return state, mode, warnings
 
 
-def _persist(audit_id: str, result: StaticAuditResult, warnings: list[str]) -> AuditStatus:
+def _persist(
+    audit_id: str,
+    result: StaticAuditResult,
+    warnings: list[str],
+    ai: AIAnalysisResult | None = None,
+) -> AuditStatus:
     status = AuditStatus.PARTIAL if result.is_partial else AuditStatus.SUCCEEDED
     partial_reasons = [*result.limits_hit]
     if result.stats.parse_errors:
@@ -77,6 +89,8 @@ def _persist(audit_id: str, result: StaticAuditResult, warnings: list[str]) -> A
         audit.code_index = result.index.model_dump(mode="json")
         audit.summary = summary
         audit.warnings = [*warnings, *result.warnings]
+        if ai is not None:
+            recommendation_service.store_ai_result(session, audit, ai)
         audit.status = status
         audit.stage = AuditStage.COMPLETED
     return status
@@ -96,7 +110,7 @@ def run_audit(ctx: JobContext) -> dict[str, Any]:
             on_stage=lambda stage: _update_audit(audit_id, stage=stage.stage),
         )
         result = summarize(state, time.perf_counter() - started)
-        status = _persist(audit_id, result, warnings)
+        status = _persist(audit_id, result, warnings, state.ai)
         if mode is AuditMode.RUNTIME:
             finish_runtime_discovery(audit_id, state)
     except JobCancelledError:

@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from backend.audit.prioritization import PriorityContext, prioritize
 from backend.audit.rule_engine import RuleRunResult, run_rules
@@ -20,6 +21,9 @@ from backend.core.config import Settings
 from backend.indexing.code_index import IndexBuild, index_repository, link_repository
 from backend.models.audit_schemas import Finding, RepositoryInventory
 from backend.models.enums import AuditStage
+
+if TYPE_CHECKING:
+    from backend.ai.analysis import AIAnalysisResult
 
 ProgressCallback = Callable[[AuditStage, float, str | None], None]
 
@@ -39,6 +43,9 @@ class AuditState:
     position: tuple[int, int] = (0, 1)
     # Results of optional stages (e.g. runtime command discovery), keyed by the stage's module.
     stage_outputs: dict[str, object] = field(default_factory=dict)
+    use_llm: bool = False
+    llm_consent: bool = False
+    ai: AIAnalysisResult | None = None
 
     def report(self, fraction: float, message: str | None = None) -> None:
         """Progress within the current stage (0..1), mapped onto the whole pipeline."""
@@ -93,7 +100,7 @@ def prioritize_stage(state: AuditState) -> None:
     build = state.require_build()
     if state.rules is None:
         raise RuntimeError("the STATIC_RULES stage must run before PRIORITIZING")
-    context = PriorityContext.build(build.index, build.import_graph, build.call_graph)
+    context = PriorityContext.build(build.index, build.import_graph, build.call_graph, build.parsed)
     state.findings = prioritize(state.rules.findings, context)
     counts: dict[str, int] = {}
     module_by_path = {m.file_path: m.module_name for m in build.index.modules}

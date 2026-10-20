@@ -1,0 +1,453 @@
+{
+  "description": "Advisor evaluation scenarios. Each case is a tiny repository (files as lists of lines). 'expect.rules' must equal the set of rule ids detected; 'expect.kinds' must equal the set of recommendation kinds produced; 'expect.diff' says whether a suggested diff must (true) or must not (false) be attached; optional 'roles' (symbol -> code role) and 'insights' (titles that must appear). Cases with empty rules/kinds are negatives: no change should be recommended.",
+  "cases": [
+    {
+      "id": "membership-list-param",
+      "description": "Membership test against a list parameter inside a loop",
+      "files": {"app/dedupe.py": [
+        "def unique(items: list[str], seen: list[str]) -> list[str]:",
+        "    for item in items:",
+        "        if item not in seen:",
+        "            seen.append(item)",
+        "    return seen"
+      ]},
+      "expect": {"rules": ["PP-LOOP-001"], "kinds": ["set-membership"], "diff": false}
+    },
+    {
+      "id": "membership-inline-literal",
+      "description": "Membership test against an inline literal list of constants",
+      "files": {"app/codes.py": [
+        "def known(codes):",
+        "    kept = []",
+        "    for code in codes:",
+        "        if code in [\"AA\", \"BB\", \"CC\", \"DD\", \"EE\", \"FF\", \"GG\"]:",
+        "            kept.append(code)",
+        "    return kept"
+      ]},
+      "expect": {"rules": ["PP-LOOP-001"], "kinds": ["set-membership"], "diff": true}
+    },
+    {
+      "id": "membership-local-literal",
+      "description": "Local literal list used only for membership tests",
+      "files": {"app/block.py": [
+        "def allowed(users):",
+        "    blocked = [\"u1\", \"u2\", \"u3\", \"u4\", \"u5\", \"u6\", \"u7\"]",
+        "    out = []",
+        "    for user in users:",
+        "        if user not in blocked:",
+        "            out.append(user)",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-LOOP-001"], "kinds": ["set-membership"], "diff": true}
+    },
+    {
+      "id": "string-concat-constant-init",
+      "description": "String built with += from an empty string",
+      "files": {"app/render.py": [
+        "def render(rows: list[str]) -> str:",
+        "    out = \"\"",
+        "    for row in rows:",
+        "        out += row + \"\\n\"",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-STR-001"], "kinds": ["string-join"], "diff": true}
+    },
+    {
+      "id": "string-concat-unknown-init",
+      "description": "String += where the initial value comes from a parameter: no mechanical diff",
+      "files": {"app/render.py": [
+        "def render(rows: list[str], header: str) -> str:",
+        "    out = header",
+        "    for row in rows:",
+        "        out += row",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-STR-001"], "kinds": ["string-join"], "diff": false}
+    },
+    {
+      "id": "regex-compile-in-loop",
+      "description": "Constant re.compile inside a loop",
+      "files": {"app/ids.py": [
+        "import re",
+        "",
+        "",
+        "def ids(lines):",
+        "    found = []",
+        "    for line in lines:",
+        "        pattern = re.compile(r\"ID-(\\d+)\")",
+        "        match = pattern.search(line)",
+        "        if match:",
+        "            found.append(match.group(1))",
+        "    return found"
+      ]},
+      "expect": {"rules": ["PP-REGEX-001"], "kinds": ["precompile-regex"], "diff": true}
+    },
+    {
+      "id": "nested-loop-join",
+      "description": "Nested loops matching two collections by key",
+      "files": {"app/join.py": [
+        "def attach(orders, customers):",
+        "    for order in orders:",
+        "        for customer in customers:",
+        "            if customer.id == order.customer_id:",
+        "                order.customer = customer",
+        "    return orders"
+      ]},
+      "expect": {"rules": ["PP-LOOP-002"], "kinds": ["index-join"], "diff": false}
+    },
+    {
+      "id": "loop-invariant-sort",
+      "description": "Sorting the same unchanged collection on every iteration",
+      "files": {"app/rank.py": [
+        "def ranks(items: list[int], queries: list[int]) -> list[int]:",
+        "    out = []",
+        "    for q in queries:",
+        "        ordered = sorted(items)",
+        "        out.append(ordered.index(q) if q in ordered else -1)",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-LOOP-003", "PP-LOOP-001", "PP-COLL-001"], "kinds": ["hoist-invariant", "set-membership", "index-lookup"], "diff": false}
+    },
+    {
+      "id": "resort-growing-list",
+      "description": "Re-sorting a list that grows inside the loop",
+      "files": {"app/top.py": [
+        "def top(scores):",
+        "    best = []",
+        "    for score in scores:",
+        "        best.append(score)",
+        "        best.sort()",
+        "    return best[-3:]"
+      ]},
+      "expect": {"rules": ["PP-LOOP-004"], "kinds": ["incremental-ordering"], "diff": false}
+    },
+    {
+      "id": "list-remove-in-loop",
+      "description": "list.remove on a known list inside a loop",
+      "files": {"app/stock.py": [
+        "def consume(orders):",
+        "    stock = [1, 2, 3]",
+        "    for order in orders:",
+        "        stock.remove(order)",
+        "    return stock"
+      ]},
+      "expect": {"rules": ["PP-COLL-001"], "kinds": ["index-lookup"], "diff": false}
+    },
+    {
+      "id": "list-as-queue",
+      "description": "pop(0) on a list used as a queue",
+      "files": {"app/queue.py": [
+        "def drain(jobs):",
+        "    queue = list(jobs)",
+        "    done = []",
+        "    while queue:",
+        "        done.append(queue.pop(0))",
+        "    return done"
+      ]},
+      "expect": {"rules": ["PP-COLL-002"], "kinds": ["deque"], "diff": false}
+    },
+    {
+      "id": "materialize-keys",
+      "description": "len(list(d.keys())) inside a loop",
+      "files": {"app/count.py": [
+        "def sizes(tables: dict, rounds: int):",
+        "    out = []",
+        "    for _ in range(rounds):",
+        "        out.append(len(list(tables.keys())))",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-COLL-003"], "kinds": ["avoid-materialization"], "diff": false}
+    },
+    {
+      "id": "n-plus-one-sqlalchemy",
+      "description": "SQLAlchemy session.get per id inside a loop",
+      "files": {"app/repo.py": [
+        "from sqlalchemy.orm import Session",
+        "",
+        "from app.models import Order",
+        "",
+        "",
+        "def load(session: Session, ids: list[int]):",
+        "    return [session.get(Order, order_id) for order_id in ids]"
+      ], "app/models.py": [
+        "class Order:",
+        "    pass"
+      ]},
+      "expect": {"rules": ["PP-DB-001"], "kinds": ["batch-db-queries"], "diff": false}
+    },
+    {
+      "id": "n-plus-one-router",
+      "description": "Two FastAPI handlers in one router with the same N+1 pattern -> one recommendation",
+      "files": {"app/routes.py": [
+        "from fastapi import APIRouter",
+        "",
+        "router = APIRouter()",
+        "",
+        "",
+        "@router.get(\"/a\")",
+        "def list_a(ids, db):",
+        "    out = []",
+        "    for i in ids:",
+        "        out.append(db.query(i).first())",
+        "    return out",
+        "",
+        "",
+        "@router.get(\"/b\")",
+        "def list_b(ids, db):",
+        "    out = []",
+        "    for i in ids:",
+        "        out.append(db.query(i).first())",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-DB-001"], "kinds": ["batch-db-queries"], "diff": false, "recommendations": 1, "roles": {"list_a": "REQUEST_HANDLER", "list_b": "REQUEST_HANDLER"}}
+    },
+    {
+      "id": "async-time-sleep",
+      "description": "time.sleep inside an async route handler",
+      "files": {"app/api.py": [
+        "import time",
+        "",
+        "from fastapi import APIRouter",
+        "",
+        "router = APIRouter()",
+        "",
+        "",
+        "@router.get(\"/slow\")",
+        "async def slow():",
+        "    time.sleep(0.1)",
+        "    return {}"
+      ]},
+      "expect": {"rules": ["PP-ASYNC-001"], "kinds": ["unblock-event-loop"], "diff": false, "roles": {"slow": "REQUEST_HANDLER"}}
+    },
+    {
+      "id": "async-sync-db-boundary",
+      "description": "Synchronous DB session used directly in two async handlers",
+      "files": {"app/api.py": [
+        "from fastapi import APIRouter",
+        "",
+        "router = APIRouter()",
+        "",
+        "",
+        "@router.get(\"/a\")",
+        "async def get_a(item_id, db):",
+        "    return db.query(item_id).first()",
+        "",
+        "",
+        "@router.get(\"/b\")",
+        "async def get_b(item_id, db):",
+        "    return db.query(item_id).first()"
+      ]},
+      "expect": {"rules": ["PP-ASYNC-001"], "kinds": ["async-db-boundary"], "diff": false, "insights": ["Synchronous database access inside async code"]}
+    },
+    {
+      "id": "http-in-loop",
+      "description": "Sequential requests.get for each item",
+      "files": {"app/fetch.py": [
+        "import requests",
+        "",
+        "",
+        "def fetch_all(urls):",
+        "    out = []",
+        "    for url in urls:",
+        "        out.append(requests.get(url, timeout=5).json())",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-NET-001"], "kinds": ["concurrent-http"], "diff": false}
+    },
+    {
+      "id": "client-per-call-two-modules",
+      "description": "HTTP clients created per call in two modules -> shared client insight",
+      "files": {"app/a.py": [
+        "import httpx",
+        "",
+        "",
+        "def profile(user_id):",
+        "    client = httpx.Client(timeout=5)",
+        "    data = client.get(f\"https://x.invalid/{user_id}\").json()",
+        "    client.close()",
+        "    return data"
+      ], "app/b.py": [
+        "import requests",
+        "",
+        "",
+        "def price(sku):",
+        "    session = requests.Session()",
+        "    data = session.get(f\"https://y.invalid/{sku}\").json()",
+        "    session.close()",
+        "    return data"
+      ]},
+      "expect": {"rules": ["PP-NET-002"], "kinds": ["shared-http-client"], "diff": false, "insights": ["Introduce a shared HTTP client"]}
+    },
+    {
+      "id": "deepcopy-in-loop",
+      "description": "Deep-copying the same template object every iteration",
+      "files": {"app/copying.py": [
+        "import copy",
+        "",
+        "",
+        "def build(template: dict, names: list[str]) -> list[dict]:",
+        "    out = []",
+        "    for name in names:",
+        "        item = copy.deepcopy(template)",
+        "        item[\"name\"] = name",
+        "        out.append(item)",
+        "    return out"
+      ]},
+      "expect": {"rules": ["PP-ALLOC-001"], "kinds": ["avoid-deepcopy"], "diff": false}
+    },
+    {
+      "id": "pandas-concat-loop",
+      "description": "DataFrame grown with pd.concat inside a loop",
+      "files": {"app/frames.py": [
+        "import pandas as pd",
+        "",
+        "",
+        "def collect(rows):",
+        "    df = pd.DataFrame()",
+        "    for row in rows:",
+        "        df = pd.concat([df, pd.DataFrame([row])])",
+        "    return df"
+      ]},
+      "expect": {"rules": ["PP-ALLOC-003"], "kinds": ["dataframe-batch-build"], "diff": false}
+    },
+    {
+      "id": "fibonacci-recursion",
+      "description": "Overlapping pure recursion without memoization",
+      "files": {"app/math.py": [
+        "def fib(n: int) -> int:",
+        "    if n < 2:",
+        "        return n",
+        "    return fib(n - 1) + fib(n - 2)"
+      ]},
+      "expect": {"rules": ["PP-CACHE-001"], "kinds": ["memoize-recursion"], "diff": true}
+    },
+    {
+      "id": "import-time-network",
+      "description": "HTTP request executed at import time",
+      "files": {"app/config.py": [
+        "import requests",
+        "",
+        "SETTINGS = requests.get(\"https://config.invalid/settings\", timeout=5).json()"
+      ]},
+      "expect": {"rules": ["PP-ARCH-001"], "kinds": ["defer-import-time-work"], "diff": false}
+    },
+    {
+      "id": "unbounded-module-cache",
+      "description": "Module-level dict cache that only grows",
+      "files": {"app/cache.py": [
+        "_cache = {}",
+        "",
+        "",
+        "def lookup(key):",
+        "    if key not in _cache:",
+        "        _cache[key] = key * 2",
+        "    return _cache[key]"
+      ]},
+      "expect": {"rules": ["PP-ARCH-002"], "kinds": ["bounded-cache"], "diff": false}
+    },
+    {
+      "id": "seed-script-n-plus-one",
+      "description": "N+1 in a one-off seed script: detected but classified as seed code",
+      "files": {"seed/seed.py": [
+        "def seed(db, ids):",
+        "    for item_id in ids:",
+        "        db.query(item_id).first()",
+        "",
+        "",
+        "if __name__ == \"__main__\":",
+        "    seed(None, [])"
+      ]},
+      "expect": {"rules": ["PP-DB-001"], "kinds": ["batch-db-queries"], "diff": false, "roles": {"seed": "SEED_MIGRATION"}}
+    },
+    {
+      "id": "negative-set-membership",
+      "description": "Already uses a set: nothing to recommend",
+      "files": {"app/ok.py": [
+        "def unique(items):",
+        "    seen = set()",
+        "    out = []",
+        "    for item in items:",
+        "        if item not in seen:",
+        "            seen.add(item)",
+        "            out.append(item)",
+        "    return out"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    },
+    {
+      "id": "negative-indexed-join",
+      "description": "Join already done with a dict index",
+      "files": {"app/ok.py": [
+        "def attach(orders, customers):",
+        "    by_id = {c.id: c for c in customers}",
+        "    for order in orders:",
+        "        order.customer = by_id.get(order.customer_id)",
+        "    return orders"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    },
+    {
+      "id": "negative-async-sleep",
+      "description": "Async handler awaiting asyncio.sleep",
+      "files": {"app/api.py": [
+        "import asyncio",
+        "",
+        "from fastapi import APIRouter",
+        "",
+        "router = APIRouter()",
+        "",
+        "",
+        "@router.get(\"/polite\")",
+        "async def polite():",
+        "    await asyncio.sleep(0.1)",
+        "    return {}"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    },
+    {
+      "id": "negative-pagination",
+      "description": "Query in a while loop that pages through results (not N+1)",
+      "files": {"app/pages.py": [
+        "def all_rows(db):",
+        "    rows = []",
+        "    page = 0",
+        "    while True:",
+        "        batch = db.query(page).all()",
+        "        if not batch:",
+        "            break",
+        "        rows.extend(batch)",
+        "        page += 1",
+        "    return rows"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    },
+    {
+      "id": "negative-dynamic-regex",
+      "description": "Pattern built from a parameter cannot be hoisted",
+      "files": {"app/grep.py": [
+        "import re",
+        "",
+        "",
+        "def grep(lines, word):",
+        "    return [line for line in lines if re.search(word, line)]"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    },
+    {
+      "id": "negative-retry-loop",
+      "description": "HTTP call inside a bounded retry loop",
+      "files": {"app/retry.py": [
+        "import requests",
+        "",
+        "",
+        "def fetch(url):",
+        "    for attempt in range(3):",
+        "        response = requests.get(url, timeout=5)",
+        "        if response.ok:",
+        "            return response.json()",
+        "    return None"
+      ]},
+      "expect": {"rules": [], "kinds": [], "diff": false}
+    }
+  ]
+}

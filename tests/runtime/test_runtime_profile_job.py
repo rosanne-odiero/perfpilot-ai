@@ -162,7 +162,11 @@ def test_approved_workload_is_profiled_and_correlated(
     static_score = static[nested["id"]]["priority_score"]
     factor = 1 + 2 * evidence["attributed_percentage"] / 100
     assert evidence["measured_factor"] == pytest.approx(factor, abs=1e-3)
-    assert nested["priority_score"] == pytest.approx(round(static_score * factor, 2), abs=0.02)
+    path_factor = nested["priority_factors"]["exercised_path_factor"]
+    assert path_factor >= 1.0
+    assert nested["priority_score"] == pytest.approx(
+        round(static_score * path_factor * factor, 2), abs=0.02
+    )
     assert nested["priority_factors"]["static_priority_score"] == static_score
     assert findings[0]["id"] == nested["id"]  # measured re-ranking puts the real hotspot first
 

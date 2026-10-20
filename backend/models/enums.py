@@ -131,3 +131,17 @@ class EffortEstimate(StrEnum):
     SMALL = "SMALL"
     MEDIUM = "MEDIUM"
     LARGE = "LARGE"
+
+
+class CodeRole(StrEnum):
+    """Execution role of the code a finding sits in (see ``backend.audit.path_ranking``)."""
+
+    REQUEST_HANDLER = "REQUEST_HANDLER"
+    BACKGROUND_TASK = "BACKGROUND_TASK"
+    REQUEST_PATH = "REQUEST_PATH"
+    LIBRARY = "LIBRARY"
+    INTERNAL = "INTERNAL"
+    CLI_SCRIPT = "CLI_SCRIPT"
+    SEED_MIGRATION = "SEED_MIGRATION"
+    EXAMPLE_DOCS = "EXAMPLE_DOCS"
+    TEST = "TEST"

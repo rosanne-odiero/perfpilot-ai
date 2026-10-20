@@ -13,7 +13,13 @@ first line is the hotspot's symbol. The finding keeps its own provenance (``STAT
 
     attributed_share = attributed_time(symbol) / Σ tottime(all functions)        (0..1)
     measured_factor  = 1 + MEASURED_WEIGHT * attributed_share                    (1..3)
-    priority_score   = static_priority_score * measured_factor
+    exercised_score  = static_priority_score
+                       * max(reach * role, EXERCISED_PATH_FLOOR) / (reach * role)
+    priority_score   = exercised_score * measured_factor
+
+``reach * role`` are the static ``entrypoint_reachability`` and ``path_role`` factors. They are
+*guesses* about whether the code is on a hot execution path; a profile of the approved workload is
+direct evidence that it is, so their product is raised to at least ``EXERCISED_PATH_FLOOR``.
 
 ``attributed_time(symbol)`` sums the attributed time (self time plus directly called non-repository
 code, see ``backend/runtime/profile_stats.py``) of every hotspot mapped to the symbol, capped at the
@@ -33,10 +39,16 @@ from backend.indexing.code_index import is_test_path
 from backend.models.audit_schemas import CodeIndex, Finding, MeasuredEvidence, SymbolInfo
 
 MEASURED_WEIGHT = 2.0
+EXERCISED_PATH_FLOOR = 0.9
 RUNTIME_ONLY_MIN_PERCENT = 1.0
 MAX_RUNTIME_ONLY = 25
 STATIC_SCORE_KEY = "static_priority_score"
-MEASURED_FACTOR_KEYS = (STATIC_SCORE_KEY, "measured_factor", "measured_attributed_share")
+MEASURED_FACTOR_KEYS = (
+    STATIC_SCORE_KEY,
+    "measured_factor",
+    "measured_attributed_share",
+    "exercised_path_factor",
+)
 MODULE_KEY = "<module>"
 _FUNCTION_KINDS = {"function", "async_function", "method", "async_method"}
 
@@ -93,6 +105,15 @@ class CorrelationResult(BaseModel):
     correlations: list[FindingCorrelation]
     runtime_only: list[RuntimeOnlyHotspot]
     unmapped_hotspots: int = Field(description="Repository hotspots not matched to any symbol")
+
+
+def exercised_path_factor(finding: Finding) -> float:
+    """Multiplier lifting the static path guess to the floor for code the profile saw running."""
+    factors = finding.priority_factors
+    static_path = factors.get("entrypoint_reachability", 1.0) * factors.get("path_role", 1.0)
+    if static_path <= 0:
+        return 1.0
+    return max(static_path, EXERCISED_PATH_FLOOR) / static_path
 
 
 def measured_factor(attributed_share: float) -> float:
@@ -231,7 +252,8 @@ def correlate(
         for finding in matched:
             base = updated[finding.id]
             static = base.priority_score
-            score = round(static * factor, 2)
+            path_factor = exercised_path_factor(base)
+            score = round(static * path_factor * factor, 2)
             evidence = MeasuredEvidence(
                 profile_id=run_id,
                 function_name=location.symbol or primary.function_name,
@@ -258,6 +280,7 @@ def correlate(
                         STATIC_SCORE_KEY: static,
                         "measured_factor": round(factor, 4),
                         "measured_attributed_share": round(share, 6),
+                        "exercised_path_factor": round(path_factor, 4),
                     },
                 }
             )
