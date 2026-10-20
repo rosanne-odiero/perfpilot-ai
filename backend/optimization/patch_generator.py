@@ -6,17 +6,19 @@ file's hash before reading it, runs the deterministic AST transformation registe
 re-parses and compiles the result, and returns a reviewable unified diff - or an explicit
 ``no_safe_patch`` result explaining why nothing was proposed. Nothing is ever guessed.
 
-Proposers implement :class:`PatchProposer`. :class:`DeterministicPatchProposer` ships here; an
-LLM-backed proposer can be registered with :func:`register_patch_proposer`. Whatever proposes
-the diff, the patch validator is the gate before approval.
+Proposers implement :class:`PatchProposer`. :class:`DeterministicPatchProposer` ships here; the
+LLM-backed :class:`~backend.optimization.llm_proposer.LLMPatchProposer` is chained after it only
+when the caller has consent and a model is configured (:func:`select_patch_proposer`). Another
+proposer can be registered with :func:`register_patch_proposer`. Whatever proposes the diff, the
+patch validator is the gate before approval.
 """
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -58,6 +60,10 @@ class PatchRequest(BaseModel):
     title: str = ""
     proposed_optimization: str = ""
     correctness_risks: list[str] = Field(default_factory=list)
+    evidence: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Finding details and MEASURED profiler evidence (sent to an LLM proposer)",
+    )
 
 
 class PatchProposal(BaseModel):
@@ -75,6 +81,10 @@ class PatchProposal(BaseModel):
     summary: str = ""
     notes: list[str] = Field(default_factory=list)
     reason: str | None = None
+    attempts: list[str] = Field(
+        default_factory=list, description="Proposers consulted before this result, and why not"
+    )
+    llm_usage: dict[str, Any] | None = None
 
 
 class PatchProposer(Protocol):
@@ -86,7 +96,9 @@ class PatchProposer(Protocol):
     def propose(self, request: PatchRequest) -> PatchProposal: ...
 
 
-def _qualnames(tree: ast.Module) -> list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
+def qualified_functions(
+    tree: ast.Module,
+) -> list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
     found: list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]] = []
 
     def visit(node: ast.AST, prefix: str) -> None:
@@ -102,12 +114,12 @@ def _qualnames(tree: ast.Module) -> list[tuple[str, ast.FunctionDef | ast.AsyncF
     return found
 
 
-def _find_function(
+def find_function(
     tree: ast.Module, qualname: str | None, line_start: int, line_end: int
 ) -> tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]:
     candidates = [
         (name, node)
-        for name, node in _qualnames(tree)
+        for name, node in qualified_functions(tree)
         if node.lineno <= line_start and (node.end_lineno or node.lineno) >= line_end
     ]
     if qualname:
@@ -170,7 +182,7 @@ def generate_patch(target: PatchTarget) -> PatchProposal:
         return refuse("files with CR/CRLF line endings are not rewritten")
     try:
         tree = ast.parse(text, filename=target.target_file)
-        qualname, function = _find_function(
+        qualname, function = find_function(
             tree, target.target_function, target.line_start, target.line_end
         )
         context = build_context(
@@ -215,6 +227,35 @@ class DeterministicPatchProposer:
         return generate_patch(request.target)
 
 
+class ChainedPatchProposer:
+    """Ask each proposer in turn and return the first proposed patch. If none proposes one, the
+    last refusal is returned; every refusal is listed in ``attempts``."""
+
+    def __init__(self, proposers: Sequence[PatchProposer]) -> None:
+        if not proposers:
+            raise ValueError("at least one proposer is required")
+        self._proposers = list(proposers)
+
+    @property
+    def name(self) -> str:
+        return " -> ".join(p.name for p in self._proposers)
+
+    def propose(self, request: PatchRequest) -> PatchProposal:
+        attempts: list[str] = []
+        usage: dict[str, Any] | None = None
+        proposal: PatchProposal | None = None
+        for proposer in self._proposers:
+            proposal = proposer.propose(request)
+            usage = proposal.llm_usage or usage
+            if proposal.status == "proposed":
+                break
+            attempts.append(f"{proposer.name}: {proposal.reason or 'no patch'}")
+        assert proposal is not None
+        return proposal.model_copy(
+            update={"attempts": [*attempts, *proposal.attempts], "llm_usage": usage}
+        )
+
+
 ProposerFactory = Callable[[Settings], PatchProposer | None]
 _factory: ProposerFactory | None = None
 
@@ -226,7 +267,15 @@ def register_patch_proposer(factory: ProposerFactory | None) -> None:
     _factory = factory
 
 
-def select_patch_proposer(settings: Settings) -> PatchProposer:
+def select_patch_proposer(settings: Settings, *, allow_llm: bool = False) -> PatchProposer:
+    """The registered proposer (default: deterministic). With ``allow_llm`` (the caller has the
+    user's consent) and a configured model, the LLM proposer is asked when the first one finds no
+    safe patch."""
+    base: PatchProposer = DeterministicPatchProposer()
     if _factory is not None and (proposer := _factory(settings)) is not None:
-        return proposer
-    return DeterministicPatchProposer()
+        base = proposer
+    if not allow_llm or not settings.llm_configured:
+        return base
+    from backend.optimization.llm_proposer import LLMPatchProposer
+
+    return ChainedPatchProposer([base, LLMPatchProposer(settings)])

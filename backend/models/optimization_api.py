@@ -26,6 +26,13 @@ class OptimizationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     recommendation_id: str = Field(min_length=1, max_length=64)
+    use_llm: bool = Field(
+        default=False,
+        description=(
+            "Consent to send the target function and its evidence to the configured LLM when no "
+            "safe deterministic patch exists (requires a configured model)"
+        ),
+    )
 
 
 class ApprovalRequest(BaseModel):

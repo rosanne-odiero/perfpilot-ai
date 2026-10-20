@@ -511,8 +511,10 @@ def _strategy_section(recs: list[Recommendation]) -> StrategiesSection:
     )
 
 
-def _code_changes_section(recs: list[Recommendation]) -> CodeChangesSection:
-    entries: list[DiffEntry] = []
+def _code_changes_section(
+    recs: list[Recommendation], candidates: list[DiffEntry]
+) -> CodeChangesSection:
+    entries: list[DiffEntry] = list(candidates)
     for r in recs:
         if not r.suggested_diff:
             continue
@@ -546,6 +548,13 @@ def _code_changes_section(recs: list[Recommendation]) -> CodeChangesSection:
         if entries
         else "No code changes were generated for this audit."
     )
+    if candidates:
+        note = (
+            "Diffs are proposals and were never applied to the repository. Patch candidates "
+            "(listed first, with their lifecycle state) were applied only to isolated copies of "
+            "the snapshot for correctness validation and A/B benchmarking (sections 11 and 12); "
+            "a candidate is MEASURED only once it has been validated and benchmarked."
+        )
     return CodeChangesSection(entries=entries, note=note)
 
 
@@ -797,6 +806,7 @@ def collect_contributions(
         merged.runtime_profiles.extend(contribution.runtime_profiles)
         merged.validation_outcomes.extend(contribution.validation_outcomes)
         merged.benchmark_results.extend(contribution.benchmark_results)
+        merged.code_changes.extend(contribution.code_changes)
         merged.limitations.extend(contribution.limitations)
     return merged, applied
 
@@ -843,7 +853,7 @@ def build_audit_report(
         else None,
         complexity=_complexity_section(data.findings),
         strategies=_strategy_section(data.recommendations),
-        code_changes=_code_changes_section(data.recommendations),
+        code_changes=_code_changes_section(data.recommendations, contributions.code_changes),
         validation=ValidationSection(outcomes=contributions.validation_outcomes)
         if contributions.validation_outcomes
         else None,

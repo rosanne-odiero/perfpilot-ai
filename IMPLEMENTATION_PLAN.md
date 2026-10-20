@@ -198,7 +198,7 @@ every merge leaves `main` runnable.
 
 ### Phase 6 — Patch and correctness validation · `feature/patch-validation`
 - [x] Lifecycle state machine (base spec §17) with transition guards + tests
-- [ ] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot *(deterministic templates + `PatchProposer` protocol/registry done and tested; the LLM proposer is not plugged in yet)*
+- [x] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot *(LLM proposer plugged in behind explicit consent: `use_llm` on workload candidates, audit `llm_consent` on repository candidates; see `docs/repo-optimization.md`)*
 - [x] Patch validator: unified-diff parse, allowed-file list, deny secrets/CI/security config/benchmark harness/tests, path containment
 - [x] Explicit approval endpoint; patched copy in an isolated workspace; original tree hash verified unchanged
 - [x] Validation engine: unit tests, acceptance fixtures, output comparison with tolerances, exception parity, input-mutation detection; `PASSED/FAILED/INCONCLUSIVE/NOT_RUN`
@@ -227,7 +227,7 @@ every merge leaves `main` runnable.
 - [x] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; API + single-use enforcement in the `runtime.profile` job, see `docs/runtime-audit.md`)*
 - [x] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols *(verified in the real sandbox: `tests/runtime/test_runtime_docker_e2e.py` — ShopFast workload and its pytest suite profiled, hotspots correlated, failures/timeouts recorded honestly)*
 - [x] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
-- [ ] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload
+- [x] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload *(verified in the real sandbox: `tests/runtime/test_repo_optimization_docker_e2e.py`; see `docs/repo-optimization.md`)*
 - **Exit:** on a trusted fixture, an approved workload yields measured hotspots that are correlated to findings.
 
 ### Phase 9 — Reporting · `feature/reporting`

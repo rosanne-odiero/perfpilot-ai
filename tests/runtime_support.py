@@ -91,6 +91,13 @@ class SubprocessHarnessBackend:
         self.harness_requests.append(json.loads(json.dumps(harness_request)))
         for key in ("workspace_root", "output_dir"):
             harness_request[key] = self._host_path(harness_request[key], request)
+        command = harness_request.get("command") or {}
+        command["args"] = [  # e.g. --junitxml=/out/junit.xml added by candidate validation
+            f"{arg.split('=', 1)[0]}={self._host_path(arg.split('=', 1)[1], request)}"
+            if "=" in arg
+            else arg
+            for arg in command.get("args", [])
+        ]
         translated = self.scratch / f"request-{len(self.runs)}.json"
         translated.write_text(json.dumps(harness_request))
         argv = [self._host_path(a, request) for a in request.argv]
