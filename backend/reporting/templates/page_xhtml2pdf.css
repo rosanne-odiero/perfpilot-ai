@@ -1,0 +1,13 @@
+/* Page setup for xhtml2pdf (uses its frame extension for the running footer). */
+@page {
+  size: a4 portrait;
+  margin: 15mm 14mm 18mm 14mm;
+  @frame footer_frame {
+    -pdf-frame-content: pdf-footer;
+    left: 14mm;
+    width: 182mm;
+    top: 284mm;
+    height: 8mm;
+  }
+}
+#pdf-footer { font-size: 7pt; color: #64748b; text-align: right; }
