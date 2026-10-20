@@ -197,11 +197,11 @@ every merge leaves `main` runnable.
 - **Exit:** profiling a bundled workload from the UI and from the CLI gives persisted, non-hardcoded metrics.
 
 ### Phase 6 — Patch and correctness validation · `feature/patch-validation`
-- [ ] Lifecycle state machine (base spec §17) with transition guards + tests
-- [ ] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot
-- [ ] Patch validator: unified-diff parse, allowed-file list, deny secrets/CI/security config/benchmark harness/tests, path containment
-- [ ] Explicit approval endpoint; patched copy in an isolated workspace; original tree hash verified unchanged
-- [ ] Validation engine: unit tests, acceptance fixtures, output comparison with tolerances, exception parity, input-mutation detection; `PASSED/FAILED/INCONCLUSIVE/NOT_RUN`
+- [x] Lifecycle state machine (base spec §17) with transition guards + tests
+- [ ] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot *(deterministic templates + `PatchProposer` protocol/registry done and tested; the LLM proposer is not plugged in yet)*
+- [x] Patch validator: unified-diff parse, allowed-file list, deny secrets/CI/security config/benchmark harness/tests, path containment
+- [x] Explicit approval endpoint; patched copy in an isolated workspace; original tree hash verified unchanged
+- [x] Validation engine: unit tests, acceptance fixtures, output comparison with tolerances, exception parity, input-mutation detection; `PASSED/FAILED/INCONCLUSIVE/NOT_RUN`
 - [ ] Diff UI (side-by-side + unified), approve/reject, rejection reasons
 - **Exit:** three workloads produce reviewable patches; invalid patches are rejected; a failed validation blocks benchmarking.
 
