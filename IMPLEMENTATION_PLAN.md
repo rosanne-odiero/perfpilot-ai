@@ -187,11 +187,11 @@ every merge leaves `main` runnable.
 - **Exit:** a full audit completes with no API key; with a mocked LLM, recommendations pass the citation guard.
 
 ### Phase 5 — Workload profiling engine · `feature/profiling`
-- [ ] `WorkloadSpec` (base spec §6), entrypoint resolved inside the registered workspace
-- [ ] Five bundled workloads in `examples/`: list_lookup, duplicate_counter, string_builder, regex_matching, nested_loop, each with fixtures, tests, a benchmark config, and an explanation
-- [ ] Subprocess runner: fixed interpreter, arg list (no `shell=True`), timeout, `resource` rlimits, scrubbed env, temp cwd
-- [ ] cProfile → pstats → normalized `Hotspot` rows (exclusive% vs cumulative% documented and never summed)
-- [ ] tracemalloc peak vs psutil RSS, labeled separately; unsupported → `unavailable`
+- [x] `WorkloadSpec` (base spec §6), entrypoint resolved inside the registered workspace
+- [x] Five bundled workloads in `examples/`: list_lookup, duplicate_counter, string_builder, regex_matching, nested_loop, each with fixtures, tests, a benchmark config, and an explanation
+- [x] Subprocess runner: fixed interpreter, arg list (no `shell=True`), timeout, `resource` rlimits, scrubbed env, temp cwd
+- [x] cProfile → pstats → normalized `Hotspot` rows (exclusive% vs cumulative% documented and never summed)
+- [x] tracemalloc peak vs psutil RSS, labeled separately; unsupported → `unavailable`
 - [ ] Optional py-spy (flamegraph/speedscope) with graceful degradation
 - [ ] Profiling UI pages (workload explorer, hotspots, memory)
 - **Exit:** profiling a bundled workload from the UI and from the CLI gives persisted, non-hardcoded metrics.
@@ -206,13 +206,13 @@ every merge leaves `main` runnable.
 - **Exit:** three workloads produce reviewable patches; invalid patches are rejected; a failed validation blocks benchmarking.
 
 ### Phase 7 — Benchmark engine · `feature/benchmarking`
-- [ ] Paired A/B harness: fresh processes, warmups (default 5), measured runs (default 20), randomized/alternating order
-- [ ] Raw sample storage; median/mean/min/max/stdev/p95; bootstrap CI on the speedup ratio
-- [ ] Formulas from base spec §12.3 with unit tests (including the 200 ms → 125 ms = 1.6× / 37.5% example)
-- [ ] Regression classifier: `IMPROVED/REGRESSED/NO_CLEAR_DIFFERENCE/INCONCLUSIVE/INVALID` with a configurable practical threshold
-- [ ] Environment fingerprint (OS, arch, CPU, Python, lock hash, source hash, settings)
+- [x] Paired A/B harness: fresh processes, warmups (default 5), measured runs (default 20), randomized/alternating order
+- [x] Raw sample storage; median/mean/min/max/stdev/p95; bootstrap CI on the speedup ratio
+- [x] Formulas from base spec §12.3 with unit tests (including the 200 ms → 125 ms = 1.6× / 37.5% example)
+- [x] Regression classifier: `IMPROVED/REGRESSED/NO_CLEAR_DIFFERENCE/INCONCLUSIVE/INVALID` with a configurable practical threshold
+- [x] Environment fingerprint (OS, arch, CPU, Python, lock hash, source hash, settings)
 - [ ] Benchmark UI: distributions (box/strip), speedup with CI, memory comparison, warnings
-- [ ] At least one workload demonstrably shows *no benefit or regression*
+- [x] At least one workload demonstrably shows *no benefit or regression*
 - **Exit:** real A/B runs are persisted, and the formulas are verified by tests.
 
 ### Phase 8 — Runtime Repository Audit · `feature/sandbox-runtime`, then `feature/runtime-audit`
