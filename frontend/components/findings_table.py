@@ -208,7 +208,7 @@ def measured_cards(measured: dict[str, Any]) -> list[Card]:
             Card(
                 "Priority factor",
                 f"x{float(measured['measured_factor']):.2f}",
-                "applied to the static priority score",
+                "measured-share factor; profiled code may also get an exercised-path lift",
             )
         )
     return cards

@@ -319,7 +319,7 @@ def _correlation(
                     Card(
                         "Priority",
                         f"{corr['measured_priority_score']:.1f}",
-                        f"x{corr['measured_factor']:.2f} from {corr['static_priority_score']:.1f}",
+                        _priority_change(corr),
                     ),
                 ]
             )
@@ -511,3 +511,14 @@ def render(context: AuditContext) -> None:
             with st.container(border=True):
                 _approval(context, next(c for c in commands if c["id"] == chosen), status)
     _runs(context, overview)
+
+
+def _priority_change(corr: dict[str, Any]) -> str:
+    """Explain the re-ranking: measured share factor and the exercised-path lift together."""
+    static = float(corr["static_priority_score"])
+    total = float(corr["measured_priority_score"]) / static if static else 1.0
+    share = float(corr["measured_factor"])
+    path = total / share if share else 1.0
+    if abs(path - 1.0) < 0.005:
+        return f"x{total:.2f} from {static:.1f} (measured share)"
+    return f"x{total:.2f} from {static:.1f} (share x{share:.2f} · exercised path x{path:.2f})"
