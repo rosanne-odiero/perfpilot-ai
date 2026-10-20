@@ -42,15 +42,25 @@ def available_pdf_engine() -> str | None:
         return None
 
 
-def _weasyprint_pdf(html: str) -> bytes:
-    weasyprint: Any = importlib.import_module("weasyprint")
+def _weasyprint_fetcher(weasyprint: Any) -> Any:
+    """A fetcher that only resolves ``data:`` URIs (WeasyPrint >= 66 API, with a fallback)."""
+    urls = importlib.import_module("weasyprint.urls")
+    fetcher_cls = getattr(urls, "URLFetcher", None)
+    if fetcher_cls is not None:
+        return fetcher_cls(allowed_protocols={"data"}, timeout=5, allow_redirects=False)
 
-    def fetcher(url: str, *args: Any, **kwargs: Any) -> Any:
+    def legacy_fetcher(url: str, *args: Any, **kwargs: Any) -> Any:
         if not url.startswith("data:"):
-            raise ReportRenderError(f"blocked external resource in report: {url[:80]}")
+            raise ValueError(f"blocked external resource in report: {url[:80]}")
         return weasyprint.default_url_fetcher(url, *args, **kwargs)
 
-    data: bytes = weasyprint.HTML(string=html, url_fetcher=fetcher).write_pdf()
+    return legacy_fetcher
+
+
+def _weasyprint_pdf(html: str) -> bytes:
+    weasyprint: Any = importlib.import_module("weasyprint")
+    document = weasyprint.HTML(string=html, url_fetcher=_weasyprint_fetcher(weasyprint))
+    data: bytes = document.write_pdf()
     return data
 
 
