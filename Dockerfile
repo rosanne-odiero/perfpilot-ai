@@ -16,7 +16,7 @@ FROM ghcr.io/astral-sh/uv:0.13.3 AS uv
 FROM docker:28-cli AS docker-cli
 
 # --------------------------------------------------------------------------- dependencies
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 COPY --from=uv /uv /usr/local/bin/uv
 ARG UV_INDEX_URL=
 ENV UV_PYTHON_DOWNLOADS=never \
@@ -35,7 +35,7 @@ RUN env -u UV_INDEX_URL uv export --locked --no-dev --no-emit-project --format r
         ${UV_INDEX_URL:+--index-url "$UV_INDEX_URL"} -r requirements.txt
 
 # --------------------------------------------------------------------------- runtime (API / UI)
-FROM python:3.12-slim AS app
+FROM python:3.15-slim AS app
 ARG APP_UID=10001
 ARG APP_GID=10001
 # pango/harfbuzz + a font: WeasyPrint renders PDF reports in the container (xhtml2pdf is the
