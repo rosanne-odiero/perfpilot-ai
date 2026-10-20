@@ -138,6 +138,9 @@ class SymbolInfo(Contract):
     is_recursive: bool = False
     calls: list[str] = Field(default_factory=list, description="Best-effort callee names")
     docstring: str | None = None
+    is_entrypoint: bool = Field(
+        default=False, description="Route handler, task, CLI command, or called from __main__"
+    )
 
 
 class ImportRef(Contract):
@@ -188,6 +191,9 @@ class CodeIndex(Contract):
     modules: list[ModuleInfo] = Field(default_factory=list)
     graph: DependencyGraph = Field(default_factory=DependencyGraph)
     parse_errors: dict[str, str] = Field(default_factory=dict)
+    import_roots: list[str] = Field(
+        default_factory=list, description="Directories inferred as sys.path roots ('' = repo root)"
+    )
 
 
 # --------------------------------------------------------------------------------------
