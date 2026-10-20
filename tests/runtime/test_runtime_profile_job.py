@@ -7,6 +7,8 @@ profile data asserted here is real cProfile/tracemalloc output from running the 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -31,7 +33,8 @@ from backend.models.orm.platform import Artifact
 from backend.models.orm.runtime import RuntimeApproval
 from backend.profiling.runner import HARNESS_PATH
 from backend.runtime.execution import choose_requirements_source, harness_command, outcome_of
-from backend.sandbox.backend import SandboxRunResult
+from backend.sandbox.backend import SandboxRunRequest, SandboxRunResult
+from backend.sandbox.docker_backend import DockerSandboxBackend
 
 FAILING_TEST = "def test_always_fails():\n    assert 1 == 2\n"
 
@@ -291,7 +294,7 @@ def test_container_outcomes_are_recorded_honestly(
 
 
 def test_backend_unavailable_at_run_time(
-    client: TestClient, settings: Settings, use_backend: BackendSetter, tmp_path: Any
+    client: TestClient, settings: Settings, use_backend: BackendSetter, tmp_path: Path
 ) -> None:
     use_backend(SubprocessHarnessBackend(scratch=tmp_path / "s"))
     audit_id = start_runtime_audit(client, settings, shopfast_snapshot(settings))
@@ -384,7 +387,7 @@ def test_harness_command_rejects_other_shapes() -> None:
             harness_command(argv, trace_memory=True)
 
 
-def test_choose_requirements_source(tmp_path: Any) -> None:
+def test_choose_requirements_source(tmp_path: Path) -> None:
     assert choose_requirements_source(tmp_path, ".") is None
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nname = "x"\ndependencies = ["a"]\n'
@@ -427,3 +430,71 @@ def test_outcome_requires_a_clean_harness_result() -> None:
     )
     nonzero = ok.model_copy(update={"exit_code": 2})
     assert outcome_of(nonzero, good)[0] == "FAILED"
+
+
+@dataclass
+class DockerArgvRecorder(SubprocessHarnessBackend):
+    """TEST DOUBLE: also builds the real ``docker run`` argv for each request (never executed)."""
+
+    docker: DockerSandboxBackend | None = None
+    docker_argv: list[list[str]] = field(default_factory=list)
+
+    def run(self, request: SandboxRunRequest) -> SandboxRunResult:
+        assert self.docker is not None
+        self.docker_argv.append(self.docker.build_run_argv(request, container_name="pp-test"))
+        return super().run(request)
+
+
+def test_worker_request_passes_the_real_docker_path_policy(
+    client: TestClient, settings: Settings, use_backend: BackendSetter, tmp_path: Path
+) -> None:
+    stub = tmp_path / "bin" / "docker"
+    stub.parent.mkdir()
+    stub.write_text("#!/bin/sh\nexit 1\n")
+    stub.chmod(0o755)
+    docker = DockerSandboxBackend(settings.model_copy(update={"sandbox_docker_path": stub}))
+    backend = use_backend(DockerArgvRecorder(scratch=tmp_path / "scratch", docker=docker))
+    audit_id = start_runtime_audit(client, settings, shopfast_snapshot(settings))
+    run = _run(client, settings, audit_id, WORKLOAD_ARGV)
+    assert run["status"] == "SUCCEEDED"
+
+    [argv] = backend.docker_argv  # type: ignore[attr-defined]
+    workspace = (settings.workspaces_dir / "shopfast").resolve()
+    out = (settings.artifacts_dir / "runtime-runs" / run["id"] / "out").resolve()
+    request_file = out.parent / "in" / "request.json"
+    assert argv[argv.index("--network") + 1] == "none"
+    assert "--read-only" in argv
+    assert argv[argv.index("--user") + 1] == "65534:65534"
+    mounts = [argv[i + 1] for i, a in enumerate(argv) if a == "--mount"]
+    assert mounts == [
+        f"type=bind,source={workspace},target=/workspace,readonly",
+        f"type=bind,source={out},target=/out",
+        f"type=bind,source={HARNESS_PATH},target=/perfpilot/harness_entry.py,readonly",
+        f"type=bind,source={request_file},target=/perfpilot/request.json,readonly",
+    ]
+    image_at = argv.index(settings.sandbox_image)
+    assert argv[image_at - 2 : image_at] == ["--workdir", "/workspace"]
+    assert argv[image_at + 1 :] == [
+        "python",
+        "-P",
+        "-s",
+        "-B",
+        "/perfpilot/harness_entry.py",
+        "/perfpilot/request.json",
+        "/out/result.json",
+    ]
+    assert "--env" in argv
+    assert "PYTHONHASHSEED=0" in argv
+
+
+def test_command_output_is_redacted_before_it_is_stored(
+    client: TestClient, settings: Settings, harness_backend: SubprocessHarnessBackend
+) -> None:
+    token = "ghp_" + "Z" * 36
+    leak = f"if __name__ == '__main__':\n    print('token {token}')\n"
+    snapshot = shopfast_snapshot(settings, extra_files={"benchmarks/leak.py": leak})
+    audit_id = start_runtime_audit(client, settings, snapshot)
+    run = _run(client, settings, audit_id, ["python", "benchmarks/leak.py"])
+    assert run["status"] == "SUCCEEDED"
+    assert "token" in run["stdout_tail"]
+    assert token not in json.dumps(run)

@@ -32,7 +32,6 @@ from audit_support import SHOPFAST, copy_into_workspace, create_snapshot, scan_i
 from fastapi.testclient import TestClient
 
 from backend.core.config import Settings
-from backend.core.redaction import redact_text
 from backend.jobs.worker import Worker
 from backend.sandbox.backend import (
     SANDBOX_OUTPUT,
@@ -123,15 +122,14 @@ class SubprocessHarnessBackend:
         except subprocess.TimeoutExpired:
             exit_code, stdout, stderr, timed_out = None, "", "", True
         files, rejected = collect_output_files(request.output_dir, request.limits.output_max_bytes)
-        out, err = redact_text(stdout), redact_text(stderr)
+        # Output is returned unredacted so tests can check the worker's own redaction.
         return SandboxRunResult(
             exit_code=exit_code,
             timed_out=timed_out,
             oom_killed=False,
             duration_s=time.monotonic() - started,
-            stdout=out.text,
-            stderr=err.text,
-            redactions=out.count + err.count,
+            stdout=stdout,
+            stderr=stderr,
             output_files=files,
             rejected_outputs=rejected,
         )

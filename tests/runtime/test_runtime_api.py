@@ -84,6 +84,7 @@ def test_runtime_audit_discovers_commands_and_awaits_approval(
     assert "/host/only/path" not in json.dumps(status)
 
     overview = client.get(f"/api/audits/{audit_id}/runtime").json()
+    assert overview["commands_discovered"] == len(commands)
     assert overview["runtime_requested"] is True
     assert overview["runtime_available"] is True
     assert overview["runs"] == []
@@ -273,3 +274,16 @@ def test_api_process_never_uses_the_docker_backend(
 def test_unknown_audit_and_run_are_404(client: TestClient, settings: Settings) -> None:
     for path in ("/runtime", "/runtime/commands", "/runtime/runs/x"):
         assert client.get(f"/api/audits/missing{path}").status_code == 404
+
+
+def test_commands_of_another_audit_cannot_be_approved(
+    client: TestClient, settings: Settings, harness_backend: SubprocessHarnessBackend
+) -> None:
+    first = start_runtime_audit(client, settings, shopfast_snapshot(settings, "a"))
+    second = start_runtime_audit(client, settings, shopfast_snapshot(settings, "b"))
+    foreign = command_by_argv(client, first, WORKLOAD_ARGV)
+    response = client.post(
+        f"/api/audits/{second}/runtime/approvals",
+        json={"command_id": foreign["id"], "argv": foreign["argv"], "approved_by": "tester"},
+    )
+    assert response.status_code == 404
