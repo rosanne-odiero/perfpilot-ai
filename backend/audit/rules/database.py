@@ -77,6 +77,7 @@ def _contains_db_call(node: ast.expr, scope: ScopeTracker) -> bool:
 
 class QueryInLoop(BaseRule):
     meta = RuleMeta("PP-DB-001", "Database query inside a loop (N+1)", FindingCategory.DATABASE)
+    loop_based = True
     suggestion = (
         "Load what the loop needs with one query before it (`WHERE id IN (...)`, "
         "`select(...).where(Model.id.in_(ids))`, `selectinload`/`joinedload`, Django "

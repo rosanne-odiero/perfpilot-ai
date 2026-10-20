@@ -41,6 +41,9 @@ RepositoryRef ─► provider ─► AcquiredSource ─► inventory ─► Repo
 ORM rows store these models as JSON (`model_dump(mode="json")`). Columns that are filtered often
 (severity, file path, priority) are promoted to real columns.
 
+The Static Audit (indexing, rules, prioritization, the `audit.run` stage pipeline, and
+`/api/audits`) is described in [static-analysis.md](static-analysis.md).
+
 ## Jobs
 
 `enqueue_job(session, job_type, payload, idempotency_key=...)` creates a `QUEUED` row. The worker

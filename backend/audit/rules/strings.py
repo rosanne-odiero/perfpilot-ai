@@ -6,7 +6,7 @@ import ast
 
 from backend.audit.rules.base import BaseRule, RuleMeta, ScopeTracker
 from backend.audit.rules.kinds import Kind
-from backend.audit.rules.loops import reassigned_in_loop
+from backend.audit.rules.loops import names_in, reassigned_in_loop
 from backend.models.enums import Confidence, FindingCategory, Severity
 
 
@@ -14,6 +14,7 @@ class StringConcatInLoop(BaseRule):
     meta = RuleMeta(
         "PP-STR-001", "String built by repeated concatenation in a loop", FindingCategory.STRINGS
     )
+    loop_based = True
     suggestion = (
         "Collect the pieces in a list and call `''.join(parts)` once after the loop, or write "
         "them to an `io.StringIO`."
@@ -53,8 +54,11 @@ class StringConcatInLoop(BaseRule):
             return
         if piece_kind not in {Kind.STR, Kind.UNKNOWN}:
             return
-        if reassigned_in_loop(target.id, loop):
-            return
+        own_targets = getattr(loop.node, "target", None)
+        if reassigned_in_loop(target.id, loop) or (
+            own_targets is not None and target.id in names_in(own_targets)
+        ):
+            return  # a fresh string every iteration, not an accumulator
         self.emit(
             scope,
             node,

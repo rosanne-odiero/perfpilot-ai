@@ -144,7 +144,8 @@ class RepeatedConstantCall(BaseRule):
             if not isinstance(call, ast.Call):
                 continue
             qualified = scope.qualify(call.func) or ""
-            if qualified not in EXPENSIVE_CALLS or not call.args:
+            expensive = qualified in EXPENSIVE_CALLS or qualified.startswith("pandas.read_")
+            if not expensive or not call.args:
                 continue
             arguments = [*call.args, *(k.value for k in call.keywords)]
             if not all(scope.is_constant(a) for a in arguments):

@@ -43,6 +43,7 @@ def _is_retry_loop(loop: LoopFrame) -> bool:
 
 class NetworkCallInLoop(BaseRule):
     meta = RuleMeta("PP-NET-001", "Sequential HTTP request inside a loop", FindingCategory.NETWORK)
+    loop_based = True
     suggestion = (
         "Use a batch endpoint if the API has one; otherwise issue the requests concurrently with a "
         "bound (`asyncio.gather` + `asyncio.Semaphore`, or a `ThreadPoolExecutor` for sync "

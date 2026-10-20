@@ -16,6 +16,7 @@ class RegexInLoop(BaseRule):
     meta = RuleMeta(
         "PP-REGEX-001", "Constant regex pattern processed inside a loop", FindingCategory.REGEX
     )
+    loop_based = True
     suggestion = (
         "Compile the pattern once at module level (`PATTERN = re.compile(...)`) and call "
         "`PATTERN.search(...)` (or `.sub`, `.findall`, …) inside the loop."

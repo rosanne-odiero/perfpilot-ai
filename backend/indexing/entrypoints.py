@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass, field
 from typing import TypeGuard
 
+from backend.indexing.ast_index import iter_own_nodes
 from backend.indexing.names import ImportAliases, dotted_name
 
 ENTRY_FILE_NAMES = frozenset({"__main__.py", "main.py", "manage.py", "wsgi.py", "asgi.py"})
@@ -84,6 +85,7 @@ class _Detector:
         self.aliases = aliases
         self.info = EntrypointInfo()
         self.app_names: dict[str, str] = {}
+        self.factory_calls: dict[int, str] = {}
         self.top_level_functions = {
             n.name for n in tree.body if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
         }
@@ -125,6 +127,7 @@ class _Detector:
                 kind = APP_CONSTRUCTORS.get(qualified or "")
                 if kind and kind in _FACTORY_KINDS | {"Django WSGI", "Django ASGI"}:
                     self.info.add_module(f"application object ({kind})")
+                    self.factory_calls[id(node)] = kind
                 if isinstance(node.func, ast.Attribute) and node.func.attr in _REGISTRATION_CALLS:
                     self._registered_endpoints(node)
             if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
@@ -183,9 +186,9 @@ class _Detector:
             reason = self._decorator_reason(decorator)
             if reason:
                 return reason
-        for child in ast.walk(node):
-            if isinstance(child, ast.Call):
-                kind = APP_CONSTRUCTORS.get(self.aliases.qualify(child.func) or "")
+        if self.factory_calls:
+            for child in iter_own_nodes(list(node.body)):
+                kind = self.factory_calls.get(id(child))
                 if kind in _FACTORY_KINDS:
                     return f"application factory ({kind})"
         if (

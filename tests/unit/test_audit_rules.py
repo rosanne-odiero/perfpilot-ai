@@ -115,6 +115,19 @@ def test_nested_loop_join_false_positives() -> None:
             for y in b:
                 if x.score > y.score:
                     pass
+
+    def pairwise(graph):
+        for w in graph:
+            for u in graph.nodes:
+                if u == w:
+                    continue
+                yield u, w
+
+    def diagonal(n, counts):
+        for v in range(n):
+            for w in range(n):
+                if v == w:
+                    assert counts[v][w] == 0
     """
     assert lines(src, "PP-LOOP-002") == []
 
@@ -153,6 +166,37 @@ def test_loop_invariant_work_false_positives() -> None:
         for w in weights:
             weights.append(w)
             total = sum(weights)
+            lo = min(n, 2.0)
+            expected = list(range(5))
+    """
+    assert lines(src, "PP-LOOP-003") == []
+
+
+def test_loop_invariant_comprehension() -> None:
+    src = """
+    def notify(orders, users):
+        for order in orders:
+            active_ids = {u.id for u in users if u.active}
+            if order.user_id in active_ids:
+                yield order
+            mine = [o for o in orders if o.user_id == order.user_id]
+            fresh = [u for u in users]
+            fresh.append(order)
+            squares = [i * i for i in range(5)]
+    """
+    assert lines(src, "PP-LOOP-003") == [3]
+
+
+def test_stateful_iterators_are_not_invariant() -> None:
+    src = """
+    from itertools import islice
+
+    def chunks(bits):
+        while True:
+            chunk = list(islice(bits, 6))
+            if not chunk:
+                return
+            yield chunk
     """
     assert lines(src, "PP-LOOP-003") == []
 
@@ -206,6 +250,9 @@ def test_string_concat_false_positives() -> None:
             parts += [row.name]
             line = ""
             line += row.name
+        for text in rows:
+            text += "\n"
+            print(text)
         return total, parts
     """
     assert lines(src, "PP-STR-001") == []
@@ -281,7 +328,7 @@ def test_needless_materialization() -> None:
             del d[k]
         for g in groups:
             for k in list(d.keys()):
-                d.pop(k)
+                expand(k)
     """
     assert lines(src, "PP-COLL-003") == [3, 4]
 
@@ -464,10 +511,13 @@ def test_deepcopy_in_loop() -> None:
     src = """
     import copy
 
-    def f(state, steps):
+    def f(state, steps, records):
         snapshot = copy.deepcopy(state)
         for step in steps:
             yield copy.deepcopy(state)
+        copies = [copy.deepcopy(r) for r in records]
+        for key, value in state.items():
+            copies.append(copy.deepcopy(value))
     """
     assert lines(src, "PP-ALLOC-001") == [6]
 
@@ -553,6 +603,7 @@ def test_recursion_without_cache() -> None:
 def test_repeated_constant_call() -> None:
     src = """
     import json
+    import pandas as pd
     CONFIG = '{"a": 1}'
 
     def f(text):
@@ -560,10 +611,12 @@ def test_repeated_constant_call() -> None:
         b = json.loads(CONFIG)
         c = json.loads(text)
         d = json.loads(text)
-        return a, b, c, d
+        prices = pd.read_csv("prices.csv")
+        totals = pd.read_csv("prices.csv").sum()
+        return a, b, c, d, prices, totals
     """
     found = [f for f in analyze(src) if f.rule_id == "PP-CACHE-002"]
-    assert [f.location.line_start for f in found] == [6]
+    assert [f.location.line_start for f in found] == [7, 11]
     assert found[0].location.symbol == "f"
 
 
@@ -620,6 +673,25 @@ def test_unbounded_module_cache() -> None:
 
 
 # --- engine behavior ------------------------------------------------------------------
+
+
+def test_code_that_runs_once_per_loop_is_not_reported() -> None:
+    src = """
+    def find(db, ids, codes):
+        for i in ids:
+            if i < 0:
+                raise ValueError(f"bad ids: {[str(x) for x in ids]}")
+            if i == 0:
+                row = db.query(User).filter(User.id == i).first()
+                return row
+        for code in codes:
+            text = ""
+            if code:
+                text += code
+                break
+    """
+    found = {(f.rule_id, f.location.line_start) for f in analyze(src)}
+    assert found == set()
 
 
 def test_suppression_comment() -> None:

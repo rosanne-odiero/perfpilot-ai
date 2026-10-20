@@ -7,6 +7,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
 
 from backend.api.deps import DbSession
 from backend.api.schemas import JobAccepted
@@ -128,7 +129,9 @@ def list_audits(
     limit: int = Query(50, ge=1, le=500),
 ) -> list[AuditOut]:
     audits = service.list_audits(session, snapshot_id=snapshot_id, limit=limit)
-    return [_audit_out(a, session.get(Job, a.job_id) if a.job_id else None) for a in audits]
+    job_ids = [a.job_id for a in audits if a.job_id]
+    jobs = {j.id: j for j in session.scalars(select(Job).where(Job.id.in_(job_ids)))}
+    return [_audit_out(a, jobs.get(a.job_id) if a.job_id else None) for a in audits]
 
 
 @router.get("/{audit_id}", response_model=AuditOut)

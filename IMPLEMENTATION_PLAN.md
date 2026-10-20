@@ -151,26 +151,26 @@ every merge leaves `main` runnable.
 
 ### Phase 3 — Indexing and static audit · `feature/code-indexing`, then `feature/static-audit-rules`
 **`feature/code-indexing`**
-- [ ] Parse every eligible `.py` file with `ast` (per-file errors recorded, not fatal); store module records, symbols (functions, classes, methods, async flag, decorators, line spans), and docstrings
-- [ ] Module resolution (package roots, `src/` layout, relative imports) → import graph (internal edges and external dependencies); cycle detection; fan-in/fan-out
-- [ ] Lightweight intra-repo call graph (name-based, labeled best-effort)
-- [ ] Entry-point detection: `__main__`, console scripts, FastAPI/Flask/Django routes, Celery tasks, CLI (click/typer/argparse)
+- [x] Parse every eligible `.py` file with `ast` (per-file errors recorded, not fatal); store module records, symbols (functions, classes, methods, async flag, decorators, line spans), and docstrings
+- [x] Module resolution (package roots, `src/` layout, relative imports) → import graph (internal edges and external dependencies); cycle detection; fan-in/fan-out
+- [x] Lightweight intra-repo call graph (name-based, labeled best-effort)
+- [x] Entry-point detection: `__main__`, console scripts, FastAPI/Flask/Django routes, Celery tasks, CLI (click/typer/argparse)
 - **Exit:** the index and graph are persisted, and `GET /api/repositories/{id}/graph` returns nodes and edges.
 
 **`feature/static-audit-rules`** — deterministic rules. Each finding has rule ID, title, description, `file:line-range`, snippet, suggestion, confidence, semantic trade-offs, and provenance `STATIC`.
-- [ ] Base spec rules: list membership in loop, string `+=` in loop, nested-loop lookup/join, regex compile in loop, repeated pure call with unchanged args, dict/set lookup opportunities
-- [ ] Algorithmic: nested loops over the same/related iterables (with depth), `list.index`/`.count`/`in` inside loops, sort inside loop, `pop(0)` / `insert(0, …)` on lists
-- [ ] Repeated data processing: identical comprehension/transform recomputed in a loop or across sibling calls; repeated `json.loads`/`pd.read_*` of the same source
-- [ ] Inefficient collections: list used as queue (`deque`), repeated `list(dict.keys())`, `len(list(...))`
-- [ ] Repeated DB queries: ORM/DB-API calls inside loops (N+1 pattern) for SQLAlchemy, Django ORM, sqlite3, psycopg
+- [x] Base spec rules: list membership in loop, string `+=` in loop, nested-loop lookup/join, regex compile in loop, repeated pure call with unchanged args, dict/set lookup opportunities
+- [x] Algorithmic: nested loops over the same/related iterables (with depth), `list.index`/`.count`/`in` inside loops, sort inside loop, `pop(0)` / `insert(0, …)` on lists
+- [x] Repeated data processing: identical comprehension/transform recomputed in a loop or across sibling calls; repeated `json.loads`/`pd.read_*` of the same source
+- [x] Inefficient collections: list used as queue (`deque`), repeated `list(dict.keys())`, `len(list(...))`
+- [x] Repeated DB queries: ORM/DB-API calls inside loops (N+1 pattern) for SQLAlchemy, Django ORM, sqlite3, psycopg
 - [ ] Allocations: objects/large literals built inside hot loops, `copy.deepcopy` in loops, string formatting in tight loops
-- [ ] Async blocking: `time.sleep`, `requests.*`, sync file I/O, `subprocess.run`, sync DB drivers inside `async def`
-- [ ] Repeated network calls: HTTP clients inside loops; a new `requests.Session` / `httpx.Client` per call
-- [ ] Caching opportunities: pure functions called repeatedly with literal/constant args; no `lru_cache` on recursive pure functions
+- [x] Async blocking: `time.sleep`, `requests.*`, sync file I/O, `subprocess.run`, sync DB drivers inside `async def`
+- [x] Repeated network calls: HTTP clients inside loops; a new `requests.Session` / `httpx.Client` per call
+- [x] Caching opportunities: pure functions called repeatedly with literal/constant args; no `lru_cache` on recursive pure functions
 - [ ] Architectural: import-time heavy work, chatty module boundaries (high-fan-in hot modules), global mutable caches without bounds
-- [ ] Complexity estimate per function (loop nesting, recursion), labeled as an estimate
-- [ ] Prioritization score = severity × confidence × path-criticality (entry-point reachability, fan-in), with the formula documented
-- [ ] Positive **and** false-positive unit tests per rule
+- [x] Complexity estimate per function (loop nesting, recursion), labeled as an estimate
+- [x] Prioritization score = severity × confidence × path-criticality (entry-point reachability, fan-in), with the formula documented
+- [x] Positive **and** false-positive unit tests per rule
 - **Exit:** the audit on the fixture repo yields the expected finding set, and every `file:line` resolves to real source.
 
 ### Phase 4 — AI-assisted architecture analysis · `feature/ai-advisor`

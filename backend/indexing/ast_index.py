@@ -48,10 +48,12 @@ def own_calls(node: FunctionNode) -> list[ast.Call]:
     return [n for n in iter_own_nodes(node.body) if isinstance(n, ast.Call)]
 
 
-def self_call_count(node: FunctionNode, class_name: str | None) -> int:
+def self_call_count(
+    node: FunctionNode, class_name: str | None, calls: list[ast.Call] | None = None
+) -> int:
     """How many times the function calls itself directly (by name or via self/cls)."""
     count = 0
-    for call in own_calls(node):
+    for call in own_calls(node) if calls is None else calls:
         func = call.func
         if (class_name is None and isinstance(func, ast.Name) and func.id == node.name) or (
             class_name is not None
@@ -88,7 +90,8 @@ def _symbol(
         kind = "async_method" if is_async else "method"
     else:
         kind = "async_function" if is_async else "function"
-    calls = sorted({name for c in own_calls(node) if (name := dotted_name(c.func))})
+    call_nodes = own_calls(node)
+    calls = sorted({name for c in call_nodes if (name := dotted_name(c.func))})
     return SymbolInfo(
         qualname=qualname,
         kind=kind,
@@ -97,7 +100,7 @@ def _symbol(
         line_end=line_end,
         decorators=decorators,
         max_loop_depth=max_loop_depth(node.body),
-        is_recursive=self_call_count(node, class_name) > 0,
+        is_recursive=self_call_count(node, class_name, call_nodes) > 0,
         calls=calls[:MAX_CALLS_PER_SYMBOL],
         docstring=docstring,
     )

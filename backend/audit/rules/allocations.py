@@ -14,6 +14,7 @@ LARGE_LITERAL = 8
 
 class DeepcopyInLoop(BaseRule):
     meta = RuleMeta("PP-ALLOC-001", "copy.deepcopy inside a loop", FindingCategory.ALLOCATIONS)
+    loop_based = True
     suggestion = (
         "Copy only what is mutated (a shallow `dict(x)`/`list(x)`/`copy.copy`, "
         "`dataclasses.replace`), build new objects instead of mutating copies, or copy once "
@@ -25,25 +26,30 @@ class DeepcopyInLoop(BaseRule):
     )
 
     def visit_Call(self, node: ast.Call, scope: ScopeTracker) -> None:
-        if scope.in_loop and scope.qualify(node.func) == "copy.deepcopy":
-            self.emit(
-                scope,
-                node,
-                description=(
-                    f"`{short(node)}` runs on every iteration of the loop at line "
-                    f"{scope.loops[-1].line}. `deepcopy` walks and duplicates the entire object "
-                    "graph (with memo bookkeeping), so its cost grows with the size of the copied "
-                    "structure."
-                ),
-                severity=Severity.MEDIUM,
-                confidence=Confidence.MEDIUM,
-            )
+        loop = scope.innermost_loop
+        if loop is None or scope.qualify(node.func) != "copy.deepcopy" or not node.args:
+            return
+        if names_in(node.args[0]) & loop.assigned:
+            return  # each iteration copies a different (per-item) object: inherent work
+        self.emit(
+            scope,
+            node,
+            description=(
+                f"`{short(node)}` deep-copies the same outer object on every iteration of the "
+                f"loop at line {loop.line}. `deepcopy` walks and duplicates the entire object "
+                "graph (with memo bookkeeping), so each iteration pays for the whole structure, "
+                "which grows if the loop adds to it."
+            ),
+            severity=Severity.MEDIUM,
+            confidence=Confidence.MEDIUM,
+        )
 
 
 class ConstantLiteralInLoop(BaseRule):
     meta = RuleMeta(
         "PP-ALLOC-002", "Large constant literal rebuilt inside a loop", FindingCategory.ALLOCATIONS
     )
+    loop_based = True
     suggestion = (
         "Define the literal once outside the loop (a module-level constant; use a tuple or "
         "frozenset if it is never modified)."
@@ -99,6 +105,7 @@ class DataFrameGrowthInLoop(BaseRule):
     meta = RuleMeta(
         "PP-ALLOC-003", "DataFrame grown row by row inside a loop", FindingCategory.ALLOCATIONS
     )
+    loop_based = True
     suggestion = (
         "Collect rows (dicts/tuples) or partial frames in a Python list and build the DataFrame "
         "once after the loop with `pd.DataFrame(rows)` or a single `pd.concat(frames)`."

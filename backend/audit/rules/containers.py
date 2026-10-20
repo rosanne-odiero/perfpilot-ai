@@ -7,7 +7,6 @@ import ast
 from backend.audit.rules.base import BaseRule, RuleMeta, ScopeTracker
 from backend.audit.rules.kinds import Kind
 from backend.audit.rules.loops import short
-from backend.indexing.names import root_name
 from backend.models.enums import Confidence, FindingCategory, Severity
 
 _SEARCH_METHODS = {
@@ -38,6 +37,7 @@ class ListSearchInLoop(BaseRule):
     meta = RuleMeta(
         "PP-COLL-001", "Linear list search/removal inside a loop", FindingCategory.COLLECTIONS
     )
+    loop_based = True
 
     def visit_Call(self, node: ast.Call, scope: ScopeTracker) -> None:
         if not scope.in_loop or not isinstance(node.func, ast.Attribute):
@@ -74,6 +74,7 @@ class ListAsQueue(BaseRule):
         "List used as a queue (pop(0)/insert(0, …)) in a loop",
         FindingCategory.COLLECTIONS,
     )
+    loop_based = True
     suggestion = (
         "Use `collections.deque` and `popleft()` / `appendleft()`, which are O(1) at both ends."
     )
@@ -113,6 +114,7 @@ class NeedlessMaterialization(BaseRule):
         "Needless list materialization inside a loop",
         FindingCategory.ALLOCATIONS,
     )
+    loop_based = True
     suggestion = (
         "Use the view or iterator directly: `for k in d`, `k in d`, `len(d)`, or "
         "`sum(1 for _ in it)` to count an iterator."
@@ -148,10 +150,8 @@ class NeedlessMaterialization(BaseRule):
         parent = scope.parent
         if isinstance(parent, ast.Compare):
             return  # membership in a copied list is reported by PP-LOOP-001
-        if isinstance(parent, ast.For) and parent.iter is node:
-            dict_root = root_name(inner.func.value)
-            if dict_root and dict_root in _mutated_names(parent):
-                return
+        if scope.is_loop_iterable(node):
+            return  # defensive copy so the loop body may modify the dict
         self._report(scope, node, "copies the dict's keys into a new list")
 
     def _report(self, scope: ScopeTracker, node: ast.Call, what: str) -> None:
@@ -165,20 +165,3 @@ class NeedlessMaterialization(BaseRule):
             severity=Severity.LOW,
             confidence=Confidence.HIGH,
         )
-
-
-def _mutated_names(loop: ast.For) -> set[str]:
-    names: set[str] = set()
-    for node in ast.walk(loop):
-        root: str | None = None
-        if isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Store | ast.Del):
-            root = root_name(node.value)
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr in {"pop", "popitem", "clear", "update", "setdefault"}
-        ):
-            root = root_name(node.func.value)
-        if root is not None:
-            names.add(root)
-    return names

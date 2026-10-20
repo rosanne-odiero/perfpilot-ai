@@ -62,6 +62,7 @@ class ListMembershipInLoop(BaseRule):
     meta = RuleMeta(
         "PP-LOOP-001", "List membership test inside a loop", FindingCategory.ALGORITHMIC
     )
+    loop_based = True
     suggestion = (
         "Build a set (or dict) once before the loop, e.g. `allowed = set(items)`, and test "
         "`x in allowed`; when the list grows inside the loop, maintain a parallel set."
@@ -171,6 +172,11 @@ def _small_fixed_local_list(name: str, scope: ScopeTracker) -> bool:
     )
 
 
+def _skips_only(node: ast.If) -> bool:
+    """``if a == b: continue`` skips self-pairs; it is not a join."""
+    return all(isinstance(stmt, ast.Continue | ast.Pass) for stmt in node.body)
+
+
 def _unwrap_iter(node: ast.expr) -> ast.expr:
     if (
         isinstance(node, ast.Call)
@@ -203,6 +209,7 @@ class NestedLoopJoin(BaseRule):
     meta = RuleMeta(
         "PP-LOOP-002", "Nested loops matching items by equality", FindingCategory.NESTED_LOOPS
     )
+    loop_based = True
     suggestion = (
         "Index the inner collection once by the join key, e.g. `by_key = {b.key: b for b in B}` "
         "(a dict of lists for non-unique keys), then look up `by_key.get(a.key)` in a single loop."
@@ -228,7 +235,11 @@ class NestedLoopJoin(BaseRule):
         if names_in(inner_iter) & outer_targets or self._trivial_iter(inner_iter, scope):
             return
         inner_targets = names_in(node.target)
-        tests = [n.test for n in iter_own_nodes(list(node.body)) if isinstance(n, ast.If)]
+        tests = [
+            n.test
+            for n in iter_own_nodes(list(node.body))
+            if isinstance(n, ast.If) and not _skips_only(n)
+        ]
         match = _equality_join(tests, outer_targets, inner_targets)
         if match is not None:
             self._report(scope, node, match, outer.node, node.iter)
@@ -255,9 +266,16 @@ class NestedLoopJoin(BaseRule):
 
     @staticmethod
     def _trivial_iter(node: ast.expr, scope: ScopeTracker) -> bool:
+        if isinstance(node, ast.Name):
+            value = scope.module_value(node.id)
+            if _small_fixed_local_list(node.id, scope) or (
+                isinstance(value, ast.Tuple | ast.List) and len(value.elts) < SMALL_LITERAL
+            ):
+                return True
         if isinstance(node, ast.Tuple | ast.List | ast.Set | ast.Dict):
             return len(getattr(node, "elts", getattr(node, "keys", []))) < SMALL_LITERAL
-        return scope.kind(node) in {Kind.STR, Kind.DICT, Kind.SET}
+        # numeric index loops (diagonal checks, grids) and character scans are not joins
+        return scope.kind(node) in {Kind.STR, Kind.RANGE}
 
     def _report(
         self,
@@ -296,18 +314,72 @@ FILE_LISTING = frozenset({"os.listdir", "os.scandir", "glob.glob", "os.walk"})
 READ_METHODS = frozenset({"read", "readlines", "read_text", "read_bytes"})
 
 
+def _references_data(node: ast.expr) -> bool:
+    """True when the expression reads a variable (not only literals and called functions)."""
+    callees = {id(call.func) for call in ast.walk(node) if isinstance(call, ast.Call)}
+    return any(
+        isinstance(sub, ast.Name | ast.Attribute) and id(sub) not in callees
+        for sub in ast.walk(node)
+    )
+
+
 class LoopInvariantWork(BaseRule):
     meta = RuleMeta(
         "PP-LOOP-003",
         "Loop-invariant computation repeated every iteration",
         FindingCategory.REPEATED_PROCESSING,
     )
+    loop_based = True
     suggestion = "Compute the value once before the loop and reuse it inside the loop."
     tradeoffs = (
         "Only valid if the inputs really do not change during the loop (including through aliases, "
         "other threads, or the file system); hoisting evaluates the expression even when the loop "
         "body never runs and moves where exceptions are raised."
     )
+
+    def visit_ListComp(self, node: ast.ListComp, scope: ScopeTracker) -> None:
+        self._comprehension(node, scope)
+
+    def visit_SetComp(self, node: ast.SetComp, scope: ScopeTracker) -> None:
+        self._comprehension(node, scope)
+
+    def visit_DictComp(self, node: ast.DictComp, scope: ScopeTracker) -> None:
+        self._comprehension(node, scope)
+
+    def _comprehension(
+        self, node: ast.ListComp | ast.SetComp | ast.DictComp, scope: ScopeTracker
+    ) -> None:
+        loop = scope.innermost_loop
+        if loop is None or not _references_data(node.generators[0].iter):
+            return
+        parent = scope.parent
+        consumed_once = (
+            isinstance(parent, ast.Assign)
+            or scope.is_loop_iterable(node)
+            or (
+                isinstance(parent, ast.Call)
+                and node in parent.args
+                and scope.qualify(parent.func) in CONTAINER_COPIES | REDUCTIONS | {"len"}
+            )
+        )
+        if not consumed_once:
+            return  # e.g. a fresh row appended to a result: distinct objects are intended
+        if not scope.is_invariant(node, loop) or self._fresh_copy_needed(node, loop, scope):
+            return
+        self.emit(
+            scope,
+            node,
+            description=(
+                f"The comprehension `{short(node)}` is rebuilt on every iteration of the loop at "
+                f"line {loop.line}, but it only reads values that do not change inside that loop, "
+                "so each iteration repeats the same transformation."
+            ),
+            severity=Severity.MEDIUM,
+            confidence=Confidence.MEDIUM,
+            complexity_note=(
+                "estimate: O(n·m) work for n iterations over m source items instead of O(n + m)."
+            ),
+        )
 
     def visit_Call(self, node: ast.Call, scope: ScopeTracker) -> None:
         loop = scope.innermost_loop
@@ -342,11 +414,14 @@ class LoopInvariantWork(BaseRule):
     def _label(
         self, node: ast.Call, qualified: str, scope: ScopeTracker
     ) -> tuple[str, Severity, bool] | None:
-        has_input = bool(node.args) and not all(
-            isinstance(a, ast.Constant | ast.List | ast.Tuple | ast.Dict | ast.Set)
-            for a in node.args
+        has_input = len(node.args) == 1 and _references_data(node.args[0])
+        is_view_copy = (
+            bool(node.args)
+            and isinstance(node.args[0], ast.Call)
+            and isinstance(node.args[0].func, ast.Attribute)
+            and node.args[0].func.attr in {"keys", "values", "items"}
         )
-        if qualified in CONTAINER_COPIES and has_input:
+        if qualified in CONTAINER_COPIES and has_input and not is_view_copy:
             return "copy/sort of a collection", Severity.MEDIUM, False
         if qualified in REDUCTIONS and has_input:
             return "full pass over a collection", Severity.MEDIUM, False
@@ -373,7 +448,7 @@ class LoopInvariantWork(BaseRule):
         return all(scope.is_invariant(p, loop) for p in parts)
 
     @staticmethod
-    def _fresh_copy_needed(node: ast.Call, loop: LoopFrame, scope: ScopeTracker) -> bool:
+    def _fresh_copy_needed(node: ast.expr, loop: LoopFrame, scope: ScopeTracker) -> bool:
         parent = scope.parent
         if isinstance(parent, ast.Assign):
             names = {t.id for t in parent.targets if isinstance(t, ast.Name)}
@@ -387,6 +462,7 @@ class SortInLoop(BaseRule):
     meta = RuleMeta(
         "PP-LOOP-004", "Re-sorting a growing collection inside a loop", FindingCategory.ALGORITHMIC
     )
+    loop_based = True
     suggestion = (
         "Sort once after the loop, or keep the collection ordered incrementally with "
         "`bisect.insort` / a `heapq` priority queue when the order is needed during the loop."

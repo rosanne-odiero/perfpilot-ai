@@ -34,7 +34,7 @@ PURE_FUNCTIONS = frozenset(
     | {"range", "reversed", "map", "filter", "ord", "chr", "divmod", "pow", "callable", "bytes"}
     | {"json.dumps", "json.loads", "copy.copy", "copy.deepcopy", "functools.reduce"}
 )
-PURE_MODULE_PREFIXES = ("math.", "os.path.", "re.", "operator.", "itertools.", "string.")
+PURE_MODULE_PREFIXES = ("math.", "os.path.", "re.", "operator.", "string.")
 NON_MUTATING_METHODS = frozenset(
     {"get", "keys", "values", "items", "count", "index", "copy", "startswith", "endswith"}
     | {"lower", "upper", "strip", "lstrip", "rstrip", "split", "rsplit", "splitlines", "join"}
@@ -154,6 +154,9 @@ class BaseRule:
     meta: ClassVar[RuleMeta]
     suggestion: ClassVar[str] = ""
     tradeoffs: ClassVar[str] = ""
+    # Loop-based rules drop findings whose code runs at most once per loop execution
+    # (raise paths, or statements followed by return/raise/break in the same block).
+    loop_based: ClassVar[bool] = False
 
     def begin_module(self, module: ParsedModule) -> None:
         """Reset per-module state."""
@@ -175,6 +178,8 @@ class BaseRule:
         line_end: int | None = None,
         symbol: str | None = None,
     ) -> None:
+        if self.loop_based and scope.runs_once_in_loop():
+            return
         line_start = getattr(node, "lineno", 1)
         end = line_end or getattr(node, "end_lineno", None) or line_start
         scope.drafts.append(
@@ -286,6 +291,31 @@ class ScopeTracker:
     @property
     def parent(self) -> ast.AST | None:
         return self.ancestors[-2] if len(self.ancestors) >= 2 else None
+
+    def runs_once_in_loop(self) -> bool:
+        """True when the current node cannot run on every iteration of the innermost loop: it is
+        part of a ``raise``, or a statement after it in an enclosing block exits the loop."""
+        loop = self.innermost_loop
+        if loop is None:
+            return False
+        exits = (ast.Return, ast.Raise, ast.Break)
+        chain = self.ancestors
+        start = next((i for i in range(len(chain) - 1, -1, -1) if chain[i] is loop.node), None)
+        if start is None:
+            return False
+        for index in range(len(chain) - 1, start, -1):
+            child, parent = chain[index], chain[index - 1]
+            if isinstance(child, ast.Raise):
+                return True
+            if not isinstance(child, ast.stmt):
+                continue
+            for block_name in ("body", "orelse", "finalbody", "handlers"):
+                block = getattr(parent, block_name, None)
+                if isinstance(block, list) and any(item is child for item in block):
+                    position = next(i for i, item in enumerate(block) if item is child)
+                    if any(isinstance(s, exits) for s in block[position:]):
+                        return True
+        return False
 
     def is_loop_iterable(self, node: ast.AST) -> bool:
         """True when ``node`` is the iterable of a ``for`` loop or comprehension generator."""
