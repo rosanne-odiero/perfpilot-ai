@@ -25,6 +25,7 @@ class FindingFilters:
     path_query: str = ""
     file_paths: frozenset[str] = field(default_factory=frozenset)
     min_priority: float = 0.0
+    measured_only: bool = False
 
     @property
     def active(self) -> bool:
@@ -48,6 +49,7 @@ def matches(finding: dict[str, Any], filters: FindingFilters) -> bool:
         and (not filters.path_query or filters.path_query.lower() in path.lower())
         and (not filters.file_paths or path in filters.file_paths)
         and float(finding.get("priority_score") or 0.0) >= filters.min_priority
+        and (not filters.measured_only or bool(finding.get("measured")))
     )
 
 
@@ -92,6 +94,8 @@ def findings_frame(findings: list[dict[str, Any]]) -> pd.DataFrame:
                 "Category": humanize(f["category"]),
                 "Confidence": f["confidence"],
                 "Provenance": f.get("provenance") or "STATIC",
+                "Measured": "yes" if f.get("measured") else "",
+                "Role": humanize(f["code_role"]) if f.get("code_role") else "",
             }
             for f in findings
         ],
@@ -104,6 +108,8 @@ def findings_frame(findings: list[dict[str, Any]]) -> pd.DataFrame:
             "Category",
             "Confidence",
             "Provenance",
+            "Measured",
+            "Role",
         ],
     )
 
@@ -152,6 +158,62 @@ def _factors_frame(factors: dict[str, float]) -> pd.DataFrame:
     )
 
 
+ROLE_HELP = {
+    "REQUEST_HANDLER": "runs per request (web route handler)",
+    "BACKGROUND_TASK": "runs in a worker or scheduled task",
+    "REQUEST_PATH": "called from a request handler",
+    "LIBRARY": "library code used by entry points",
+    "INTERNAL": "internal code not reached from a detected entry point",
+    "CLI_SCRIPT": "command-line entry point or script",
+    "SEED_MIGRATION": "seed or migration code (usually runs once)",
+    "EXAMPLE_DOCS": "example or documentation code",
+    "TEST": "test code",
+}
+
+
+def execution_path_html(finding: dict[str, Any]) -> str:
+    """Code role badge plus the best-effort path from the most critical entry point (STATIC)."""
+    role = finding.get("code_role")
+    path = [str(p) for p in finding.get("execution_path") or []]
+    if not role and not path:
+        return ""
+    parts = []
+    if role:
+        parts.append(badge(f"role {humanize(role)}", "#0f766e", ROLE_HELP.get(role)))
+    if path:
+        steps = " → ".join(f"<code>{esc(step)}</code>" for step in path)
+        parts.append(f"<span class='pp-muted'>execution path (static, best effort):</span> {steps}")
+    return " ".join(parts)
+
+
+def measured_cards(measured: dict[str, Any]) -> list[Card]:
+    cards = []
+    if measured.get("attributed_time_ms") is not None:
+        cards.append(
+            Card(
+                "Attributed time",
+                fmt_ms(measured["attributed_time_ms"]),
+                f"{fmt_pct(measured.get('attributed_percentage'))} of profiled time",
+                "MEASURED",
+                help="self time plus time in directly called non-repository code",
+            )
+        )
+    cards += [
+        Card("Exclusive time", fmt_ms(measured.get("internal_time_ms")), None, "MEASURED"),
+        Card("Cumulative time", fmt_ms(measured.get("cumulative_time_ms")), None, "MEASURED"),
+        Card("Calls", str(measured.get("call_count", "—")), None, "MEASURED"),
+    ]
+    if measured.get("measured_factor") is not None:
+        cards.append(
+            Card(
+                "Priority factor",
+                f"x{float(measured['measured_factor']):.2f}",
+                "applied to the static priority score",
+            )
+        )
+    return cards
+
+
 def render_detail(finding: dict[str, Any], context: SourceContext) -> None:
     loc = finding["location"]
     header = " ".join(
@@ -169,6 +231,9 @@ def render_detail(finding: dict[str, Any], context: SourceContext) -> None:
     link = context.permalink(finding)
     link_md = f" · [View on GitHub at this commit ↗]({link})" if link else ""
     st.markdown(f"`{location_label(finding)}`{symbol}{link_md}")
+    path_html = execution_path_html(finding)
+    if path_html:
+        st.markdown(path_html, unsafe_allow_html=True)
     st.write(finding["description"])
 
     source = context.load_source(loc["file_path"])
@@ -207,24 +272,11 @@ def render_detail(finding: dict[str, Any], context: SourceContext) -> None:
         profile_id = esc(measured.get("profile_id", ""))
         function = esc(measured.get("function_name", ""))
         st.markdown(
-            provenance_html("MEASURED")
-            + f" **Runtime evidence from profile `{profile_id}`** · `{function}`",
+            f"{provenance_html('STATIC')} the finding is a static claim · "
+            f"{provenance_html('MEASURED')} **runtime evidence** from run `{profile_id}` for "
+            f"`{function}`",
             unsafe_allow_html=True,
         )
-        render_cards(
-            [
-                Card("Exclusive time", fmt_ms(measured.get("internal_time_ms")), None, "MEASURED"),
-                Card(
-                    "Cumulative time", fmt_ms(measured.get("cumulative_time_ms")), None, "MEASURED"
-                ),
-                Card("Calls", str(measured.get("call_count", "—")), None, "MEASURED"),
-                Card(
-                    "Share of profiled time",
-                    fmt_pct(measured.get("percentage_of_profiled_time")),
-                    None,
-                    "MEASURED",
-                ),
-            ]
-        )
+        render_cards(measured_cards(measured))
         if measured.get("note"):
             st.caption(measured["note"])

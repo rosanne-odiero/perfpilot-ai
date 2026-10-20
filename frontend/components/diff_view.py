@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -12,6 +13,10 @@ from frontend.components.code_view import highlight_lines
 from frontend.theme import esc
 
 RowKind = Literal["equal", "replace", "delete", "insert"]
+UnifiedKind = Literal["file", "hunk", "add", "del", "context", "meta"]
+_HUNK = re.compile(
+    r"^@@ -(?P<old>\d+)(?:,(?P<old_len>\d+))? \+(?P<new>\d+)(?:,(?P<new_len>\d+))? @@"
+)
 
 
 @dataclass(frozen=True)
@@ -127,3 +132,74 @@ def render_side_by_side(
             before, after, before_title=before_title, after_title=after_title, language=language
         )
     )
+
+
+@dataclass(frozen=True)
+class UnifiedLine:
+    kind: UnifiedKind
+    old_no: int | None
+    new_no: int | None
+    text: str
+
+
+def parse_unified_diff(diff: str) -> list[UnifiedLine]:
+    """Classify each line of a unified diff and number it in the old and new file.
+
+    Hunk bodies are delimited by the hunk header counts, so a removed line that starts with
+    ``-- `` is never mistaken for a file header."""
+    lines: list[UnifiedLine] = []
+    old = new = old_left = new_left = 0
+    for raw in diff.splitlines():
+        in_hunk = old_left > 0 or new_left > 0
+        if not in_hunk and (match := _HUNK.match(raw)):
+            old, new = int(match["old"]), int(match["new"])
+            old_left = int(match["old_len"] or 1)
+            new_left = int(match["new_len"] or 1)
+            lines.append(UnifiedLine("hunk", None, None, raw))
+        elif raw.startswith("\\"):
+            lines.append(UnifiedLine("meta", None, None, raw))
+        elif not in_hunk:
+            lines.append(UnifiedLine("file", None, None, raw))
+        elif raw.startswith("+"):
+            lines.append(UnifiedLine("add", None, new, raw[1:]))
+            new, new_left = new + 1, new_left - 1
+        elif raw.startswith("-"):
+            lines.append(UnifiedLine("del", old, None, raw[1:]))
+            old, old_left = old + 1, old_left - 1
+        else:
+            lines.append(UnifiedLine("context", old, new, raw[1:]))
+            old, new = old + 1, new + 1
+            old_left, new_left = old_left - 1, new_left - 1
+    return lines
+
+
+_UNIFIED_CLASS = {"add": "pp-diff-add", "del": "pp-diff-del", "hunk": "pp-diff-hunk"}
+_UNIFIED_SIGN = {"add": "+", "del": "-"}
+
+
+def unified_diff_html(diff: str, title: str | None = None) -> str:
+    parsed = parse_unified_diff(diff)
+    added = sum(1 for line in parsed if line.kind == "add")
+    removed = sum(1 for line in parsed if line.kind == "del")
+    rows = "".join(
+        f'<tr class="{_UNIFIED_CLASS.get(line.kind, "")}">'
+        f'<td class="pp-ln">{line.old_no or ""}</td><td class="pp-ln">{line.new_no or ""}</td>'
+        f'<td class="pp-src"><pre>{_UNIFIED_SIGN.get(line.kind, " ")}{esc(line.text) or " "}'
+        "</pre></td></tr>"
+        for line in parsed
+        if line.kind != "file"
+    )
+    files = ", ".join(
+        esc(line.text[4:].removeprefix("b/"))
+        for line in parsed
+        if line.kind == "file" and line.text.startswith("+++ ")
+    )
+    head = (
+        f'<div class="pp-code-head"><span>{esc(title) if title else files}</span>'
+        f"<span>+{added} / -{removed} lines</span></div>"
+    )
+    return f'<div class="pp-code">{head}<table>{rows}</table></div>'
+
+
+def render_unified(diff: str, title: str | None = None) -> None:
+    st.html(unified_diff_html(diff, title))
