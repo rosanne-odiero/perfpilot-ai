@@ -343,6 +343,14 @@ class _Engine:
             pairs=plan.runs,
             config=ClassifierConfig(threshold_percent=plan.threshold_percent),
         )
+        cpu_point: float | None = None
+        if base.cpu_ms.median > 0 and cand.cpu_ms.median > 0:
+            cpu_point = speedup(base.cpu_ms.median, cand.cpu_ms.median)
+        else:
+            self.warnings.append(
+                "CPU-time speedup unavailable: a median process CPU time was below the OS "
+                "process-clock resolution (wall-clock speedup is unaffected)"
+            )
         return PairedBenchmarkResult(
             samples=self.samples,
             input_sha256=input_sha,
@@ -350,7 +358,7 @@ class _Engine:
             baseline=base,
             candidate=cand,
             speedup=point,
-            cpu_speedup=speedup(base.cpu_ms.median, cand.cpu_ms.median),
+            cpu_speedup=cpu_point,
             latency_reduction_percent=latency_reduction_percent(
                 base.wall_ms.median, cand.wall_ms.median
             ),
