@@ -10,6 +10,8 @@ toolbarMode = "minimal"
 
 [server]
 maxUploadSize = 200
+# No interactive first-run prompt; open http://localhost:8501 yourself.
+headless = true
 
 [browser]
 gatherUsageStats = false
