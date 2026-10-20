@@ -31,9 +31,11 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("url_credentials", re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^/\s:@'\"]+:[^/\s@'\"]+@")),
 ]
 
+# The lookbehind anchors keys at token starts; without it the leading ``[...]*`` makes the
+# search quadratic on long tokens (e.g. 10 KB of sandbox output took seconds).
 _ASSIGNMENT = re.compile(
     r"""(?ix)
-    (?P<key>[A-Za-z0-9_.-]*(?:secret|token|passw(?:or)?d|api[_-]?key|access[_-]?key|
+    (?P<key>(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]*(?:secret|token|passw(?:or)?d|api[_-]?key|access[_-]?key|
         private[_-]?key|client[_-]?secret|auth|credential|dsn|conn(?:ection)?[_-]?string)
         [A-Za-z0-9_.-]*)
     (?P<sep>\s*[:=]\s*|\s*=>\s*)
