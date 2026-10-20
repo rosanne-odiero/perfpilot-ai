@@ -30,9 +30,11 @@ jobs:
           --output-file requirements-audit.txt
       - name: pip-audit
         # Pinned, hash-locked requirements are audited as-is (no resolver, no install).
-        run: >
-          uvx pip-audit@2.9.0 --strict --require-hashes --disable-pip
-          --requirement requirements-audit.txt
+        # Reviewed exceptions live in .github/pip-audit-ignores.txt (justification + review date).
+        run: |
+          ignores=$(grep -Ev '^\s*(#|$)' .github/pip-audit-ignores.txt | sed 's/^/--ignore-vuln /' | tr '\n' ' ')
+          uvx pip-audit@2.9.0 --strict --require-hashes --disable-pip \
+            --requirement requirements-audit.txt $ignores
 
   gitleaks:
     name: Secret scan (gitleaks)

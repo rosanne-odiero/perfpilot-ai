@@ -136,6 +136,15 @@ command injection, XSS, secrets in logs/reports/exports, unbounded inputs and CO
 No path-traversal, symlink, ZIP-bomb, SSRF, command-injection or report-XSS issue was found; the
 new tests above pin the behaviour.
 
+### Accepted dependency advisories
+
+`pip-audit` runs on every push and weekly. Advisories that cannot be fixed yet are listed in
+[`.github/pip-audit-ignores.txt`](../.github/pip-audit-ignores.txt), each with the reason it is not
+exploitable in PerfPilot and a review-by date. Currently: the Pillow 12.3.0 advisories fixed in
+13.0.0. Streamlit still requires `pillow<13`, and PerfPilot never decodes untrusted raster images.
+Ingestion skips images as binaries, reports embed only generated SVG, and the PDF engines are
+restricted to `data:` URIs that PerfPilot itself creates.
+
 ## Residual risks
 
 - **No authentication.** Anyone who can reach the API can import, run approved commands and read
