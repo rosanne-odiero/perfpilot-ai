@@ -239,14 +239,14 @@ every merge leaves `main` runnable.
 - **Exit:** reports in all formats are generated from the fixture audit and are contract-tested.
 
 ### Phase 10 — Frontend: Repository Audit primary · `feature/frontend-audit`
-- [ ] Landing page = **Repository Audit**: GitHub URL input, ZIP upload, (local dir if allowlisted), mode selector (Static default; Runtime gated)
-- [ ] Job progress with stage-by-stage status (polling `GET /api/jobs/{id}`)
-- [ ] Repository summary (metadata, languages, frameworks, dependencies, limits hit) and file explorer with per-file finding counts
-- [ ] Findings table with severity/rule/provenance/module filters; source viewer with highlighted lines; GitHub permalink at the exact commit SHA
-- [ ] Module dependency graph (Plotly + networkx layout; hot modules highlighted; cycles marked)
+- [x] Landing page = **Repository Audit**: GitHub URL input, ZIP upload, (local dir if allowlisted), mode selector (Static default; Runtime gated)
+- [x] Job progress with stage-by-stage status (polling `GET /api/jobs/{id}`)
+- [x] Repository summary (metadata, languages, frameworks, dependencies, limits hit) and file explorer with per-file finding counts
+- [x] Findings table with severity/rule/provenance/module filters; source viewer with highlighted lines; GitHub permalink at the exact commit SHA
+- [x] Module dependency graph (Plotly + networkx layout; hot modules highlighted; cycles marked)
 - [ ] AI recommendations panel (clearly labeled hypotheses), external-AI consent toggle
 - [ ] Runtime audit panel: discovered commands → approve → results
-- [ ] Export buttons (HTML, MD, JSON, PDF)
+- [x] Export buttons (HTML, MD, JSON, PDF)
 - [ ] Deep-dive pages from Phases 5–7 linked from a hotspot ("Optimize this")
 - **Exit:** a user can audit a public repo end to end in the UI without an LLM key.
 
