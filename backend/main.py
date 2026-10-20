@@ -18,9 +18,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend import __version__
+from backend.api.middleware import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from backend.core.config import get_settings
 from backend.core.exceptions import PerfPilotError
 from backend.core.logging import configure_logging, get_logger
+from backend.core.observability import configure_tracing
 from backend.models.database import init_engine, session_scope
 from backend.services.workloads import seed_bundled_examples
 
@@ -50,6 +52,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         configure_logging(settings.log_level)
+        configure_tracing(settings.otel_enabled)
         init_engine(settings)
         with session_scope() as session:
             seed_bundled_examples(session)
@@ -66,9 +69,9 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:8501", "http://127.0.0.1:8501"],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.cors_allowed_origins,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "Accept"],
     )
 
     @app.middleware("http")
@@ -102,6 +105,9 @@ def create_app() -> FastAPI:
         ]
         return _error(422, "request_validation_error", "invalid request", {"errors": errors})
 
+    # Added last so it is the outermost middleware: oversized bodies never reach a handler.
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(BodySizeLimitMiddleware, settings=settings)
     _include_routers(app)
     return app
 

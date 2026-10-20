@@ -22,6 +22,7 @@ from backend.core.config import Settings, get_settings
 from backend.core.exceptions import PerfPilotError
 from backend.core.logging import configure_logging, get_logger
 from backend.core.observability import configure_tracing, log_context, span
+from backend.core.redaction import redact_text
 from backend.jobs.registry import JobCancelledError, JobContext, get_handler
 from backend.models.database import init_engine, session_scope, utcnow
 from backend.models.enums import JobStatus
@@ -96,18 +97,23 @@ def _run_handler(ctx: JobContext) -> JobStatus:
         _finish(
             job_id,
             JobStatus.FAILED,
-            error=exc.message,
+            error=redact_text(exc.message).text,
             error_details={"code": exc.code, **exc.details},
         )
         return JobStatus.FAILED
     except Exception as exc:
         ctx.close_stage("failed")
         log.exception("job crashed", extra={"status": "failed", "duration_ms": elapsed_ms()})
+        # Exception text can quote repository content (e.g. a SyntaxError line), and both fields
+        # are returned by GET /api/jobs/{id}; redact them like any other exported text.
         _finish(
             job_id,
             JobStatus.FAILED,
-            error=f"{type(exc).__name__}: {exc}",
-            error_details={"code": "unhandled_exception", "traceback": traceback.format_exc()},
+            error=redact_text(f"{type(exc).__name__}: {exc}").text,
+            error_details={
+                "code": "unhandled_exception",
+                "traceback": redact_text(traceback.format_exc()).text,
+            },
         )
         return JobStatus.FAILED
     ctx.close_stage("ok")

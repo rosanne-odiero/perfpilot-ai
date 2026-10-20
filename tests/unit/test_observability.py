@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import importlib.machinery
-import io
 import json
 import logging
 import sys
@@ -14,12 +13,12 @@ from typing import Any
 import httpx
 import pytest
 from llm_support import FAKE_KEY, llm_settings
+from log_support import JsonLines, capture_json_logs
 
 from backend.ai.llm_client import LLMClient
 from backend.ai.outbound import ChatMessage
 from backend.core import observability
 from backend.core.config import Settings
-from backend.core.logging import JsonFormatter
 from backend.core.observability import (
     configure_tracing,
     current_context,
@@ -33,31 +32,10 @@ from backend.jobs.worker import Worker
 from backend.models.database import session_scope
 
 
-class JsonLines:
-    def __init__(self, stream: io.StringIO) -> None:
-        self.stream = stream
-
-    def records(self) -> list[dict[str, Any]]:
-        return [json.loads(line) for line in self.stream.getvalue().splitlines() if line]
-
-    def named(self, msg: str) -> list[dict[str, Any]]:
-        return [r for r in self.records() if r["msg"] == msg]
-
-
 @pytest.fixture
 def json_logs() -> Iterator[JsonLines]:
-    stream = io.StringIO()
-    handler = logging.StreamHandler(stream)
-    handler.setFormatter(JsonFormatter())
-    root = logging.getLogger()
-    previous = root.level
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
-    try:
-        yield JsonLines(stream)
-    finally:
-        root.removeHandler(handler)
-        root.setLevel(previous)
+    with capture_json_logs() as lines:
+        yield lines
 
 
 @pytest.fixture
