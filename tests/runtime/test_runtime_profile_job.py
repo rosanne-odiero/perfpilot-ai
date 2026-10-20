@@ -82,7 +82,10 @@ def test_approved_workload_is_profiled_and_correlated(
     assert request.env == {"PYTHONHASHSEED": "0"}
     assert request.deps_dir is None
     mounts = {m.target: m.source for m in request.extra_mounts}
-    assert mounts["/perfpilot/harness_entry.py"] == HARNESS_PATH
+    # The harness is staged under the data dir so a containerised worker can bind-mount it.
+    harness_source = mounts["/perfpilot/harness_entry.py"]
+    assert harness_source.is_relative_to(settings.artifacts_dir)
+    assert harness_source.name == HARNESS_PATH.name
     assert harness_backend.harness_requests == [
         {
             "mode": "command",
@@ -469,6 +472,7 @@ def test_worker_request_passes_the_real_docker_path_policy(
     workspace = (settings.workspaces_dir / "shopfast").resolve()
     out = (settings.artifacts_dir / "runtime-runs" / run["id"] / "out").resolve()
     request_file = out.parent / "in" / "request.json"
+    harness_file = out.parent / "in" / "harness_entry.py"
     assert argv[argv.index("--network") + 1] == "none"
     assert "--read-only" in argv
     assert argv[argv.index("--user") + 1] == "65534:65534"
@@ -476,7 +480,7 @@ def test_worker_request_passes_the_real_docker_path_policy(
     assert mounts == [
         f"type=bind,source={workspace},target=/workspace,readonly",
         f"type=bind,source={out},target=/out",
-        f"type=bind,source={HARNESS_PATH},target=/perfpilot/harness_entry.py,readonly",
+        f"type=bind,source={harness_file},target=/perfpilot/harness_entry.py,readonly",
         f"type=bind,source={request_file},target=/perfpilot/request.json,readonly",
     ]
     image_at = argv.index(settings.sandbox_image)

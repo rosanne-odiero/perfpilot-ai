@@ -21,6 +21,7 @@ from sqlalchemy import select
 from backend.core.config import Settings
 from backend.core.exceptions import ConflictError, PerfPilotError, UnavailableError
 from backend.core.logging import get_logger
+from backend.core.observability import traced
 from backend.core.redaction import redact_text
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.models.database import session_scope, utcnow
@@ -381,6 +382,7 @@ def _persist_hotspots(run_id: str, out_dir: Path, workspace: Path) -> tuple[int,
     return len(profile.hotspots), profile.total_profiled_time_ms, profile.function_count
 
 
+@traced("runtime.profile")
 def execute_profile_run(
     settings: Settings, run_id: str, check_cancelled: CancelCheck
 ) -> dict[str, Any]:
@@ -467,6 +469,11 @@ def _execute(
     shutil.rmtree(base, ignore_errors=True)
     in_dir.mkdir(parents=True)
     out_dir.mkdir()
+    # The harness is staged under the data dir (not mounted from the package) so the bind-mount
+    # source is a path the Docker daemon can see even when the worker itself runs in a container
+    # that shares the data dir at the same host path (docs/deployment.md).
+    harness_file = in_dir / HARNESS_PATH.name
+    shutil.copyfile(HARNESS_PATH, harness_file)
     request_file = in_dir / "request.json"
     request_file.write_text(
         json.dumps(
@@ -489,7 +496,7 @@ def _execute(
         network="none",
         image=execution.image,
         extra_mounts=[
-            ReadOnlyMount(source=HARNESS_PATH, target=HARNESS_TARGET),
+            ReadOnlyMount(source=harness_file, target=HARNESS_TARGET),
             ReadOnlyMount(source=request_file, target=REQUEST_TARGET),
         ],
         deps_dir=deps_dir,
