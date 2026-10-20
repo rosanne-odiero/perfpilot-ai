@@ -217,14 +217,14 @@ every merge leaves `main` runnable.
 
 ### Phase 8 — Runtime Repository Audit · `feature/sandbox-runtime`, then `feature/runtime-audit`
 **`feature/sandbox-runtime`**
-- [ ] `ExecutionBackend` protocol; `DockerSandboxBackend`: `--network none`, `--read-only`, tmpfs `/tmp`, `--cpus`, `--memory`, `--pids-limit`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root UID, wall-clock kill
-- [ ] Sandbox image with profilers preinstalled; dependency install happens in a separate, explicitly approved network-enabled step that produces a cached env layer, then runs offline
+- [ ] `ExecutionBackend` protocol; `DockerSandboxBackend`: `--network none`, `--read-only`, tmpfs `/tmp`, `--cpus`, `--memory`, `--pids-limit`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root UID, wall-clock kill *(implemented + unit-tested; real-container tests in `tests/sandbox/test_docker_integration.py` pending a Docker install)*
+- [ ] Sandbox image with profilers preinstalled; dependency install happens in a separate, explicitly approved network-enabled step that produces a cached env layer, then runs offline *(`docker/sandbox.Dockerfile`, `make sandbox-image`, `backend/sandbox/environment.py`; image build not yet verified)*
 - [ ] The worker talks to Docker; **the API container gets no Docker socket**
-- [ ] If no isolation backend is available, runtime mode is **disabled with a clear reason**. It never falls back to the host.
+- [x] If no isolation backend is available, runtime mode is **disabled with a clear reason**. It never falls back to the host.
 
 **`feature/runtime-audit`**
-- [ ] Command discovery: pytest/unittest, `pytest-benchmark`, `asv`, `tox`/`nox` envs, Makefile targets, `[project.scripts]`. Each is a proposal with provenance, never auto-run.
-- [ ] Approval record (who, when, exact argv, image, limits) required before execution
+- [x] Command discovery: pytest/unittest, `pytest-benchmark`, `asv`, `tox`/`nox` envs, Makefile targets, `[project.scripts]`. Each is a proposal with provenance, never auto-run. *(landed on `feature/sandbox-runtime`)*
+- [ ] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; enforcement is wired by the runtime-audit job handler)*
 - [ ] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols
 - [ ] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
 - [ ] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload
