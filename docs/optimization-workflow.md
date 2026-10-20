@@ -199,7 +199,15 @@ is applied, validated or benchmarked. The printed JSON includes the profile, ana
 recommendation, diff, validation checks, the benchmark summary (medians, speedup, 95% CI,
 classification), the state history, and `original_tree_unchanged`.
 
-## 9. Limitations
+## 9. Experiment reports
+
+`POST /api/optimizations/{id}/reports {"formats": ["md", "json", "html", "csv", "pdf"]}` exports
+the whole experiment (profile evidence, recommendation, diff and hashes, approval, per-check
+validation, benchmark distributions, memory, reproducibility commands) as an engineering report for
+an issue or pull request. Failed and rejected candidates are reported too, with the reason and
+without benchmark numbers. See [reports.md](reports.md#experiment-reports-workload-deep-dive).
+
+## 10. Limitations
 
 * The deterministic templates cover five rule families. Other findings stay recommendations with
   `no safe deterministic patch`.

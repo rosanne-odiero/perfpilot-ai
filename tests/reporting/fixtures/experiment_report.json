@@ -1,0 +1,907 @@
+{
+ "schema_version": "1.0",
+ "kind": "optimization",
+ "metadata": {
+  "title": "Optimization experiment: Duplicate counter - Count elements once with collections.Counter",
+  "subject_type": "optimization",
+  "subject_id": "8548fd9b-cdd6-4965-961f-7301d9f82c48",
+  "generated_at": "2026-10-20T19:03:07.410611Z",
+  "generator": "PerfPilot AI 0.1.0",
+  "pdf_engine": null,
+  "redactions_applied": 0
+ },
+ "outcome": {
+  "state": "COMPLETED",
+  "headline": "Validated and benchmarked: IMPROVED, median speedup 361.86\u00d7 (95% CI [247.90\u00d7, 364.06\u00d7]).",
+  "succeeded": true,
+  "reasons": [
+   "speedup 361.861x >= 1.053x (5% threshold) and 95% CI [247.898x, 364.060x] excludes 1"
+  ]
+ },
+ "summary_box": {
+  "measured": [
+   {
+    "label": "Profiled bottleneck",
+    "value": "count_duplicates (workload.py:10): 100.0% cumulative / 0.5% exclusive of profiled time, 1 call(s) (cProfile, size medium)",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "Correctness validation",
+    "value": "PASSED: 8/8 required checks passed",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "Median wall time",
+    "value": "baseline 155.92 ms -> candidate 0.431 ms (n=5 / 5 timed runs)",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "Speedup (median wall-time ratio)",
+    "value": "361.86\u00d7 (95% CI [247.90\u00d7, 364.06\u00d7])",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "Latency reduction",
+    "value": "99.7%",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "CPU-time speedup",
+    "value": "360.22\u00d7",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "Classification",
+    "value": "IMPROVED at the 5% practical threshold",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "tracemalloc peak (Python allocations, call only)",
+    "value": "baseline 19.3 KiB -> candidate 48.2 KiB (median)",
+    "provenance": "MEASURED"
+   },
+   {
+    "label": "RSS peak (sampled, whole child process)",
+    "value": "baseline 27.4 MiB -> candidate 26.4 MiB (median)",
+    "provenance": "MEASURED"
+   }
+  ],
+  "hypotheses": [
+   {
+    "label": "Suspected root cause",
+    "value": "`items.count(x)` rescans the whole list on every call. Calling it for every element makes the function O(n^2).",
+    "provenance": "STATIC"
+   },
+   {
+    "label": "Expected effect (qualitative)",
+    "value": "Hypothesis: the quadratic rescans disappear (O(n) total), which should dominate for inputs with thousands of items.",
+    "provenance": "STATIC"
+   },
+   {
+    "label": "Estimated impact (qualitative)",
+    "value": "high: complexity change in the function that dominates the profile",
+    "provenance": "STATIC"
+   },
+   {
+    "label": "Memory trade-off",
+    "value": "One dict entry per distinct element.",
+    "provenance": "STATIC"
+   }
+  ],
+  "verdict": "Confirmed by measurement: the validated patch is IMPROVED at the 5% practical threshold (speedup 361.86\u00d7, 95% CI [247.90\u00d7, 364.06\u00d7])."
+ },
+ "workload": {
+  "workload_id": "1160c988-3279-4437-9e40-5b097247e7e5",
+  "slug": "duplicate_counter",
+  "name": "Duplicate counter",
+  "description": "Count how often each repeated item occurs (list.count called for every element).",
+  "project": "Bundled examples",
+  "entrypoint": "workload:count_duplicates",
+  "invocation_mode": "single",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "items: n_items lowercase words drawn from a vocabulary of about unique_ratio*n_items words with Zipf-like frequencies (exponent skew).",
+  "size": "medium",
+  "size_parameters": {
+   "n_items": 4000
+  },
+  "input_sha256": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+  "input_sha256_source": "benchmark preflight (identical for both variants)",
+  "expected_output": {
+   "type": "dict[str, int]",
+   "comparison": "exact",
+   "rel_tol": 1e-09,
+   "abs_tol": 0.0,
+   "description": "Mapping of every item that occurs more than once to its occurrence count (dict equality, key order ignored)."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa"
+ },
+ "environment": {
+  "provenance": "MEASURED",
+  "source": "benchmark run 99f625fd-ef14-4a70-91aa-8060264675e3",
+  "fields": {
+   "Captured at": "2026-10-20T18:44:33.532606+00:00",
+   "PerfPilot version": "0.1.0",
+   "Python implementation": "CPython",
+   "Python version": "3.12.10",
+   "Platform": "macOS-26.7.1-arm64-arm-64bit",
+   "OS": "Darwin",
+   "OS release": "25.6.0",
+   "Architecture": "arm64",
+   "CPU model": "Apple M4 Pro",
+   "Logical CPUs": "14",
+   "Physical CPUs": "14",
+   "Total memory (bytes)": "51539607552",
+   "Load average (1/5/15 min)": "[7.9, 7.61, 6.58]",
+   "uv.lock SHA-256": "9101d0409d85c82cb97d259afc84c2f4fd96d3fafeba008ec349182ed56f3e80"
+  },
+  "packages": {
+   "numpy": "2.5.4",
+   "psutil": "7.2.2",
+   "pydantic": "2.14.1",
+   "sqlalchemy": "2.1.4",
+   "fastapi": "0.143.0",
+   "scipy": "1.18.1"
+  },
+  "notes": [
+   "thermal state unavailable (not exposed to unprivileged processes)",
+   "CPU frequency unavailable (not reported, or implausible value from the OS); frequency scaling was not controlled",
+   "CPU affinity unavailable on this OS; processes were not pinned to a core"
+  ]
+ },
+ "profiling": {
+  "provenance": "MEASURED",
+  "profile_id": "56b700d6-c42a-4e3f-a374-3fa342ab7eb4",
+  "relation": "profile used by the analysis that produced this recommendation",
+  "status": "SUCCEEDED",
+  "size": "medium",
+  "input_sha256": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+  "total_profiled_time_ms": 97.83591700000001,
+  "wall_time_under_profiler_ms": 97.86275,
+  "hotspots": [
+   {
+    "rank": 1,
+    "function_name": "<method 'count' of 'list' objects>",
+    "file_path": "<built-in>",
+    "line_number": 0,
+    "location_kind": "builtin",
+    "is_user_code": false,
+    "total_calls": 4000,
+    "primitive_calls": 4000,
+    "exclusive_ms": 97.35218200000001,
+    "cumulative_ms": 97.35218200000001,
+    "exclusive_percent": 99.5055650165777,
+    "cumulative_percent": 99.5055650165777
+   },
+   {
+    "rank": 2,
+    "function_name": "count_duplicates",
+    "file_path": "workload.py",
+    "line_number": 10,
+    "location_kind": "workspace",
+    "is_user_code": true,
+    "total_calls": 1,
+    "primitive_calls": 1,
+    "exclusive_ms": 0.46348500000000004,
+    "cumulative_ms": 97.815667,
+    "exclusive_percent": 0.4737370632505034,
+    "cumulative_percent": 99.97930207982822
+   },
+   {
+    "rank": 3,
+    "function_name": "<method 'disable' of '_lsprof.Profiler' objects>",
+    "file_path": "<built-in>",
+    "line_number": 0,
+    "location_kind": "harness",
+    "is_user_code": false,
+    "total_calls": 1,
+    "primitive_calls": 1,
+    "exclusive_ms": 0.018375000000000002,
+    "cumulative_ms": 0.018375000000000002,
+    "exclusive_percent": 0.01878144608181063,
+    "cumulative_percent": 0.01878144608181063
+   },
+   {
+    "rank": 4,
+    "function_name": "call",
+    "file_path": "<harness>/harness_entry.py",
+    "line_number": 213,
+    "location_kind": "harness",
+    "is_user_code": false,
+    "total_calls": 1,
+    "primitive_calls": 1,
+    "exclusive_ms": 0.0018750000000000001,
+    "cumulative_ms": 97.817542,
+    "exclusive_percent": 0.0019164740899806766,
+    "cumulative_percent": 99.98121855391818
+   }
+  ],
+  "definitions": {
+   "exclusive": "Exclusive (pstats tottime): time spent in the function body itself, excluding callees. Exclusive percentages add up to 100% across all functions.",
+   "cumulative": "Cumulative (pstats cumtime): time in the function and everything it called. Cumulative percentages overlap (a caller includes its callees) and are never summed.",
+   "overhead": "cProfile instruments every call, so absolute profiled times are inflated; use the A/B benchmark for real timings."
+  },
+  "memory": [
+   {
+    "name": "tracemalloc peak (Python allocations, call only)",
+    "tool": "tracemalloc",
+    "value_bytes": 19792.0,
+    "definition": "peak Python-traced allocations during one workload call (separate call, input built before tracing). Not process memory."
+   },
+   {
+    "name": "RSS peak (sampled, whole child process)",
+    "tool": "rss",
+    "value_bytes": 28672000.0,
+    "definition": "peak resident set size of the child process tree sampled by the parent over the whole run (interpreter + input + profiled and traced calls)"
+   },
+   {
+    "name": "ru_maxrss (kernel max RSS, whole child process)",
+    "tool": "ru_maxrss",
+    "value_bytes": 29065216.0,
+    "definition": "kernel-reported maximum RSS of the child process (getrusage)"
+   }
+  ],
+  "memory_unavailable": [],
+  "warnings": [
+   "cProfile adds per-call overhead: absolute times are inflated, and functions with many small calls are over-represented. Use the benchmark for real timings.",
+   "resource limit RLIMIT_AS not applied: macOS does not enforce RLIMIT_AS/RLIMIT_DATA; memory is bounded by the parent's sampled-RSS ceiling instead"
+  ]
+ },
+ "profiling_absent_reason": null,
+ "recommendation": {
+  "recommendation_id": "f01ea766-291b-44be-9463-fe623533d593",
+  "analysis_id": "58a48ce3-daae-4bb8-beac-3262cc4d0ab5",
+  "rank": 1,
+  "rule_id": "PP-COLL-001",
+  "title": "Count elements once with collections.Counter",
+  "target_file": "workload.py",
+  "target_function": "count_duplicates",
+  "source_lines": {
+   "start": 13,
+   "end": 13
+  },
+  "observed_bottleneck": {
+   "text": "`count_duplicates` (workload.py:10) accounts for 100.0% of profiled time (cumulative 97.82 ms, exclusive 0.46 ms, 1 call(s)) in profile 56b700d6-c42a-4e3f-a374-3fa342ab7eb4 at size medium [MEASURED]. Rule PP-COLL-001 flags linear list search/removal inside a loop at workload.py:13 [STATIC].",
+   "provenance": "MEASURED",
+   "note": "measured share of profiled time plus the static rule that flags the code"
+  },
+  "profiler_evidence": {
+   "provenance": "MEASURED",
+   "profile_id": "56b700d6-c42a-4e3f-a374-3fa342ab7eb4",
+   "profile_status": "SUCCEEDED",
+   "size": "medium",
+   "input_sha256": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+   "total_profiled_time_ms": 97.83591700000001,
+   "wall_time_under_profiler_ms": 97.86275,
+   "target_function": {
+    "function_name": "count_duplicates",
+    "file_path": "workload.py",
+    "line_number": 10,
+    "location_kind": "workspace",
+    "internal_time_ms": 0.463,
+    "cumulative_time_ms": 97.816,
+    "percentage_of_profiled_time": 0.47,
+    "cumulative_percentage": 99.98,
+    "total_calls": 1,
+    "primitive_calls": 1
+   },
+   "note": "cProfile instruments every call, so absolute times are inflated; percentages show where time goes, not how fast the code runs unprofiled.",
+   "largest_non_workspace_functions": [
+    {
+     "function_name": "<method 'count' of 'list' objects>",
+     "file_path": "<built-in>",
+     "line_number": 0,
+     "location_kind": "builtin",
+     "internal_time_ms": 97.352,
+     "cumulative_time_ms": 97.352,
+     "percentage_of_profiled_time": 99.51,
+     "cumulative_percentage": 99.51,
+     "total_calls": 4000,
+     "primitive_calls": 4000
+    }
+   ],
+   "largest_non_workspace_functions_note": "largest exclusive-time functions outside the workspace in the same profile; not attributed to a caller"
+  },
+  "profiler_evidence_provenance": "MEASURED",
+  "suspected_root_cause": {
+   "text": "`items.count(x)` rescans the whole list on every call. Calling it for every element makes the function O(n^2).",
+   "provenance": "STATIC",
+   "note": null
+  },
+  "proposed_optimization": {
+   "text": "Count every element in one pass with `collections.Counter(items)` before the loop and read the count from it.",
+   "provenance": "STATIC",
+   "note": null
+  },
+  "expected_effect": {
+   "text": "Hypothesis: the quadratic rescans disappear (O(n) total), which should dominate for inputs with thousands of items.",
+   "provenance": "STATIC",
+   "note": "qualitative expectation, not a measurement"
+  },
+  "estimated_impact": {
+   "text": "high: complexity change in the function that dominates the profile",
+   "provenance": "STATIC",
+   "note": "qualitative expectation, not a measurement"
+  },
+  "correctness_risks": [
+   "Items must be hashable; Counter raises TypeError where list.count() worked.",
+   "Counter matches by hash + ==; list.count() by == only."
+  ],
+  "memory_tradeoffs": {
+   "text": "One dict entry per distinct element.",
+   "provenance": "STATIC",
+   "note": null
+  },
+  "confidence": "HIGH",
+  "validation_plan": [
+   "Apply the approved diff to an isolated copy of the workload; verify the original tree hash is unchanged afterwards.",
+   "Run the workload's tests ['tests'] with pytest in a separate process against the original and the patched copy; at least 10 must pass on both.",
+   "Compare original vs candidate outputs for sizes ['small', 'medium'] x seeds [2024, 7, 11] using exact comparison.",
+   "Compare outputs on 5 contract edge case(s).",
+   "Check exception parity on 2 error input(s).",
+   "Fail if the candidate mutates an input the original leaves untouched.",
+   "Benchmark only after every required check passed."
+  ],
+  "generated_by": "deterministic"
+ },
+ "patch": {
+  "generated_by": "deterministic",
+  "transform": "list_count_to_counter",
+  "target_file": "workload.py",
+  "summary": "Count every element of `items` once with `Counter(items)` before the loop at line 12 and read counts from it (O(n) total instead of O(n) per call).",
+  "notes": [
+   "Elements of `items` (and the values counted) must be hashable; otherwise Counter raises TypeError where list.count() worked.",
+   "Counter matches by hash + ==, list.count() by == only; they agree for well-behaved types.",
+   "A missing key reads as 0, exactly like list.count() for an absent value.",
+   "Extra memory: one dict entry per distinct element."
+  ],
+  "unified_diff": "--- a/workload.py\n+++ b/workload.py\n@@ -6,11 +6,14 @@\n \n from __future__ import annotations\n \n+from collections import Counter\n+\n \n def count_duplicates(items: list[str]) -> dict[str, int]:\n     duplicates: dict[str, int] = {}\n+    items_counts = Counter(items)\n     for item in items:\n-        occurrences = items.count(item)\n+        occurrences = items_counts[item]\n         if occurrences > 1:\n             duplicates[item] = occurrences\n     return duplicates\n",
+  "diff_withheld_reason": null,
+  "changed_lines": 5,
+  "original_file_sha256": "ef703763602064d88b57e5332462aa322b97210968587f9451c4a5aebe13ef83",
+  "patched_file_sha256": "fff3db97d8d1a39755bc68cc55035726fc8bca297e67566d163a1163e1b8bafb",
+  "original_tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa",
+  "patched_tree_sha256": "1d8241c1da508fbbfd3cad8b9dbbaffd559f60f1ecc89206e0be9965c8ae52af",
+  "patch_validator_valid": true,
+  "patch_validator_checks": {
+   "parse": "passed",
+   "paths": "passed",
+   "protected_files": "passed",
+   "structure": "passed",
+   "applies_cleanly": "passed",
+   "compiles": "passed",
+   "public_signatures": "passed",
+   "benchmark_integrity": "passed"
+  },
+  "patch_validator_violations": []
+ },
+ "approval": {
+  "status": "APPROVED",
+  "approved_by": "cli-user",
+  "approved_at": "2026-10-20T18:44:19.222063",
+  "rejected_by": null,
+  "rejected_at": null,
+  "rejection_reasons": [],
+  "state_history": [
+   {
+    "from_state": "RECOMMENDED",
+    "to_state": "PATCH_PROPOSED",
+    "at": "2026-10-20T18:44:19.214260Z",
+    "reason": "diff proposed by deterministic"
+   },
+   {
+    "from_state": "PATCH_PROPOSED",
+    "to_state": "AWAITING_APPROVAL",
+    "at": "2026-10-20T18:44:19.215310Z",
+    "reason": "diff passed the patch validator"
+   },
+   {
+    "from_state": "AWAITING_APPROVAL",
+    "to_state": "AWAITING_APPROVAL",
+    "at": "2026-10-20T18:44:19.222071+00:00",
+    "reason": "approved by cli-user"
+   },
+   {
+    "from_state": "AWAITING_APPROVAL",
+    "to_state": "VALIDATING",
+    "at": "2026-10-20T18:44:19.225082Z",
+    "reason": "validation requested"
+   },
+   {
+    "from_state": "VALIDATING",
+    "to_state": "VALIDATED",
+    "at": "2026-10-20T18:44:26.049566Z",
+    "reason": "PASSED: 8/8 required checks passed"
+   },
+   {
+    "from_state": "VALIDATED",
+    "to_state": "BENCHMARKING",
+    "at": "2026-10-20T18:44:26.055610Z",
+    "reason": "benchmark requested"
+   },
+   {
+    "from_state": "BENCHMARKING",
+    "to_state": "COMPLETED",
+    "at": "2026-10-20T18:44:33.561786Z",
+    "reason": "benchmark 99f625fd-ef14-4a70-91aa-8060264675e3: IMPROVED"
+   }
+  ]
+ },
+ "validation": {
+  "provenance": "MEASURED",
+  "validation_id": "ce45931e-1728-4f21-9cbd-e326df47517b",
+  "status": "PASSED",
+  "summary": "PASSED: 8/8 required checks passed",
+  "required_checks": [
+   "isolation",
+   "compile",
+   "functional_tests",
+   "output_equivalence",
+   "edge_cases",
+   "exception_parity",
+   "input_mutation",
+   "patched_code_exercised"
+  ],
+  "checks": [
+   {
+    "name": "isolation",
+    "required": true,
+    "status": "PASSED",
+    "detail": "only workload.py differs from the original",
+    "duration_seconds": 0.002,
+    "failures": []
+   },
+   {
+    "name": "compile",
+    "required": true,
+    "status": "PASSED",
+    "detail": "compiles",
+    "duration_seconds": 0.0,
+    "failures": []
+   },
+   {
+    "name": "functional_tests",
+    "required": true,
+    "status": "PASSED",
+    "detail": "candidate: 29 test(s) passed",
+    "duration_seconds": 5.87,
+    "failures": []
+   },
+   {
+    "name": "output_equivalence",
+    "required": true,
+    "status": "PASSED",
+    "detail": "6 case(s): 6 PASSED, 0 FAILED, 0 INCONCLUSIVE, 0 NOT_RUN",
+    "duration_seconds": 0.897,
+    "failures": []
+   },
+   {
+    "name": "edge_cases",
+    "required": true,
+    "status": "PASSED",
+    "detail": "5 case(s): 5 PASSED, 0 FAILED, 0 INCONCLUSIVE, 0 NOT_RUN",
+    "duration_seconds": 0.897,
+    "failures": []
+   },
+   {
+    "name": "exception_parity",
+    "required": true,
+    "status": "PASSED",
+    "detail": "2 error input(s), 0 not at parity",
+    "duration_seconds": 0.897,
+    "failures": []
+   },
+   {
+    "name": "input_mutation",
+    "required": true,
+    "status": "PASSED",
+    "detail": "no new input mutation across 13 case(s)",
+    "duration_seconds": 0.897,
+    "failures": []
+   },
+   {
+    "name": "patched_code_exercised",
+    "required": true,
+    "status": "PASSED",
+    "detail": "tests called `count_duplicates` 14 time(s)",
+    "duration_seconds": 0.0,
+    "failures": []
+   }
+  ],
+  "error": null,
+  "duration_seconds": 6.818234,
+  "baseline_input_hashes": {
+   "fixture:small:seed=2024": "2079162d2fcc3377eb667681ca4b1ecb92a1ac116a8039c36077954465f05827",
+   "fixture:small:seed=7": "feb63290f408dccfc3871c37e5ccf128b96c904cad6e56141a6179b23840442c",
+   "fixture:small:seed=11": "23fd40584a3744898b13afd90db920389896f9c8c38159d480bbf6e5e0bcfa68",
+   "fixture:medium:seed=2024": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+   "fixture:medium:seed=7": "c1ca3dbc5609e4fabaefb8fef1e45ec5fc63f975d247decdd43823ffad4ff44e",
+   "fixture:medium:seed=11": "7a5f264fd2b7332c03b0d64217f7a11872cfee7c47a77c3c53544bcfe31565d8"
+  },
+  "finished_at": "2026-10-20T18:44:26.046733"
+ },
+ "validation_absent_reason": null,
+ "benchmark": {
+  "provenance": "MEASURED",
+  "benchmark_id": "99f625fd-ef14-4a70-91aa-8060264675e3",
+  "status": "SUCCEEDED",
+  "candidate_kind": "candidate",
+  "candidate_label": "validated patch candidate 8548fd9b-cdd6-4965-961f-7301d9f82c48 (deterministic: list_count_to_counter)",
+  "settings": {
+   "size": "medium",
+   "warmups": 1,
+   "runs": 5,
+   "memory_runs": 2,
+   "seed": 12345,
+   "order": "random",
+   "threshold_percent": 5.0,
+   "bootstrap_resamples": 10000,
+   "timed_iterations_per_process": 1
+  },
+  "input_sha256": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+  "baseline_tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa",
+  "candidate_tree_sha256": "1d8241c1da508fbbfd3cad8b9dbbaffd559f60f1ecc89206e0be9965c8ae52af",
+  "stats": [
+   {
+    "variant": "baseline",
+    "metric": "wall_ms",
+    "n": 5,
+    "median": 155.916792,
+    "mean": 137.3334166,
+    "min": 96.181208,
+    "max": 171.3465,
+    "stdev": 33.677358269788016,
+    "p95": 168.450075,
+    "cv_percent": 24.52233338654739,
+    "small_n_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+   },
+   {
+    "variant": "baseline",
+    "metric": "cpu_ms",
+    "n": 5,
+    "median": 154.174,
+    "mean": 134.6736,
+    "min": 95.787,
+    "max": 161.897,
+    "stdev": 31.15351616270625,
+    "p95": 160.60399999999998,
+    "cv_percent": 23.132608144956585,
+    "small_n_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+   },
+   {
+    "variant": "candidate",
+    "metric": "wall_ms",
+    "n": 5,
+    "median": 0.430875,
+    "mean": 0.47664159999999994,
+    "min": 0.385042,
+    "max": 0.635625,
+    "stdev": 0.09836379423751404,
+    "p95": 0.6090249999999999,
+    "cv_percent": 20.63684626719826,
+    "small_n_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+   },
+   {
+    "variant": "candidate",
+    "metric": "cpu_ms",
+    "n": 5,
+    "median": 0.428,
+    "mean": 0.4734,
+    "min": 0.383,
+    "max": 0.632,
+    "stdev": 0.09759252020518785,
+    "p95": 0.605,
+    "cv_percent": 20.615234517361188,
+    "small_n_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+   }
+  ],
+  "throughput_calls_per_s": {
+   "baseline": 6.413677367092058,
+   "candidate": 2320.8587177255586
+  },
+  "speedup": 361.8608459530026,
+  "ci_low": 247.89753892984587,
+  "ci_high": 364.06005221932116,
+  "ci_confidence": 0.95,
+  "ci_method": "paired percentile bootstrap of the ratio of medians",
+  "latency_reduction_percent": 99.72365067644543,
+  "throughput_speedup": 361.86084595300264,
+  "cpu_speedup": 360.2196261682243,
+  "cpu_speedup_unavailable_reason": null,
+  "memory": {
+   "provenance": "MEASURED",
+   "runs_per_variant": {
+    "baseline": 2,
+    "candidate": 2
+   },
+   "rows": [
+    {
+     "tool": "tracemalloc",
+     "label": "tracemalloc peak (Python allocations, call only)",
+     "baseline_bytes_median": 19792.0,
+     "candidate_bytes_median": 49393.0,
+     "ratio_candidate_to_baseline": 2.495604284559418,
+     "definition": "peak Python-traced allocations during the workload call only (input built before tracing); not process memory"
+    },
+    {
+     "tool": "rss",
+     "label": "RSS peak (sampled, whole child process)",
+     "baseline_bytes_median": 28688384.0,
+     "candidate_bytes_median": 27631616.0,
+     "ratio_candidate_to_baseline": 0.9631639063392348,
+     "definition": "peak resident set size of the child process, sampled by the parent every 5 ms over the whole process lifetime (interpreter + input + call); short spikes between samples can be missed"
+    },
+    {
+     "tool": "ru_maxrss",
+     "label": "ru_maxrss (kernel max RSS, whole child process)",
+     "baseline_bytes_median": 29229056.0,
+     "candidate_bytes_median": 28925952.0,
+     "ratio_candidate_to_baseline": 0.9896300448430493,
+     "definition": "kernel-reported maximum RSS of the child process (getrusage)"
+    }
+   ],
+   "unavailable": []
+  },
+  "classification": "IMPROVED",
+  "classification_reason": "speedup 361.861x >= 1.053x (5% threshold) and 95% CI [247.898x, 364.060x] excludes 1",
+  "improvement_speedup_threshold": 1.0526315789473684,
+  "regression_speedup_threshold": 0.9523809523809523,
+  "correctness": {
+   "equivalent": true,
+   "comparison": "exact",
+   "detail": "outputs are identical"
+  },
+  "formulas": {
+   "speedup": "median_baseline / median_candidate (wall time)",
+   "latency_reduction_percent": "(median_baseline - median_candidate) / median_baseline * 100",
+   "throughput_speedup": "candidate_throughput / baseline_throughput"
+  },
+  "warnings": [
+   "baseline wall time is noisy (CV 24.5%); consider more runs or a quieter machine",
+   "candidate wall time is noisy (CV 20.6%); consider more runs or a quieter machine",
+   "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+  ],
+  "error": null,
+  "samples": [
+   {
+    "variant": "baseline",
+    "kind": "memory",
+    "pair_index": 0,
+    "position_in_pair": 0,
+    "wall_ms": null,
+    "cpu_ms": null,
+    "tracemalloc_peak_bytes": 19792,
+    "rss_peak_bytes": 28557312,
+    "ru_maxrss_bytes": 29294592,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "memory",
+    "pair_index": 0,
+    "position_in_pair": 1,
+    "wall_ms": null,
+    "cpu_ms": null,
+    "tracemalloc_peak_bytes": 49393,
+    "rss_peak_bytes": 27574272,
+    "ru_maxrss_bytes": 29065216,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "memory",
+    "pair_index": 1,
+    "position_in_pair": 0,
+    "wall_ms": null,
+    "cpu_ms": null,
+    "tracemalloc_peak_bytes": 49393,
+    "rss_peak_bytes": 27688960,
+    "ru_maxrss_bytes": 28786688,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "memory",
+    "pair_index": 1,
+    "position_in_pair": 1,
+    "wall_ms": null,
+    "cpu_ms": null,
+    "tracemalloc_peak_bytes": 19792,
+    "rss_peak_bytes": 28819456,
+    "ru_maxrss_bytes": 29163520,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "preflight",
+    "pair_index": -1,
+    "position_in_pair": 0,
+    "wall_ms": 175.641791,
+    "cpu_ms": 148.794,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 27951104,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "preflight",
+    "pair_index": -1,
+    "position_in_pair": 1,
+    "wall_ms": 0.565792,
+    "cpu_ms": 0.562,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 29491200,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "timing",
+    "pair_index": 0,
+    "position_in_pair": 0,
+    "wall_ms": 106.358208,
+    "cpu_ms": 106.078,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 28721152,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "timing",
+    "pair_index": 0,
+    "position_in_pair": 1,
+    "wall_ms": 0.429041,
+    "cpu_ms": 0.427,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 28639232,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "timing",
+    "pair_index": 1,
+    "position_in_pair": 0,
+    "wall_ms": 0.430875,
+    "cpu_ms": 0.428,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 28016640,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "timing",
+    "pair_index": 1,
+    "position_in_pair": 1,
+    "wall_ms": 156.864375,
+    "cpu_ms": 155.432,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 29294592,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "timing",
+    "pair_index": 2,
+    "position_in_pair": 0,
+    "wall_ms": 155.916792,
+    "cpu_ms": 154.174,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 29065216,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "timing",
+    "pair_index": 2,
+    "position_in_pair": 1,
+    "wall_ms": 0.502625,
+    "cpu_ms": 0.497,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 29081600,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "timing",
+    "pair_index": 3,
+    "position_in_pair": 0,
+    "wall_ms": 96.181208,
+    "cpu_ms": 95.787,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 27901952,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "timing",
+    "pair_index": 3,
+    "position_in_pair": 1,
+    "wall_ms": 0.385042,
+    "cpu_ms": 0.383,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 27770880,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "candidate",
+    "kind": "timing",
+    "pair_index": 4,
+    "position_in_pair": 0,
+    "wall_ms": 0.635625,
+    "cpu_ms": 0.632,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 29097984,
+    "ok": true,
+    "error": null
+   },
+   {
+    "variant": "baseline",
+    "kind": "timing",
+    "pair_index": 4,
+    "position_in_pair": 1,
+    "wall_ms": 171.3465,
+    "cpu_ms": 161.897,
+    "tracemalloc_peak_bytes": null,
+    "rss_peak_bytes": null,
+    "ru_maxrss_bytes": 28983296,
+    "ok": true,
+    "error": null
+   }
+  ]
+ },
+ "benchmark_absent_reason": null,
+ "reproducibility": {
+  "cli": [
+   ".venv/bin/python scripts/optimize_workload.py duplicate_counter --approve --profile-size medium --recommendation 1 --size medium --warmups 1 --runs 5 --memory-runs 2 --threshold 5 --seed 12345"
+  ],
+  "api_calls": [
+   "POST /api/profiles {\"workload_id\": \"1160c988-3279-4437-9e40-5b097247e7e5\", \"size\": \"medium\"}",
+   "POST /api/analyses {\"workload_id\": \"1160c988-3279-4437-9e40-5b097247e7e5\", \"profile_id\": \"56b700d6-c42a-4e3f-a374-3fa342ab7eb4\"}",
+   "GET /api/analyses/58a48ce3-daae-4bb8-beac-3262cc4d0ab5/recommendations",
+   "POST /api/optimizations {\"recommendation_id\": \"f01ea766-291b-44be-9463-fe623533d593\"}",
+   "GET /api/optimizations/8548fd9b-cdd6-4965-961f-7301d9f82c48/diff",
+   "POST /api/optimizations/8548fd9b-cdd6-4965-961f-7301d9f82c48/approve {\"approved_by\": \"cli-user\"}",
+   "POST /api/optimizations/8548fd9b-cdd6-4965-961f-7301d9f82c48/validate",
+   "GET /api/optimizations/8548fd9b-cdd6-4965-961f-7301d9f82c48/validation",
+   "POST /api/benchmarks {\"workload_id\": \"1160c988-3279-4437-9e40-5b097247e7e5\", \"candidate\": {\"candidate_id\": \"8548fd9b-cdd6-4965-961f-7301d9f82c48\"}, \"size\": \"medium\", \"warmups\": 1, \"runs\": 5, \"memory_runs\": 2, \"threshold_percent\": 5.0, \"seed\": 12345, \"order\": \"random\", \"bootstrap_resamples\": 10000}",
+   "GET /api/benchmarks/99f625fd-ef14-4a70-91aa-8060264675e3/results",
+   "POST /api/optimizations/8548fd9b-cdd6-4965-961f-7301d9f82c48/reports {\"formats\": [\"md\", \"json\", \"html\", \"csv\", \"pdf\"]}"
+  ],
+  "notes": [
+   "The IDs are those of this experiment; re-running the steps creates new records (the bundled workload source is unchanged, see the tree hashes).",
+   "Every POST that starts work returns 202 and a job id; poll GET /api/jobs/{job_id}."
+  ]
+ },
+ "limitations": [
+  "Bundled workloads run on the host in constrained child processes (fresh interpreter, scrubbed environment, rlimits, timeouts), not on dedicated benchmark hardware; read the warnings and the environment fingerprint before trusting small differences.",
+  "Correctness validation covers only the tests and inputs it exercised. It is evidence of equivalence, not a proof.",
+  "tracemalloc (Python-traced allocations during the call) and RSS (sampled process memory) measure different things and are never compared with each other.",
+  "cProfile times are inflated by instrumentation: the profile shows where time goes, the benchmark shows how fast the code runs.",
+  "Only 5 timed runs per variant: p95 and the bootstrap CI are unstable at this sample size; re-run with more runs on a quiet machine to confirm."
+ ]
+}

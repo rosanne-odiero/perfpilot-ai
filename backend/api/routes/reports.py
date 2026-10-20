@@ -1,4 +1,5 @@
-"""Audit report endpoints: request generation, list, metadata, download and preview."""
+"""Report endpoints: audit report requests, plus metadata, download and preview for every report
+(audit and experiment reports share the ``reports`` table and artifact layout)."""
 
 from __future__ import annotations
 
@@ -53,6 +54,8 @@ class ReportFileOut(BaseModel):
 class ReportOut(BaseModel):
     id: str
     audit_id: str | None
+    subject_type: str = "audit"
+    subject_id: str | None = None
     format: ReportFormat
     status: str
     error: str | None
@@ -71,6 +74,8 @@ def _report_out(session: Session, record: ReportRecord) -> ReportOut:
     return ReportOut(
         id=record.id,
         audit_id=record.audit_id,
+        subject_type=record.subject_type,
+        subject_id=record.subject_id,
         format=ReportFormat(record.format),
         status=record.status,
         error=record.error,
@@ -128,7 +133,7 @@ def download_report(
     report_id: str,
     session: DbSession,
     settings: AppSettings,
-    part: Literal["primary", "benchmark_samples"] = Query("primary"),
+    part: Literal["primary", "benchmark_samples", "validation_checks"] = Query("primary"),
 ) -> FileResponse:
     record = service.get_report(session, report_id)
     artifact = service.artifact_for_role(session, record, part)
