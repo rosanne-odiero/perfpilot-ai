@@ -1,7 +1,7 @@
 """baseline schema
 
 Revision ID: 0001
-Create Date: 2026-10-20 21:46:46.465466
+Create Date: 2026-10-20 23:04:54.101968
 """
 
 from collections.abc import Sequence
@@ -413,6 +413,79 @@ def upgrade() -> None:
         )
 
     op.create_table(
+        "repo_optimization_candidates",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("audit_id", sa.String(length=36), nullable=False),
+        sa.Column("snapshot_id", sa.String(length=36), nullable=False),
+        sa.Column("finding_id", sa.String(length=64), nullable=False),
+        sa.Column("rule_id", sa.String(length=32), nullable=False),
+        sa.Column("finding_title", sa.String(length=255), nullable=False),
+        sa.Column("evidence", sa.String(length=16), nullable=False),
+        sa.Column("measured_evidence", sa.JSON(), nullable=True),
+        sa.Column("state", sa.String(length=32), nullable=False),
+        sa.Column("state_history", sa.JSON(), nullable=False),
+        sa.Column("generated_by", sa.String(length=128), nullable=False),
+        sa.Column("provenance", sa.String(length=16), nullable=False),
+        sa.Column("transform", sa.String(length=64), nullable=True),
+        sa.Column("target_file", sa.String(length=1024), nullable=False),
+        sa.Column("target_function", sa.String(length=512), nullable=True),
+        sa.Column("line_start", sa.Integer(), nullable=False),
+        sa.Column("line_end", sa.Integer(), nullable=False),
+        sa.Column("original_file_sha256", sa.String(length=64), nullable=False),
+        sa.Column("original_tree_sha256", sa.String(length=64), nullable=False),
+        sa.Column("proposed_diff", sa.Text(), nullable=False),
+        sa.Column("patched_file_sha256", sa.String(length=64), nullable=True),
+        sa.Column("patched_tree_sha256", sa.String(length=64), nullable=True),
+        sa.Column("original_source", sa.Text(), nullable=False),
+        sa.Column("patched_source", sa.Text(), nullable=False),
+        sa.Column("summary", sa.Text(), nullable=False),
+        sa.Column("notes", sa.JSON(), nullable=False),
+        sa.Column("proposer_attempts", sa.JSON(), nullable=False),
+        sa.Column("llm_usage", sa.JSON(), nullable=True),
+        sa.Column("patch_validation", sa.JSON(), nullable=False),
+        sa.Column("approval_status", sa.String(length=16), nullable=False),
+        sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("approved_by", sa.String(length=128), nullable=True),
+        sa.Column("rejected_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("rejected_by", sa.String(length=128), nullable=True),
+        sa.Column("rejection_reasons", sa.JSON(), nullable=False),
+        sa.Column("workspace_path", sa.String(length=1024), nullable=True),
+        sa.Column("validation_status", sa.String(length=16), nullable=False),
+        sa.Column("validation_run_id", sa.String(length=36), nullable=True),
+        sa.Column("benchmark_run_id", sa.String(length=36), nullable=True),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["audit_id"],
+            ["audit_runs.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["snapshot_id"],
+            ["repository_snapshots.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("repo_optimization_candidates", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_repo_optimization_candidates_approval_status"),
+            ["approval_status"],
+            unique=False,
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_optimization_candidates_audit_id"), ["audit_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_optimization_candidates_finding_id"), ["finding_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_optimization_candidates_snapshot_id"), ["snapshot_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_optimization_candidates_state"), ["state"], unique=False
+        )
+
+    op.create_table(
         "runtime_commands",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("audit_id", sa.String(length=36), nullable=False),
@@ -652,6 +725,114 @@ def upgrade() -> None:
         )
 
     op.create_table(
+        "repo_benchmark_runs",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("candidate_id", sa.String(length=36), nullable=False),
+        sa.Column("audit_id", sa.String(length=36), nullable=False),
+        sa.Column("approval_id", sa.String(length=36), nullable=False),
+        sa.Column("job_id", sa.String(length=36), nullable=True),
+        sa.Column("status", sa.String(length=16), nullable=False),
+        sa.Column("argv", sa.JSON(), nullable=False),
+        sa.Column("workdir_rel", sa.String(length=1024), nullable=False),
+        sa.Column("image", sa.String(length=512), nullable=False),
+        sa.Column("limits", sa.JSON(), nullable=False),
+        sa.Column("warmups", sa.Integer(), nullable=False),
+        sa.Column("runs", sa.Integer(), nullable=False),
+        sa.Column("threshold_percent", sa.Float(), nullable=False),
+        sa.Column("seed", sa.Integer(), nullable=False),
+        sa.Column("bootstrap_resamples", sa.Integer(), nullable=False),
+        sa.Column("order", sa.JSON(), nullable=False),
+        sa.Column("inputs", sa.JSON(), nullable=False),
+        sa.Column("summary", sa.JSON(), nullable=False),
+        sa.Column("speedup", sa.Float(), nullable=True),
+        sa.Column("speedup_ci_low", sa.Float(), nullable=True),
+        sa.Column("speedup_ci_high", sa.Float(), nullable=True),
+        sa.Column("latency_reduction_percent", sa.Float(), nullable=True),
+        sa.Column("classification", sa.String(length=32), nullable=True),
+        sa.Column("classification_reason", sa.Text(), nullable=True),
+        sa.Column("environment", sa.JSON(), nullable=False),
+        sa.Column("warnings", sa.JSON(), nullable=False),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["approval_id"],
+            ["runtime_approvals.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["audit_id"],
+            ["audit_runs.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["candidate_id"],
+            ["repo_optimization_candidates.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("repo_benchmark_runs", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_repo_benchmark_runs_audit_id"), ["audit_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_benchmark_runs_candidate_id"), ["candidate_id"], unique=False
+        )
+        batch_op.create_index(batch_op.f("ix_repo_benchmark_runs_status"), ["status"], unique=False)
+
+    op.create_table(
+        "repo_validation_runs",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("candidate_id", sa.String(length=36), nullable=False),
+        sa.Column("audit_id", sa.String(length=36), nullable=False),
+        sa.Column("approval_id", sa.String(length=36), nullable=False),
+        sa.Column("job_id", sa.String(length=36), nullable=True),
+        sa.Column("status", sa.String(length=16), nullable=False),
+        sa.Column("argv", sa.JSON(), nullable=False),
+        sa.Column("workdir_rel", sa.String(length=1024), nullable=False),
+        sa.Column("image", sa.String(length=512), nullable=False),
+        sa.Column("limits", sa.JSON(), nullable=False),
+        sa.Column("checks", sa.JSON(), nullable=False),
+        sa.Column("summary", sa.Text(), nullable=False),
+        sa.Column("variants", sa.JSON(), nullable=False),
+        sa.Column("test_comparison", sa.JSON(), nullable=False),
+        sa.Column("patched_function_executed", sa.Boolean(), nullable=True),
+        sa.Column("environment", sa.JSON(), nullable=False),
+        sa.Column("original_tree_sha256", sa.String(length=64), nullable=True),
+        sa.Column("patched_tree_sha256", sa.String(length=64), nullable=True),
+        sa.Column("logs_artifact_id", sa.String(length=36), nullable=True),
+        sa.Column("duration_seconds", sa.Float(), nullable=True),
+        sa.Column("error", sa.Text(), nullable=True),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["approval_id"],
+            ["runtime_approvals.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["audit_id"],
+            ["audit_runs.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["candidate_id"],
+            ["repo_optimization_candidates.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("repo_validation_runs", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_repo_validation_runs_audit_id"), ["audit_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_validation_runs_candidate_id"), ["candidate_id"], unique=False
+        )
+        batch_op.create_index(
+            batch_op.f("ix_repo_validation_runs_status"), ["status"], unique=False
+        )
+
+    op.create_table(
         "runtime_profile_runs",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("audit_id", sa.String(length=36), nullable=False),
@@ -794,6 +975,35 @@ def upgrade() -> None:
         )
 
     op.create_table(
+        "repo_benchmark_samples",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("benchmark_id", sa.String(length=36), nullable=False),
+        sa.Column("variant", sa.String(length=16), nullable=False),
+        sa.Column("warmup", sa.Boolean(), nullable=False),
+        sa.Column("pair_index", sa.Integer(), nullable=False),
+        sa.Column("sequence", sa.Integer(), nullable=False),
+        sa.Column("wall_ns", sa.BigInteger(), nullable=True),
+        sa.Column("cpu_ns", sa.BigInteger(), nullable=True),
+        sa.Column("peak_rss_bytes", sa.BigInteger(), nullable=True),
+        sa.Column("command_exit_code", sa.Integer(), nullable=True),
+        sa.Column("container_exit_code", sa.Integer(), nullable=True),
+        sa.Column("container_duration_s", sa.Float(), nullable=True),
+        sa.Column("ok", sa.Boolean(), nullable=False),
+        sa.Column("failure", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["benchmark_id"],
+            ["repo_benchmark_runs.id"],
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    with op.batch_alter_table("repo_benchmark_samples", schema=None) as batch_op:
+        batch_op.create_index(
+            batch_op.f("ix_repo_benchmark_samples_benchmark_id"), ["benchmark_id"], unique=False
+        )
+
+    op.create_table(
         "runtime_hotspots",
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("run_id", sa.String(length=36), nullable=False),
@@ -930,6 +1140,10 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f("ix_runtime_hotspots_is_user_code"))
 
     op.drop_table("runtime_hotspots")
+    with op.batch_alter_table("repo_benchmark_samples", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_repo_benchmark_samples_benchmark_id"))
+
+    op.drop_table("repo_benchmark_samples")
     with op.batch_alter_table("optimization_candidates", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_optimization_candidates_workload_id"))
         batch_op.drop_index(batch_op.f("ix_optimization_candidates_state"))
@@ -945,6 +1159,18 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f("ix_runtime_profile_runs_approval_id"))
 
     op.drop_table("runtime_profile_runs")
+    with op.batch_alter_table("repo_validation_runs", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_repo_validation_runs_status"))
+        batch_op.drop_index(batch_op.f("ix_repo_validation_runs_candidate_id"))
+        batch_op.drop_index(batch_op.f("ix_repo_validation_runs_audit_id"))
+
+    op.drop_table("repo_validation_runs")
+    with op.batch_alter_table("repo_benchmark_runs", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_repo_benchmark_runs_status"))
+        batch_op.drop_index(batch_op.f("ix_repo_benchmark_runs_candidate_id"))
+        batch_op.drop_index(batch_op.f("ix_repo_benchmark_runs_audit_id"))
+
+    op.drop_table("repo_benchmark_runs")
     with op.batch_alter_table("optimization_recommendations", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_optimization_recommendations_workload_id"))
         batch_op.drop_index(batch_op.f("ix_optimization_recommendations_rule_id"))
@@ -979,6 +1205,14 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f("ix_runtime_commands_audit_id"))
 
     op.drop_table("runtime_commands")
+    with op.batch_alter_table("repo_optimization_candidates", schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f("ix_repo_optimization_candidates_state"))
+        batch_op.drop_index(batch_op.f("ix_repo_optimization_candidates_snapshot_id"))
+        batch_op.drop_index(batch_op.f("ix_repo_optimization_candidates_finding_id"))
+        batch_op.drop_index(batch_op.f("ix_repo_optimization_candidates_audit_id"))
+        batch_op.drop_index(batch_op.f("ix_repo_optimization_candidates_approval_status"))
+
+    op.drop_table("repo_optimization_candidates")
     with op.batch_alter_table("profile_runs", schema=None) as batch_op:
         batch_op.drop_index(batch_op.f("ix_profile_runs_workload_id"))
         batch_op.drop_index(batch_op.f("ix_profile_runs_status"))

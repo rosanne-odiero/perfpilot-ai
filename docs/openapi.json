@@ -804,6 +804,287 @@
         }
       }
     },
+    "/api/optimizations/{candidate_id}/reports": {
+      "post": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "Request Optimization Reports",
+        "description": "One ``report.experiment`` job per format; repeating the request for the same candidate\nversion returns the existing reports.",
+        "operationId": "request_optimization_reports_api_optimizations__candidate_id__reports_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentReportsAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "List Optimization Reports",
+        "operationId": "list_optimization_reports_api_optimizations__candidate_id__reports_get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportOut"
+                  },
+                  "title": "Response List Optimization Reports Api Optimizations  Candidate Id  Reports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/benchmarks/{benchmark_id}/reports": {
+      "post": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "Request Benchmark Reports",
+        "description": "Reports for a finished benchmark of the bundled reference implementation.",
+        "operationId": "request_benchmark_reports_api_benchmarks__benchmark_id__reports_post",
+        "parameters": [
+          {
+            "name": "benchmark_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Benchmark Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentReportsAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "List Benchmark Reports",
+        "operationId": "list_benchmark_reports_api_benchmarks__benchmark_id__reports_get",
+        "parameters": [
+          {
+            "name": "benchmark_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Benchmark Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReportOut"
+                  },
+                  "title": "Response List Benchmark Reports Api Benchmarks  Benchmark Id  Reports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/experiments": {
+      "get": {
+        "tags": [
+          "experiments"
+        ],
+        "summary": "Experiment History",
+        "description": "Recent optimization candidates and reference benchmarks, newest first.",
+        "operationId": "experiment_history_api_experiments_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "workload_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Workload Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "optimization",
+                    "reference_benchmark"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExperimentOut"
+                  },
+                  "title": "Response Experiment History Api Experiments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -1643,6 +1924,490 @@
         }
       }
     },
+    "/api/audits/{audit_id}/optimizations": {
+      "post": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Create Repo Optimization",
+        "operationId": "create_repo_optimization_api_audits__audit_id__optimizations_post",
+        "parameters": [
+          {
+            "name": "audit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Audit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoOptimizationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoCandidateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "List Repo Optimizations",
+        "operationId": "list_repo_optimizations_api_audits__audit_id__optimizations_get",
+        "parameters": [
+          {
+            "name": "audit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Audit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RepoCandidateOut"
+                  },
+                  "title": "Response List Repo Optimizations Api Audits  Audit Id  Optimizations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}": {
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Get Repo Optimization",
+        "operationId": "get_repo_optimization_api_repo_optimizations__candidate_id__get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoCandidateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/diff": {
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Get Repo Optimization Diff",
+        "operationId": "get_repo_optimization_diff_api_repo_optimizations__candidate_id__diff_get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/approve": {
+      "post": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Approve Repo Optimization",
+        "operationId": "approve_repo_optimization_api_repo_optimizations__candidate_id__approve_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoCandidateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/reject": {
+      "post": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Reject Repo Optimization",
+        "operationId": "reject_repo_optimization_api_repo_optimizations__candidate_id__reject_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepoRejectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoCandidateOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/validate": {
+      "post": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Validate Repo Optimization",
+        "operationId": "validate_repo_optimization_api_repo_optimizations__candidate_id__validate_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RepoValidationRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/validation": {
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Get Repo Validation",
+        "operationId": "get_repo_validation_api_repo_optimizations__candidate_id__validation_get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoValidationOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/repo-optimizations/{candidate_id}/benchmark": {
+      "post": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Benchmark Repo Optimization",
+        "operationId": "benchmark_repo_optimization_api_repo_optimizations__candidate_id__benchmark_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RepoBenchmarkRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Get Repo Benchmark",
+        "operationId": "get_repo_benchmark_api_repo_optimizations__candidate_id__benchmark_get",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoBenchmarkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/audits/{audit_id}/reports": {
       "post": {
         "tags": [
@@ -1806,7 +2571,8 @@
             "schema": {
               "enum": [
                 "primary",
-                "benchmark_samples"
+                "benchmark_samples",
+                "validation_checks"
               ],
               "type": "string",
               "default": "primary",
@@ -4140,6 +4906,282 @@
         ],
         "title": "EffortEstimate"
       },
+      "ExperimentOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "optimization",
+              "reference_benchmark"
+            ],
+            "title": "Kind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "subject_type": {
+            "type": "string",
+            "enum": [
+              "optimization",
+              "benchmark"
+            ],
+            "title": "Subject Type"
+          },
+          "workload_id": {
+            "type": "string",
+            "title": "Workload Id"
+          },
+          "workload_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workload Slug"
+          },
+          "workload_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workload Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "validation_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Status"
+          },
+          "benchmark_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Id"
+          },
+          "benchmark_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Status"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "speedup": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speedup"
+          },
+          "speedup_ci_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speedup Ci Low"
+          },
+          "speedup_ci_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speedup Ci High"
+          },
+          "latency_reduction_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Reduction Percent"
+          },
+          "median_baseline_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Baseline Ms"
+          },
+          "median_candidate_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Candidate Ms"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "generated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated By"
+          },
+          "report_count": {
+            "type": "integer",
+            "title": "Report Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "subject_type",
+          "workload_id",
+          "workload_slug",
+          "workload_name",
+          "title",
+          "state",
+          "validation_status",
+          "benchmark_id",
+          "benchmark_status",
+          "size",
+          "classification",
+          "speedup",
+          "speedup_ci_low",
+          "speedup_ci_high",
+          "latency_reduction_percent",
+          "median_baseline_ms",
+          "median_candidate_ms",
+          "provenance",
+          "generated_by",
+          "report_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExperimentOut"
+      },
+      "ExperimentReportsAccepted": {
+        "properties": {
+          "subject_type": {
+            "$ref": "#/components/schemas/ExperimentSubject"
+          },
+          "subject_id": {
+            "type": "string",
+            "title": "Subject Id"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ReportJobAccepted"
+            },
+            "type": "array",
+            "title": "Reports"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject_type",
+          "subject_id",
+          "reports"
+        ],
+        "title": "ExperimentReportsAccepted"
+      },
+      "ExperimentSubject": {
+        "type": "string",
+        "enum": [
+          "optimization",
+          "benchmark"
+        ],
+        "title": "ExperimentSubject"
+      },
       "FileContentOut": {
         "properties": {
           "snapshot_id": {
@@ -5421,6 +6463,12 @@
             "maxLength": 64,
             "minLength": 1,
             "title": "Recommendation Id"
+          },
+          "use_llm": {
+            "type": "boolean",
+            "title": "Use Llm",
+            "description": "Consent to send the target function and its evidence to the configured LLM when no safe deterministic patch exists (requires a configured model)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6044,6 +7092,973 @@
         ],
         "title": "RejectionRequest"
       },
+      "RepoApprovalRequest": {
+        "properties": {
+          "approved_by": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.@ -]{1,128}$",
+            "title": "Approved By",
+            "default": "local-user"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RepoApprovalRequest"
+      },
+      "RepoBenchmarkOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "approval_id": {
+            "type": "string",
+            "title": "Approval Id"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "MEASURED",
+            "title": "Provenance",
+            "default": "MEASURED"
+          },
+          "argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Argv"
+          },
+          "workdir_rel": {
+            "type": "string",
+            "title": "Workdir Rel"
+          },
+          "image": {
+            "type": "string",
+            "title": "Image"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Limits"
+          },
+          "warmups": {
+            "type": "integer",
+            "title": "Warmups"
+          },
+          "runs": {
+            "type": "integer",
+            "title": "Runs"
+          },
+          "threshold_percent": {
+            "type": "number",
+            "title": "Threshold Percent"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "timed": {
+            "type": "string",
+            "title": "Timed"
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Inputs"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Summary"
+          },
+          "speedup": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speedup"
+          },
+          "speedup_ci": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Speedup Ci"
+          },
+          "latency_reduction_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Reduction Percent"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "classification_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Reason"
+          },
+          "environment": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Environment"
+          },
+          "warnings": {
+            "items": {},
+            "type": "array",
+            "title": "Warnings"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/RepoBenchmarkSampleOut"
+            },
+            "type": "array",
+            "title": "Samples"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "candidate_id",
+          "audit_id",
+          "approval_id",
+          "job_id",
+          "status",
+          "argv",
+          "workdir_rel",
+          "image",
+          "limits",
+          "warmups",
+          "runs",
+          "threshold_percent",
+          "seed",
+          "timed",
+          "inputs",
+          "summary",
+          "speedup",
+          "speedup_ci",
+          "latency_reduction_percent",
+          "classification",
+          "classification_reason",
+          "environment",
+          "warnings",
+          "error",
+          "samples",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "RepoBenchmarkOut"
+      },
+      "RepoBenchmarkRequest": {
+        "properties": {
+          "warmups": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Warmups",
+            "default": 1
+          },
+          "runs": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 2.0,
+            "title": "Runs",
+            "description": "Measured runs per variant",
+            "default": 10
+          },
+          "threshold_percent": {
+            "type": "number",
+            "exclusiveMaximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Threshold Percent",
+            "default": 5.0
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 0
+          },
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id",
+            "description": "A specific approved workload command of this audit (default: the latest)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RepoBenchmarkRequest"
+      },
+      "RepoBenchmarkSampleOut": {
+        "properties": {
+          "variant": {
+            "type": "string",
+            "title": "Variant"
+          },
+          "warmup": {
+            "type": "boolean",
+            "title": "Warmup"
+          },
+          "pair_index": {
+            "type": "integer",
+            "title": "Pair Index"
+          },
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "wall_ns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wall Ns"
+          },
+          "cpu_ns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Ns"
+          },
+          "peak_rss_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Rss Bytes"
+          },
+          "command_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command Exit Code"
+          },
+          "container_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Exit Code"
+          },
+          "container_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Container Duration S"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "variant",
+          "warmup",
+          "pair_index",
+          "sequence",
+          "wall_ns",
+          "cpu_ns",
+          "peak_rss_bytes",
+          "command_exit_code",
+          "container_exit_code",
+          "container_duration_s",
+          "ok",
+          "failure"
+        ],
+        "title": "RepoBenchmarkSampleOut"
+      },
+      "RepoCandidateOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "title": "Snapshot Id"
+          },
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "finding_title": {
+            "type": "string",
+            "title": "Finding Title"
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "MEASURED",
+              "STATIC"
+            ],
+            "title": "Evidence",
+            "description": "Whether the finding carried profiler evidence when the candidate was made"
+          },
+          "measured_evidence": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Evidence"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "proposed",
+              "no_safe_patch",
+              "rejected_by_validator",
+              "rejected"
+            ],
+            "title": "Outcome"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "state_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "State History"
+          },
+          "generated_by": {
+            "type": "string",
+            "title": "Generated By"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "transform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transform"
+          },
+          "target_file": {
+            "type": "string",
+            "title": "Target File"
+          },
+          "target_function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Function"
+          },
+          "line_start": {
+            "type": "integer",
+            "title": "Line Start"
+          },
+          "line_end": {
+            "type": "integer",
+            "title": "Line End"
+          },
+          "original_file_sha256": {
+            "type": "string",
+            "title": "Original File Sha256"
+          },
+          "original_tree_sha256": {
+            "type": "string",
+            "title": "Original Tree Sha256"
+          },
+          "patched_file_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patched File Sha256"
+          },
+          "patched_tree_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patched Tree Sha256"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "notes": {
+            "items": {},
+            "type": "array",
+            "title": "Notes"
+          },
+          "proposer_attempts": {
+            "items": {},
+            "type": "array",
+            "title": "Proposer Attempts"
+          },
+          "llm_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Usage"
+          },
+          "patch_validation": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Patch Validation"
+          },
+          "approval": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Approval"
+          },
+          "rejection_reasons": {
+            "items": {},
+            "type": "array",
+            "title": "Rejection Reasons"
+          },
+          "workspace_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Path"
+          },
+          "validation_status": {
+            "type": "string",
+            "title": "Validation Status"
+          },
+          "validation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepoValidationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "benchmark": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepoBenchmarkOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "audit_id",
+          "snapshot_id",
+          "finding_id",
+          "rule_id",
+          "finding_title",
+          "evidence",
+          "measured_evidence",
+          "outcome",
+          "state",
+          "state_history",
+          "generated_by",
+          "provenance",
+          "transform",
+          "target_file",
+          "target_function",
+          "line_start",
+          "line_end",
+          "original_file_sha256",
+          "original_tree_sha256",
+          "patched_file_sha256",
+          "patched_tree_sha256",
+          "summary",
+          "notes",
+          "proposer_attempts",
+          "llm_usage",
+          "patch_validation",
+          "approval",
+          "rejection_reasons",
+          "workspace_path",
+          "validation_status",
+          "validation",
+          "benchmark",
+          "error",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RepoCandidateOut"
+      },
+      "RepoOptimizationRequest": {
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Finding Id",
+            "description": "A finding of this audit (stable finding id)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "finding_id"
+        ],
+        "title": "RepoOptimizationRequest"
+      },
+      "RepoRejectionRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "rejected_by": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.@ -]{1,128}$",
+            "title": "Rejected By",
+            "default": "local-user"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "RepoRejectionRequest"
+      },
+      "RepoValidationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "approval_id": {
+            "type": "string",
+            "title": "Approval Id"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "provenance": {
+            "type": "string",
+            "const": "MEASURED",
+            "title": "Provenance",
+            "default": "MEASURED"
+          },
+          "argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Argv"
+          },
+          "workdir_rel": {
+            "type": "string",
+            "title": "Workdir Rel"
+          },
+          "image": {
+            "type": "string",
+            "title": "Image"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Limits"
+          },
+          "checks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Checks"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "variants": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Variants"
+          },
+          "test_comparison": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Test Comparison"
+          },
+          "patched_function_executed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patched Function Executed"
+          },
+          "environment": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Environment"
+          },
+          "original_tree_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Tree Sha256"
+          },
+          "patched_tree_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patched Tree Sha256"
+          },
+          "logs_artifact_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logs Artifact Id"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "candidate_id",
+          "audit_id",
+          "approval_id",
+          "job_id",
+          "status",
+          "argv",
+          "workdir_rel",
+          "image",
+          "limits",
+          "checks",
+          "summary",
+          "variants",
+          "test_comparison",
+          "patched_function_executed",
+          "environment",
+          "original_tree_sha256",
+          "patched_tree_sha256",
+          "logs_artifact_id",
+          "duration_seconds",
+          "error",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "RepoValidationOut"
+      },
+      "RepoValidationRequest": {
+        "properties": {
+          "approval_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Id",
+            "description": "A specific approved pytest command of this audit (default: the latest)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RepoValidationRequest"
+      },
       "ReportFileOut": {
         "properties": {
           "role": {
@@ -6140,6 +8155,22 @@
               }
             ],
             "title": "Audit Id"
+          },
+          "subject_type": {
+            "type": "string",
+            "title": "Subject Type",
+            "default": "audit"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
           },
           "format": {
             "$ref": "#/components/schemas/ReportFormat"

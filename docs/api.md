@@ -135,3 +135,32 @@ Health and the background job queue every long-running endpoint returns.
 | GET | `/api/jobs` | `limit`, `job_type` | 200 list[JobOut] | List Jobs |
 | GET | `/api/jobs/{job_id}` |  | 200 `JobOut` | Get Job |
 | POST | `/api/jobs/{job_id}/cancel` |  | 200 `JobOut` | Cancel Job |
+
+## Other
+
+Routes not yet assigned to a workflow.
+
+### experiments
+
+| Method | Path | Query | Returns | Summary |
+|---|---|---|---|---|
+| GET | `/api/benchmarks/{benchmark_id}/reports` |  | 200 list[ReportOut] | List Benchmark Reports |
+| POST | `/api/benchmarks/{benchmark_id}/reports` |  | 202 `ExperimentReportsAccepted` — async job | Reports for a finished benchmark of the bundled reference implementation. |
+| GET | `/api/experiments` | `limit`, `workload_id`, `kind` | 200 list[ExperimentOut] | Recent optimization candidates and reference benchmarks, newest first. |
+| GET | `/api/optimizations/{candidate_id}/reports` |  | 200 list[ReportOut] | List Optimization Reports |
+| POST | `/api/optimizations/{candidate_id}/reports` |  | 202 `ExperimentReportsAccepted` — async job | One `report.experiment` job per format; repeating the request for the same candidate |
+
+### repo-optimization
+
+| Method | Path | Query | Returns | Summary |
+|---|---|---|---|---|
+| GET | `/api/audits/{audit_id}/optimizations` |  | 200 list[RepoCandidateOut] | List Repo Optimizations |
+| POST | `/api/audits/{audit_id}/optimizations` |  | 201 `RepoCandidateOut` | Create Repo Optimization |
+| GET | `/api/repo-optimizations/{candidate_id}` |  | 200 `RepoCandidateOut` | Get Repo Optimization |
+| POST | `/api/repo-optimizations/{candidate_id}/approve` |  | 200 `RepoCandidateOut` | Approve Repo Optimization |
+| GET | `/api/repo-optimizations/{candidate_id}/benchmark` |  | 200 `RepoBenchmarkOut` | Get Repo Benchmark |
+| POST | `/api/repo-optimizations/{candidate_id}/benchmark` |  | 202 `JobAccepted` — async job | Benchmark Repo Optimization |
+| GET | `/api/repo-optimizations/{candidate_id}/diff` |  | 200 `DiffOut` | Get Repo Optimization Diff |
+| POST | `/api/repo-optimizations/{candidate_id}/reject` |  | 200 `RepoCandidateOut` | Reject Repo Optimization |
+| POST | `/api/repo-optimizations/{candidate_id}/validate` |  | 202 `JobAccepted` — async job | Validate Repo Optimization |
+| GET | `/api/repo-optimizations/{candidate_id}/validation` |  | 200 `RepoValidationOut` | Get Repo Validation |
