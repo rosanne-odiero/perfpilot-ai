@@ -224,9 +224,9 @@ every merge leaves `main` runnable.
 
 **`feature/runtime-audit`**
 - [x] Command discovery: pytest/unittest, `pytest-benchmark`, `asv`, `tox`/`nox` envs, Makefile targets, `[project.scripts]`. Each is a proposal with provenance, never auto-run. *(landed on `feature/sandbox-runtime`)*
-- [ ] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; enforcement is wired by the runtime-audit job handler)*
-- [ ] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols
-- [ ] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
+- [x] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; API + single-use enforcement in the `runtime.profile` job, see `docs/runtime-audit.md`)*
+- [ ] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols *(implemented; tested with real harness output through a test-double backend; real-container tests in `tests/runtime/test_runtime_docker_e2e.py` pending a Docker install)*
+- [x] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
 - [ ] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload
 - **Exit:** on a trusted fixture, an approved workload yields measured hotspots that are correlated to findings.
 

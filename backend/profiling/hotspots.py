@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pstats
 import sysconfig
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -86,14 +87,34 @@ def _is_profiler_frame(function_name: str) -> bool:
     return "_lsprof.Profiler" in function_name
 
 
+StatsRow = tuple[str, int, str, int, int, float, float]
+"""``(filename, line, function, cc, nc, tottime_s, cumtime_s)`` — one pstats entry."""
+
+LocationClassifier = Callable[[str], tuple[HotspotLocation, str, bool]]
+
+
 def parse_profile(prof_path: Path, workspace_root: Path) -> ParsedProfile:
-    """Parse a cProfile dump. All functions are kept; ``rank`` orders them by exclusive time."""
+    """Parse a cProfile dump. All functions are kept; ``rank`` orders them by exclusive time.
+
+    Only for ``.prof`` files PerfPilot produced itself: pstats unmarshals the file, which is not
+    safe for untrusted input. Sandbox runs use :func:`build_profile` on the harness's JSON table.
+    """
     stats = pstats.Stats(str(prof_path))
     raw = stats.stats  # type: ignore[attr-defined]
-    total_tt = sum(entry[2] for entry in raw.values())
+    rows = [
+        (filename, int(line), func, int(cc), int(nc), float(tt), float(ct))
+        for (filename, line, func), (cc, nc, tt, ct, _callers) in raw.items()
+    ]
+    return build_profile(rows, lambda filename: classify_location(filename, workspace_root))
+
+
+def build_profile(rows: Iterable[StatsRow], classify: LocationClassifier) -> ParsedProfile:
+    """Turn pstats rows into ranked hotspot records using ``classify`` for file locations."""
+    materialized = list(rows)
+    total_tt = sum(row[5] for row in materialized)
     records: list[HotspotRecord] = []
-    for (filename, line, func), (cc, nc, tt, ct, _callers) in raw.items():
-        kind, display, available = classify_location(filename, workspace_root)
+    for filename, line, func, cc, nc, tt, ct in materialized:
+        kind, display, available = classify(filename)
         if _is_profiler_frame(func):
             kind = HotspotLocation.HARNESS
         records.append(

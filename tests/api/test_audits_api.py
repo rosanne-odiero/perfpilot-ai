@@ -173,13 +173,13 @@ def test_llm_flags(client: TestClient, settings: Settings) -> None:
     assert any("no AI analysis stage" in w for w in audit["warnings"])
 
 
-def test_runtime_mode_is_not_configured(client: TestClient, settings: Settings) -> None:
+def test_runtime_mode_is_accepted(client: TestClient, settings: Settings) -> None:
     snapshot_id, _ = _ready_snapshot(settings)
     response = client.post("/api/audits", json={"snapshot_id": snapshot_id, "mode": "RUNTIME"})
-    assert response.status_code == 501
-    error = response.json()["error"]
-    assert error["code"] == "not_configured"
-    assert "sandbox" in error["message"]
+    assert response.status_code == 202, response.text
+    audit = client.get(f"/api/audits/{response.json()['subject_id']}").json()
+    assert audit["mode"] == "RUNTIME"
+    assert audit["stage"] == "QUEUED"
 
 
 def test_request_validation_and_missing_resources(client: TestClient, settings: Settings) -> None:

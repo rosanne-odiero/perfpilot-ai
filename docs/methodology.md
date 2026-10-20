@@ -91,6 +91,18 @@ cProfile instruments every call. Absolute times under the profiler are inflated,
 many cheap calls (e.g. builtins inside a loop) are over-represented. Use profiles to decide *where*
 to look. Use the benchmark to decide *whether a change helped*.
 
+### Command mode options
+
+`mode = "command"` runs a module, script or pytest target once under cProfile. Two opt-in flags on
+the `command` object are used by Runtime Audits ([runtime-audit.md](runtime-audit.md)):
+
+* `trace_memory`: tracemalloc runs **concurrently** with cProfile (one execution, so the command
+  is not run twice); the result gains `memory.tracemalloc_peak_bytes`. Timings then include
+  tracemalloc's overhead as well as cProfile's.
+* `stats_json`: also write `profile_stats.json`, the pstats table as plain JSON
+  (`[file, line, function, cc, nc, tt, ct, callers]`). Consumers of untrusted runs read this
+  instead of unmarshalling `profile.prof`, because `marshal` is not safe for untrusted input.
+
 ## 3. Benchmarking (paired A/B)
 
 The baseline is the registered workspace. The candidate is a copy of the workspace with the
