@@ -198,3 +198,21 @@ def noise_warnings(run: dict[str, Any]) -> list[str]:
                 f"{NOISY_CV_PERCENT:.0f}%); small differences may be noise."
             )
     return list(dict.fromkeys(warnings))
+
+
+def repo_samples_as_timing(samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Measured (non-warm-up) samples of a repository benchmark in the shape ``timing_frame``
+    expects; warm-up pairs are excluded, exactly as in the statistics."""
+    return [
+        {
+            "variant": s["variant"],
+            "kind": "timing",
+            "pair_index": s["pair_index"],
+            "position_in_pair": s.get("sequence", 0),
+            "wall_ns": s.get("wall_ns"),
+            "cpu_ns": s.get("cpu_ns"),
+            "ok": bool(s.get("ok")),
+        }
+        for s in samples
+        if not s.get("warmup")
+    ]

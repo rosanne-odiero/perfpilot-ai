@@ -36,8 +36,12 @@ def approval_status(candidate: dict[str, Any]) -> str:
     return str((candidate.get("approval") or {}).get("status") or "PENDING")
 
 
+REPO_LIFECYCLE = ("Finding", "Patch", "Approve", "Validate", "Benchmark", "Done")
+_REPO_OFFSET = 2  # REPO_LIFECYCLE[i] == LIFECYCLE[i + 2] from "Patch" on
+
+
 def _candidate_step(candidate: dict[str, Any]) -> tuple[int, bool]:
-    """(index of the current step, failed?)."""
+    """(index in ``LIFECYCLE`` of the current step, failed?)."""
     state = candidate["state"]
     if state in _CANDIDATE_STEP:
         step = _CANDIDATE_STEP[state]
@@ -77,6 +81,21 @@ def lifecycle_steps(
         return "todo"
 
     return [(label, state_of(i)) for i, label in enumerate(LIFECYCLE)]
+
+
+def repo_lifecycle_steps(candidate: dict[str, Any]) -> list[tuple[str, str]]:
+    """Stepper for a repository candidate: the finding replaces profile/analysis/recommendation."""
+    current, failed = _candidate_step(candidate)
+    index = max(1, current - _REPO_OFFSET)
+
+    def state_of(i: int) -> str:
+        if i < index:
+            return "done"
+        if i == index:
+            return "failed" if failed else "active"
+        return "todo"
+
+    return [(label, state_of(i)) for i, label in enumerate(REPO_LIFECYCLE)]
 
 
 def allowed_actions(candidate: dict[str, Any]) -> set[str]:

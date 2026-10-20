@@ -239,3 +239,37 @@ def candidate_diff(candidate_id: str) -> dict[str, Any]:
 @st.cache_data(ttl=SHORT, show_spinner=False)
 def workload_candidates(workload_id: str) -> Any:
     return api.get_if_supported(f"/workloads/{workload_id}/optimizations")
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def subject_reports(path: str) -> list[dict[str, Any]]:
+    """Reports of an experiment subject (``/optimizations/{id}/reports``, ``/benchmarks/...``)."""
+    return list(api.get(path))
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def experiments(limit: int = 100, workload_id: str | None = None) -> Any:
+    params: dict[str, Any] = {"limit": limit}
+    if workload_id:
+        params["workload_id"] = workload_id
+    return api.get_if_supported("/experiments", params=params)
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def repo_candidates(audit_id: str) -> Any:
+    return api.get_if_supported(f"/audits/{audit_id}/optimizations")
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def repo_candidate(candidate_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/repo-optimizations/{candidate_id}"))
+
+
+@st.cache_data(ttl=LONG, show_spinner=False)
+def repo_diff(candidate_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/repo-optimizations/{candidate_id}/diff"))
+
+
+def clear_repo_optimization_caches() -> None:
+    for fn in (repo_candidates, repo_candidate, jobs):
+        fn.clear()

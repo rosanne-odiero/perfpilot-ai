@@ -26,6 +26,7 @@ from frontend.components.runtime import (
 from frontend.formatting import fmt_dt, fmt_ms, fmt_pct, human_bytes, items_of
 from frontend.theme import badge, esc, severity_badge, status_badge
 from frontend.views.audit_context import AuditContext, open_in_files
+from frontend.views.audit_optimize import render_optimize_button
 
 RUN_JOB_KEY = "runtime_job_{audit_id}"
 CHECK_JOB_KEY = "runtime_check_job"
@@ -275,7 +276,9 @@ def _run_cards(run: dict[str, Any]) -> list[Card]:
     ]
 
 
-def _correlation(corr: dict[str, Any], finding: dict[str, Any] | None, index: int) -> None:
+def _correlation(
+    corr: dict[str, Any], finding: dict[str, Any] | None, index: int, audit_id: str = ""
+) -> None:
     loc = corr["location"]
     with st.container(border=True):
         left, right = st.columns(2, gap="medium")
@@ -291,6 +294,8 @@ def _correlation(corr: dict[str, Any], finding: dict[str, Any] | None, index: in
             symbol = f" in `{loc['symbol']}`" if loc.get("symbol") else ""
             st.markdown(f"`{corr['rule_id']}` · `{span}`{symbol}")
             st.caption(f"Static priority {corr['static_priority_score']:.1f}")
+            if finding and audit_id:
+                render_optimize_button(audit_id, finding, key=f"corr_{index}")
             st.button(
                 "Open in file viewer",
                 key=f"corr_open_{index}",
@@ -394,12 +399,12 @@ def _run_detail(context: AuditContext, run_id: str) -> None:
         by_id = {f["id"]: f for f in findings}
         ordered = sorted(correlations, key=lambda c: -c["measured_priority_score"])
         for index, corr in enumerate(ordered[:TOP_CORRELATIONS]):
-            _correlation(corr, by_id.get(corr["finding_id"]), index)
+            _correlation(corr, by_id.get(corr["finding_id"]), index, context.id)
         rest = ordered[TOP_CORRELATIONS:]
         if rest:
             with st.expander(f"{len(rest)} more confirmed finding(s)"):
                 for index, corr in enumerate(rest, start=TOP_CORRELATIONS):
-                    _correlation(corr, by_id.get(corr["finding_id"]), index)
+                    _correlation(corr, by_id.get(corr["finding_id"]), index, context.id)
     runtime_only = run.get("runtime_only_hotspots") or []
     if runtime_only:
         st.markdown(
@@ -409,8 +414,8 @@ def _run_detail(context: AuditContext, run_id: str) -> None:
         st.dataframe(runtime_only_frame(runtime_only), hide_index=True, width="stretch")
     if hotspots or runtime_only:
         st.caption(
-            "Patch, validate and benchmark deep dives run on registered workloads in the Workload "
-            "Lab; repository hotspots are measured here but never patched automatically."
+            "Hotspots are never patched automatically: use Optimize this finding on a confirmed "
+            "finding to review a patch, then validate and benchmark it in the sandbox."
         )
     _run_extras(run)
 

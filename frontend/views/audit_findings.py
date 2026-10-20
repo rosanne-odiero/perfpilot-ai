@@ -14,6 +14,7 @@ from frontend.components.findings_table import (
 from frontend.components.notices import empty_state
 from frontend.formatting import humanize
 from frontend.views.audit_context import FINDINGS_MODULE_KEY, AuditContext
+from frontend.views.audit_optimize import render_optimize_button
 
 ALL = "(all)"
 
@@ -87,3 +88,4 @@ def render(context: AuditContext) -> None:
         return
     with st.container(border=True):
         render_detail(selected, context.source_context())
+        render_optimize_button(context.id, selected, key=f"finding_{selected['id']}")
