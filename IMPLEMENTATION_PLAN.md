@@ -117,7 +117,7 @@ every merge leaves `main` runnable.
 ### Phase 0 — Planning · `docs/implementation-plan`
 - [x] Read and reconcile the base spec and the Repository Audit feature spec
 - [x] Write this plan, the decisions log, and the development workflow
-- [ ] Merge to `main`
+- [x] Merge to `main`
 
 ### Phase 1 — Foundation · `feature/foundation`
 - [ ] `pyproject.toml` managed by `uv`, Python 3.12, committed `uv.lock`
