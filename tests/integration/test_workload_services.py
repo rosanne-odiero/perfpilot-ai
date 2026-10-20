@@ -120,3 +120,30 @@ def test_cli_profile_uses_the_same_services(tmp_path: Path) -> None:
     assert view.status == "SUCCEEDED"
     assert view.top_user_hotspots[0].function_name == "find_known"
     assert len(payload["hotspots"]) == 3
+
+
+def test_seeding_skips_invalid_examples(settings: Settings, tmp_path: Path) -> None:
+    import shutil
+
+    from backend.services.workloads import list_workloads, seed_bundled_examples
+
+    examples = tmp_path / "examples"
+    shutil.copytree(ROOT / "examples" / "list_lookup", examples / "good")
+    bad_manifest = examples / "bad_manifest"
+    bad_manifest.mkdir()
+    (bad_manifest / "workload.json").write_text("{not json")
+    escaping = examples / "escaping"
+    shutil.copytree(ROOT / "examples" / "list_lookup", escaping)
+    (escaping / "workload.py").unlink()
+    (escaping / "workload.py").symlink_to(ROOT / "examples" / "list_lookup" / "workload.py")
+    with session_scope() as session:
+        project = seed_bundled_examples(session, examples)
+        assert project is not None
+        assert [w.slug for w in list_workloads(session, project.id)] == ["good"]
+        first_snapshot = list_workloads(session, project.id)[0].source_snapshot_id
+    with session_scope() as session:
+        project = seed_bundled_examples(session, examples)
+        assert project is not None
+        workloads = list_workloads(session, project.id)
+        assert len(workloads) == 1
+        assert workloads[0].source_snapshot_id == first_snapshot

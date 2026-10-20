@@ -10,7 +10,12 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.core.exceptions import NotFoundError, SecurityViolationError, ValidationFailedError
+from backend.core.exceptions import (
+    NotFoundError,
+    PerfPilotError,
+    SecurityViolationError,
+    ValidationFailedError,
+)
 from backend.core.logging import get_logger
 from backend.models.orm.workloads import Project, Workload
 from backend.models.workloads import WorkloadManifest, WorkloadSpec
@@ -65,14 +70,21 @@ def resolve_workspace_file(workspace_root: Path, relative: str) -> Path:
     return path
 
 
-def validate_spec_targets(spec: WorkloadSpec) -> None:
-    root = Path(spec.workspace_path)
+def validate_targets(
+    root: Path, entrypoint: str, fixture: str, reference_candidate: str | None
+) -> None:
     if not root.is_dir():
-        raise ValidationFailedError(f"workspace for workload {spec.slug!r} is missing")
-    resolve_target_file(root, spec.entrypoint)
-    resolve_target_file(root, spec.fixture_id)
-    if spec.reference_candidate:
-        resolve_workspace_file(root, spec.reference_candidate)
+        raise ValidationFailedError(f"workspace {root.name!r} is missing")
+    resolve_target_file(root, entrypoint)
+    resolve_target_file(root, fixture)
+    if reference_candidate:
+        resolve_workspace_file(root, reference_candidate)
+
+
+def validate_spec_targets(spec: WorkloadSpec) -> None:
+    validate_targets(
+        Path(spec.workspace_path), spec.entrypoint, spec.fixture_id, spec.reference_candidate
+    )
 
 
 def build_spec(workload: Workload) -> WorkloadSpec:
@@ -106,8 +118,15 @@ def discover_bundled(examples_dir: Path = EXAMPLES_DIR) -> list[tuple[str, Path,
         return []
     found = []
     for child in sorted(examples_dir.iterdir()):
-        if child.is_dir() and (child / MANIFEST_NAME).is_file():
+        if not (child.is_dir() and (child / MANIFEST_NAME).is_file()):
+            continue
+        try:
             found.append((child.name, child.resolve(), load_manifest(child)))
+        except ValidationFailedError as exc:
+            log.warning(
+                "skipping invalid bundled workload",
+                extra={"slug": child.name, "error": exc.message},
+            )
     return found
 
 
@@ -133,6 +152,16 @@ def seed_bundled_examples(session: Session, examples_dir: Path = EXAMPLES_DIR) -
         session.flush()
     project.root_path = str(examples_dir.resolve())
     for slug, workspace, manifest in bundled:
+        try:
+            validate_targets(
+                workspace, manifest.entrypoint, manifest.fixture, manifest.reference_candidate
+            )
+        except PerfPilotError as exc:
+            log.warning(
+                "skipping bundled workload with invalid targets",
+                extra={"slug": slug, "error": exc.message},
+            )
+            continue
         workload = session.scalar(
             select(Workload).where(Workload.project_id == project.id, Workload.slug == slug)
         )
@@ -144,7 +173,6 @@ def seed_bundled_examples(session: Session, examples_dir: Path = EXAMPLES_DIR) -
         workload.workspace_path = str(workspace)
         workload.manifest = manifest.model_dump(mode="json")
         session.flush()
-        validate_spec_targets(build_spec(workload))
         tree_sha, _ = hash_tree(workspace)
         if workload.tree_sha256 != tree_sha:
             snapshot = create_snapshot(
