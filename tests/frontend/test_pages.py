@@ -19,6 +19,7 @@ AUDIT_TABS = [
     "Dependency graph",
     "AI insights",
     "Runtime",
+    "Optimize",
     "Export",
 ]
 

@@ -2,7 +2,7 @@
  "approval_ttl_seconds": 86400,
  "available": true,
  "backend": "docker",
- "checked_at": "2026-10-20T19:42:29.118898Z",
+ "checked_at": "2026-10-20T20:45:12.279373Z",
  "default_limits": {
   "cpus": 2.0,
   "memory_mb": 2048,
@@ -16,7 +16,7 @@
  "details": {
   "cgroup_version": "2",
   "image": "perfpilot-sandbox:latest",
-  "image_id": "sha256:f4931a11bf7dfb2339234b3ce56f06709f1fe9202acaacfc865e40787b27f839",
+  "image_id": "sha256:344f19264de844b5bf76b33f9aecb93846a9e0ef0ec5bdd13ea55a520cc545b8",
   "operating_system": "Docker Desktop",
   "server_version": "29.9.1"
  },

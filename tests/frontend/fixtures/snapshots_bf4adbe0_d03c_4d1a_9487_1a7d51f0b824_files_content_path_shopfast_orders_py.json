@@ -1,0 +1,10 @@
+{
+ "content": "\"\"\"Order queries and order history snapshots.\"\"\"\n\nfrom __future__ import annotations\n\nimport copy\nimport sqlite3\n\n\ndef order_summaries(conn: sqlite3.Connection, order_ids: list[int]) -> list[dict[str, object]]:\n    cursor = conn.cursor()\n    summaries: list[dict[str, object]] = []\n    for order_id in order_ids:\n        cursor.execute(\n            \"SELECT id, customer_id, total_cents FROM orders WHERE id = ?\", (order_id,)\n        )\n        row = cursor.fetchone()\n        if row is None:\n            continue\n        customer = conn.execute(\n            \"SELECT name, tier FROM customers WHERE id = ?\", (row[1],)\n        ).fetchone()\n        summaries.append(\n            {\"id\": row[0], \"customer\": customer[0], \"tier\": customer[1], \"total_cents\": row[2]}\n        )\n    return summaries\n\n\ndef order_summaries_batched(\n    conn: sqlite3.Connection, order_ids: list[int]\n) -> list[dict[str, object]]:\n    if not order_ids:\n        return []\n    placeholders = \",\".join(\"?\" for _ in order_ids)\n    rows = conn.execute(\n        \"SELECT o.id, c.name, c.tier, o.total_cents FROM orders o \"\n        f\"JOIN customers c ON c.id = o.customer_id WHERE o.id IN ({placeholders})\",\n        order_ids,\n    ).fetchall()\n    by_id = {row[0]: row for row in rows}\n    return [\n        {\"id\": i, \"customer\": by_id[i][1], \"tier\": by_id[i][2], \"total_cents\": by_id[i][3]}\n        for i in order_ids\n        if i in by_id\n    ]\n\n\ndef history_snapshots(cart: dict[str, int], updates: list[tuple[str, int]]) -> list[dict[str, int]]:\n    history = []\n    state = dict(cart)\n    for sku, quantity in updates:\n        state[sku] = state.get(sku, 0) + quantity\n        history.append(copy.deepcopy(state))\n    return history\n",
+ "language": "Python",
+ "path": "shopfast/orders.py",
+ "redaction_kinds": {},
+ "redactions": 0,
+ "sha256": "ecd1719be43e1c86b9afba5c74489e1b76952bb8ab69ffc4cd55ffb45718adc3",
+ "size_bytes": 1700,
+ "snapshot_id": "bf4adbe0-d03c-4d1a-9487-1a7d51f0b824"
+}

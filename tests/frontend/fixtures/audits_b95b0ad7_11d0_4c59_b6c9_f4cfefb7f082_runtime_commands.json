@@ -1,0 +1,75 @@
+[
+ {
+  "argv": [
+   "python",
+   "-m",
+   "pytest",
+   "-q"
+  ],
+  "command_key": "32a0c2f9c4f59aa6",
+  "description": "pytest test suite: 7 test file(s), configured in pyproject.toml",
+  "discovered_at": "2026-10-20T20:44:28.982032",
+  "estimated_risk": "low",
+  "evidence": [
+   "pyproject.toml:14",
+   "tests/conftest.py:1",
+   "tests/test_api.py:1",
+   "tests/test_catalog.py:1",
+   "tests/test_inventory_sync.py:1",
+   "tests/test_orders.py:1",
+   "tests/test_pricing.py:1"
+  ],
+  "id": "15c813de-2ddc-4c40-b0c5-bf464434f113",
+  "kind": "pytest",
+  "provenance": "STATIC",
+  "reason_if_not_runnable": null,
+  "requires_dependencies": false,
+  "runnable": true,
+  "third_party_imports": [],
+  "workdir_rel": "."
+ },
+ {
+  "argv": [
+   "python",
+   "benchmarks/run_workload.py"
+  ],
+  "command_key": "576dccafced44ad0",
+  "description": "script with a __main__ guard in benchmarks/",
+  "discovered_at": "2026-10-20T20:44:28.982041",
+  "estimated_risk": "low",
+  "evidence": [
+   "benchmarks/run_workload.py:84"
+  ],
+  "id": "4715f327-6a56-4be8-8d39-9e9258b5f3be",
+  "kind": "script",
+  "provenance": "STATIC",
+  "reason_if_not_runnable": null,
+  "requires_dependencies": false,
+  "runnable": true,
+  "third_party_imports": [],
+  "workdir_rel": "."
+ },
+ {
+  "argv": [
+   "python",
+   "-m",
+   "shopfast.app"
+  ],
+  "command_key": "592ee55f5cde3063",
+  "description": "console script 'shopfast' -> shopfast.app:main",
+  "discovered_at": "2026-10-20T20:44:28.982045",
+  "estimated_risk": "medium",
+  "evidence": [
+   "pyproject.toml:2",
+   "shopfast/app.py:1"
+  ],
+  "id": "d22e96cb-f262-484a-8b5d-b634ea114111",
+  "kind": "module",
+  "provenance": "STATIC",
+  "reason_if_not_runnable": null,
+  "requires_dependencies": false,
+  "runnable": true,
+  "third_party_imports": [],
+  "workdir_rel": "."
+ }
+]

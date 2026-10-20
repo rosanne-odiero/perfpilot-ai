@@ -19,7 +19,14 @@ APP = str(Path(__file__).resolve().parents[1] / "frontend" / "app.py")
 
 # Routes of the AI, runtime and optimization API areas: absent when ``legacy`` simulates an API
 # version from before those areas existed.
-MISSING_PREFIXES = ("/runtime/", "/ai/", "/optimizations", "/analyses")
+MISSING_PREFIXES = (
+    "/runtime/",
+    "/ai/",
+    "/optimizations",
+    "/analyses",
+    "/experiments",
+    "/repo-optimizations",
+)
 MISSING_SUFFIXES = (
     "/recommendations",
     "/insights",
@@ -51,6 +58,7 @@ class FakeApi:
             path.startswith(MISSING_PREFIXES)
             or (path.startswith(("/audits/", "/workloads/")) and path.endswith(MISSING_SUFFIXES))
             or "/runtime/runs/" in path
+            or (path.startswith("/benchmarks/") and path.endswith("/reports"))
         )
 
     def _get(self, path: str, params: dict[str, Any]) -> Any:

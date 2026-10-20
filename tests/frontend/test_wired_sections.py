@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 from ui_fixtures import APP, FakeApi, load
 
@@ -300,3 +301,167 @@ def test_benchmark_conflict_from_the_api_is_surfaced(fake_api: FakeApi) -> None:
     assert fake_api.posts[-1][0] == "/benchmarks"
     assert fake_api.posts[-1][1]["candidate"] == {"candidate_id": candidate["id"]}
     assert any("BENCHMARKING is not allowed" in e.value for e in at.error)
+
+
+# --- repository optimization ------------------------------------------------------------------
+
+
+def _repo_candidates(fake_api: FakeApi, audit_id: str) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = fake_api.routes[f"/audits/{audit_id}/optimizations"]
+    assert candidates, "fixtures must contain repository candidates"
+    return candidates
+
+
+def _open_repo(fake_api: FakeApi, audit_id: str, candidate: dict[str, Any]) -> AppTest:
+    fake_api.overrides[f"/repo-optimizations/{candidate['id']}"] = candidate
+    fake_api.overrides[f"/audits/{audit_id}/optimizations"] = [candidate]
+    return app("app_pages/audit_results.py", "audit_tab", "Optimize", audit=audit_id)
+
+
+def test_completed_repo_candidate_shows_sandbox_validation_and_benchmark(
+    fake_api: FakeApi, audit_id: str
+) -> None:
+    completed = next(c for c in _repo_candidates(fake_api, audit_id) if c["state"] == "COMPLETED")
+    at = _open_repo(fake_api, audit_id, completed)
+    assert_clean(at)
+    body = text(at)
+    assert "Validation (tests): `python -m pytest -q`" in body
+    assert "Benchmark (workload): `python benchmarks/run_workload.py`" in body
+    assert "Validation in the sandbox" in body
+    assert "Benchmark result" in body
+    assert "IMPROVED" in body
+    assert 'class="pp-step done">Done' in body
+    assert "Proposed diff" in body
+    assert len(at.get("plotly_chart")) == 2
+
+
+def test_no_safe_patch_is_explained(fake_api: FakeApi, audit_id: str) -> None:
+    failed = next(
+        c for c in _repo_candidates(fake_api, audit_id) if c["outcome"] == "no_safe_patch"
+    )
+    at = _open_repo(fake_api, audit_id, failed)
+    assert_clean(at)
+    assert "No safe patch:" in text(at)
+    assert 'class="pp-step failed">Patch' in text(at)
+    assert not [b for b in at.button if b.label == "Benchmark candidate vs original"]
+
+
+def test_repo_candidate_review_validate_and_benchmark_guard(
+    fake_api: FakeApi, audit_id: str
+) -> None:
+    completed = next(c for c in _repo_candidates(fake_api, audit_id) if c["state"] == "COMPLETED")
+    fake_api.overrides[f"/repo-optimizations/{completed['id']}/diff"] = fake_api.routes[
+        f"/repo-optimizations/{completed['id']}/diff"
+    ]
+    pending = copy.deepcopy(completed)
+    pending.update(
+        state="AWAITING_APPROVAL",
+        approval={"status": "PENDING"},
+        validation=None,
+        validation_status="NOT_RUN",
+        benchmark=None,
+    )
+    at = _open_repo(fake_api, audit_id, pending)
+    assert_clean(at)
+    assert button(at, "Benchmark candidate vs original").disabled
+    approved = copy.deepcopy(pending)
+    approved["approval"] = {"status": "APPROVED", "approved_by": "local-user"}
+    fake_api.post_responses[f"/repo-optimizations/{pending['id']}/approve"] = approved
+    at.checkbox(key=f"reviewed_{pending['id']}").check()
+    rerun(at, "audit_tab", "Optimize")
+    button(at, "Approve candidate").click()
+    rerun(at, "audit_tab", "Optimize")
+    assert fake_api.posts[-1] == (
+        f"/repo-optimizations/{pending['id']}/approve",
+        {"approved_by": "local-user"},
+    )
+    fake_api.overrides[f"/repo-optimizations/{pending['id']}"] = approved
+    fake_api.overrides[f"/audits/{audit_id}/optimizations"] = [approved]
+    fake_api.post_responses[f"/repo-optimizations/{pending['id']}/validate"] = ApiError(
+        409, "conflict", "no approved test command for this audit"
+    )
+    st.cache_data.clear()  # the server state changed outside the app
+    rerun(at, "audit_tab", "Optimize")
+    button(at, "Validate candidate").click()
+    rerun(at, "audit_tab", "Optimize")
+    assert fake_api.posts[-1] == (f"/repo-optimizations/{pending['id']}/validate", {})
+    assert any("no approved test command" in e.value for e in at.error)
+
+
+def test_optimize_this_finding_creates_a_candidate_and_opens_it(
+    fake_api: FakeApi, audit_id: str
+) -> None:
+    candidate = _repo_candidates(fake_api, audit_id)[-1]
+    fake_api.post_responses[f"/audits/{audit_id}/optimizations"] = candidate
+    at = app("app_pages/audit_results.py", "audit_tab", "Findings", audit=audit_id)
+    findings = fake_api.routes[f"/audits/{audit_id}/findings"]["items"]
+    target = next(f for f in findings if f["id"] == candidate["finding_id"])
+    shown = sorted(findings, key=lambda f: -float(f["priority_score"]))
+    at.dataframe(key="findings_table")  # the table exists
+    at.session_state["findings_table"] = {
+        "selection": {"rows": [shown.index(target)], "columns": [], "cells": []}
+    }
+    rerun(at, "audit_tab", "Findings")
+    assert_clean(at)
+    button(at, "Optimize this finding").click()
+    at.run()
+    assert fake_api.posts[-1] == (
+        f"/audits/{audit_id}/optimizations",
+        {"finding_id": candidate["finding_id"]},
+    )
+    assert at.session_state["audit_tab"] == "Optimize"
+    assert at.session_state[f"repo_candidate_{audit_id}"] == candidate["id"]
+
+
+def test_runtime_correlations_offer_optimize_this_finding(fake_api: FakeApi, audit_id: str) -> None:
+    at = app("app_pages/audit_results.py", "audit_tab", "Runtime", audit=audit_id)
+    assert_clean(at)
+    assert any(b.label == "Optimize this finding" for b in at.button)
+
+
+def test_older_api_has_no_repo_optimization(legacy_api: FakeApi, audit_id: str) -> None:
+    at = app("app_pages/audit_results.py", "audit_tab", "Optimize", audit=audit_id)
+    assert_clean(at)
+    assert "Repository optimization" in text(at)
+    assert "not available in this API version" in text(at)
+
+
+# --- experiment reports and history -----------------------------------------------------------
+
+
+def test_experiment_reports_in_the_optimize_tab(fake_api: FakeApi) -> None:
+    _, candidates = _deep_dive()
+    completed = next(c for c in candidates if c["state"] == "COMPLETED")
+    at = _optimize(fake_api, completed)
+    assert_clean(at)
+    assert any(e.label == "Experiment report" for e in at.expander)
+    reports = fake_api.routes[f"/optimizations/{completed['id']}/reports"]
+    assert reports
+    assert len(list(at.get("download_button"))) >= len({r["format"] for r in reports})
+    fake_api.post_responses[f"/optimizations/{completed['id']}/reports"] = {
+        "subject_type": "optimization",
+        "subject_id": completed["id"],
+        "reports": [],
+    }
+    button(at, "Generate reports").click()
+    rerun(at, "lab_tab", "Optimize")
+    path, body = fake_api.posts[-1]
+    assert path == f"/optimizations/{completed['id']}/reports"
+    assert body["formats"] == ["html", "md", "json", "csv", "pdf"]
+
+
+def test_history_lists_experiments_and_their_reports(fake_api: FakeApi) -> None:
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    at.switch_page("app_pages/reports_history.py")
+    at.run()
+    assert_clean(at)
+    assert "Workload experiments" in text(at)
+    experiments = fake_api.routes["/experiments"]
+    optimization = next(i for i, e in enumerate(experiments) if e["kind"] == "optimization")
+    at.session_state["history_experiments"] = {
+        "selection": {"rows": [optimization], "columns": [], "cells": []}
+    }
+    at.run()
+    assert_clean(at)
+    assert at.get("download_button")

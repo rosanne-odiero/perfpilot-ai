@@ -1,0 +1,135 @@
+{
+ "default_size": "medium",
+ "description": "Extract ERR-dddd codes from log lines, passing the pattern string to re.findall on every line.",
+ "entrypoint": "workload:extract_error_codes",
+ "entrypoint_source": {
+  "content": "\"\"\"Regex matching workload.\n\n``extract_error_codes`` pulls the 4-digit code out of every ``ERR-1234`` token in a list of log\nlines. The pattern string is passed to ``re.findall`` on every iteration instead of being\ncompiled once. ``re`` keeps an internal cache of compiled patterns, so the per-call cost is a\ncache lookup rather than a full compile; whether hoisting ``re.compile`` matters must be measured.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport re\n\n\ndef extract_error_codes(lines: list[str]) -> list[str]:\n    codes: list[str] = []\n    for line in lines:\n        codes.extend(re.findall(r\"\\bERR-(\\d{4})\\b\", line))\n    return codes\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "fixture_description": "lines: n_lines synthetic log lines; about error_ratio of them contain one or two ERR-dddd tokens, some contain decoys (ERR-12, XERR-1234).",
+ "fixture_id": "fixtures:make_input",
+ "fixture_source": {
+  "content": "\"\"\"Deterministic input generator for the regex matching workload.\"\"\"\n\nfrom __future__ import annotations\n\nimport random\n\n_WORDS = [\"request\", \"handled\", \"user\", \"timeout\", \"cache\", \"db\", \"retry\", \"ok\", \"upstream\", \"id\"]\n\n\ndef make_input(n_lines: int, error_ratio: float = 0.2, seed: int = 0) -> list:\n    \"\"\"Return the ``lines`` list for ``extract_error_codes``.\n\n    Each line has 4-12 filler words. With probability ``error_ratio`` it contains one or two\n    ``ERR-dddd`` tokens; some lines contain decoys such as ``ERR-12`` or ``XERR-1234``.\n    \"\"\"\n    rng = random.Random(seed)\n    lines = []\n    for index in range(n_lines):\n        words = rng.choices(_WORDS, k=rng.randint(4, 12))\n        if rng.random() < error_ratio:\n            for _ in range(rng.randint(1, 2)):\n                words.insert(rng.randrange(len(words) + 1), f\"ERR-{rng.randint(0, 9999):04d}\")\n        elif rng.random() < 0.1:\n            words.insert(rng.randrange(len(words) + 1), rng.choice([\"ERR-12\", \"XERR-1234\"]))\n        lines.append(f\"2024-01-01T00:00:{index % 60:02d} \" + \" \".join(words))\n    return lines\n",
+  "path": "fixtures.py",
+  "truncated": false
+ },
+ "has_reference_candidate": true,
+ "id": "cf4e262c-967f-4b9b-96c9-f0e71e968716",
+ "invocation_mode": "single",
+ "name": "Regex matching",
+ "project_id": "78d73783-3c5e-4818-8bc8-ffbdca5e7e35",
+ "readme": "# Regex matching\n\n`workload.extract_error_codes(lines)` returns the 4-digit code of every standalone `ERR-dddd`\ntoken, in line order.\n\n## Suspected bottleneck\n\n`re.findall(pattern_string, line)` is called once per line with a pattern *string*. A static\nrule flags this as \"regex compiled in a loop\". In CPython, though, `re` caches compiled patterns\nkeyed by the pattern string, so each call costs a cache lookup in `re._compile` plus the actual\nmatching, not a recompilation. The profile shows how much time goes to `re._compile` and the\n`re.findall` wrapper compared with `Pattern.findall` itself.\n\n## Plausible optimization and its semantic trade-offs\n\nThe reference applies the literal fix: compile the pattern once at module level\n(`ERROR_CODE = re.compile(...)`). It keeps the common `re.findall(ERROR_CODE, line)` call shape.\n\n* Semantics are identical (same pattern and flags).\n* No compilation work is removed, because the original never recompiled. The call still goes\n  through the `re.findall` wrapper and `re._compile`. In CPython the module cache is keyed by\n  pattern strings, so an already-compiled `Pattern` argument takes the cache-miss path on every\n  call. The change can therefore be neutral or even slower. The paired benchmark measures this\n  instead of assuming the static rule's advice helps.\n* Removing the wrapper as well (calling the bound `ERROR_CODE.findall`) is a different change. It\n  can be benchmarked as a separate candidate.\n* If a program used more distinct patterns than the `re` cache holds, the original would\n  recompile, and hoisting would matter much more than it does here.\n\n`reference/optimized.py` is a hand-written **reference implementation for tests**, not output of\nthe platform.\n",
+ "size_parameters": {
+  "large": {
+   "n_lines": 400000
+  },
+  "medium": {
+   "n_lines": 100000
+  },
+  "small": {
+   "n_lines": 2000
+  }
+ },
+ "sizes": [
+  "large",
+  "medium",
+  "small"
+ ],
+ "slug": "regex_matching",
+ "spec": {
+  "default_size": "medium",
+  "description": "Extract ERR-dddd codes from log lines, passing the pattern string to re.findall on every line.",
+  "entrypoint": "workload:extract_error_codes",
+  "expected_output": {
+   "abs_tol": 0.0,
+   "comparison": "exact",
+   "description": "Every 4-digit code from a standalone ERR-dddd token, in line order.",
+   "rel_tol": 1e-09,
+   "type": "list[str]"
+  },
+  "fixture_description": "lines: n_lines synthetic log lines; about error_ratio of them contain one or two ERR-dddd tokens, some contain decoys (ERR-12, XERR-1234).",
+  "fixture_id": "fixtures:make_input",
+  "id": "cf4e262c-967f-4b9b-96c9-f0e71e968716",
+  "input_dataset_id": null,
+  "invocation_mode": "single",
+  "memory_limit_mb": 1024,
+  "name": "Regex matching",
+  "permitted_env_vars": [],
+  "project_id": "78d73783-3c5e-4818-8bc8-ffbdca5e7e35",
+  "reference_candidate": "reference/optimized.py",
+  "seed": 4242,
+  "sizes": {
+   "large": {
+    "n_lines": 400000
+   },
+   "medium": {
+    "n_lines": 100000
+   },
+   "small": {
+    "n_lines": 2000
+   }
+  },
+  "slug": "regex_matching",
+  "suspected_bottleneck": "`re.findall(pattern_string, line)` resolves the pattern through re's cache on every line instead of using a precompiled pattern.",
+  "timeout_seconds": 120,
+  "validation": {
+   "allow_input_mutation": false,
+   "edge_cases": [
+    {
+     "expected_exception": null,
+     "input": [],
+     "name": "no_lines"
+    },
+    {
+     "expected_exception": null,
+     "input": [
+      "ERR-1234 then ERR-5678"
+     ],
+     "name": "two_codes_one_line"
+    },
+    {
+     "expected_exception": null,
+     "input": [
+      "XERR-1234",
+      "ERR-12",
+      "ERR-12345",
+      "err-1234",
+      "ERR-0000."
+     ],
+     "name": "decoys"
+    }
+   ],
+   "error_cases": [
+    {
+     "expected_exception": "TypeError",
+     "input": null,
+     "name": "none_input"
+    },
+    {
+     "expected_exception": "TypeError",
+     "input": [
+      null
+     ],
+     "name": "none_line"
+    }
+   ],
+   "min_tests": 5,
+   "seeds": [
+    4242,
+    1,
+    2
+   ],
+   "sizes": [
+    "small",
+    "medium"
+   ],
+   "tests": [
+    "tests"
+   ]
+  },
+  "working_dir_id": "0d2392ba-2548-4401-81e8-894fceaa6149"
+ },
+ "suspected_bottleneck": "`re.findall(pattern_string, line)` resolves the pattern through re's cache on every line instead of using a precompiled pattern.",
+ "tree_sha256": "57528e56104b46659da549e787e539f6e82c0c325af1c0d4c485f72b1c191fde"
+}

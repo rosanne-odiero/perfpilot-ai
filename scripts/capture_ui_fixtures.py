@@ -1,7 +1,8 @@
 """Capture real API responses as JSON fixtures for the frontend tests.
 
-Run against a live API that has a finished RUNTIME audit with a measured run (and reports), a
-profile, a benchmark and an optimization deep dive (analysis + candidate) of a workload::
+Run against a live API that has a finished RUNTIME audit with measured runs, reports and a
+repository optimization candidate, plus a profile, a benchmark and a workload optimization deep
+dive (analysis + candidate + experiment report)::
 
     .venv/bin/python scripts/capture_ui_fixtures.py --base-url http://127.0.0.1:8000
 
@@ -91,6 +92,10 @@ def main() -> None:
         cap.get(f"/audits/{audit_id}/{suffix}")
     for run in cap.get(f"/audits/{audit_id}/runtime")["runs"]:
         cap.get(f"/audits/{audit_id}/runtime/runs/{run['id']}")
+    for candidate in cap.get(f"/audits/{audit_id}/optimizations"):
+        cap.get(f"/repo-optimizations/{candidate['id']}")
+        if candidate.get("patched_file_sha256"):
+            cap.get(f"/repo-optimizations/{candidate['id']}/diff")
     cap.get(f"/snapshots/{snapshot_id}")
     cap.get(f"/snapshots/{snapshot_id}/files")
     for path in sorted({f["location"]["file_path"] for f in findings["items"]}):
@@ -117,6 +122,11 @@ def main() -> None:
     for profile_id in profiled:
         cap.get(f"/profiles/{profile_id}")
         cap.get(f"/profiles/{profile_id}/hotspots", limit=50, sort="exclusive", scope="all")
+    for experiment in cap.get("/experiments", limit=100):
+        base = "optimizations" if experiment["subject_type"] == "optimization" else "benchmarks"
+        for report in cap.get(f"/{base}/{experiment['id']}/reports"):
+            if report["format"] == "html" and report["status"] == "SUCCEEDED":
+                cap.get(f"/reports/{report['id']}/preview")
     for job in jobs:
         if job["job_type"] == "optimization.analyze" and job["status"] == "SUCCEEDED":
             cap.get(f"/analyses/{job['subject_id']}")
