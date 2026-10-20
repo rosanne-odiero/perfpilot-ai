@@ -11,15 +11,12 @@
 #   docker compose build --build-arg UV_INDEX_URL=https://mirror.example/simple
 # The mirror is a build-time setting only and is never baked into the image.
 
-ARG PYTHON_IMAGE=python:3.12-slim
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13.3
-ARG DOCKER_CLI_IMAGE=docker:28-cli
-
-FROM ${UV_IMAGE} AS uv
-FROM ${DOCKER_CLI_IMAGE} AS docker-cli
+# Base images are literal (not ARGs) so Dependabot can keep them current.
+FROM ghcr.io/astral-sh/uv:0.13.3 AS uv
+FROM docker:28-cli AS docker-cli
 
 # --------------------------------------------------------------------------- dependencies
-FROM ${PYTHON_IMAGE} AS builder
+FROM python:3.12-slim AS builder
 COPY --from=uv /uv /usr/local/bin/uv
 ARG UV_INDEX_URL=
 ENV UV_PYTHON_DOWNLOADS=never \
@@ -38,7 +35,7 @@ RUN env -u UV_INDEX_URL uv export --locked --no-dev --no-emit-project --format r
         ${UV_INDEX_URL:+--index-url "$UV_INDEX_URL"} -r requirements.txt
 
 # --------------------------------------------------------------------------- runtime (API / UI)
-FROM ${PYTHON_IMAGE} AS app
+FROM python:3.12-slim AS app
 ARG APP_UID=10001
 ARG APP_GID=10001
 # pango/harfbuzz + a font: WeasyPrint renders PDF reports in the container (xhtml2pdf is the

@@ -1,0 +1,14 @@
+# gitleaks configuration (used by .github/workflows/security.yml).
+# Extends the default ruleset. The only allowlisted locations are test code and test fixture
+# repositories, which deliberately contain FAKE credentials to exercise redaction, the LLM
+# outbound filter and secret scanning. Real secrets belong in .env (git-ignored), never in tests.
+title = "PerfPilot gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Intentionally fake secrets in tests and fixture repositories"
+paths = [
+  '''^tests/''',
+]

@@ -5,7 +5,7 @@ API_PORT ?= 8000
 UI_PORT ?= 8501
 SANDBOX_IMAGE ?= perfpilot-sandbox:latest
 PYTHON ?= $(UV) run python
-COV_FAIL_UNDER ?= 90
+COV_FAIL_UNDER ?= 92
 # docker compose bind-mounts this directory at the same absolute path in every service.
 export PERFPILOT_HOST_DATA_DIR ?= $(CURDIR)/data
 

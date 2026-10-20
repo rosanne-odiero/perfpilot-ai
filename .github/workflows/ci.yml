@@ -12,6 +12,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Coverage floor on backend/ (non-docker, non-network tests). Raise it as coverage grows;
+  # never lower it to make a PR pass.
+  COV_FAIL_UNDER: "92"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -31,11 +36,63 @@ jobs:
           uv run ruff format --check .
       - name: Type check
         run: uv run mypy
-      # Functional checks only. Benchmarks on shared runners are not treated as authoritative,
-      # and Docker sandbox tests run in a dedicated job below.
-      - name: Tests
-        run: uv run pytest -m "not docker and not network" --cov --cov-report=xml --cov-report=term
+      - name: Migrations match the ORM models
+        run: uv run python -m backend.models.migrations check
+      # Functional checks only. Benchmarks and performance smoke tests on shared runners are
+      # noisy and are NOT treated as authoritative measurements; the performance thresholds are
+      # deliberately generous. Docker sandbox tests run in the dedicated job below.
+      - name: Tests (with coverage gate)
+        run: >
+          uv run pytest -m "not docker and not network"
+          --cov --cov-report=xml --cov-report=term
+          --cov-fail-under="$COV_FAIL_UNDER"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage
           path: coverage.xml
+          if-no-files-found: ignore
+
+  sandbox-docker:
+    name: Sandbox (docker-marked tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies from the lockfile
+        run: uv sync --all-extras --locked
+      - name: Build the sandbox image
+        run: make sandbox-image
+      - name: Docker integration tests
+        # Fails (instead of skipping) if the daemon or the image is unavailable.
+        run: |
+          docker image inspect perfpilot-sandbox:latest --format '{{.Id}}'
+          uv run pytest -m docker -ra
+
+  app-image:
+    name: App image and compose config
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml
+        env:
+          PERFPILOT_HOST_DATA_DIR: ${{ github.workspace }}/data
+        run: |
+          mkdir -p "$PERFPILOT_HOST_DATA_DIR"
+          docker compose config --quiet
+          docker compose --profile sandbox config --services
+      - name: Build the api/worker/ui images
+        env:
+          PERFPILOT_HOST_DATA_DIR: ${{ github.workspace }}/data
+        run: docker compose build api worker
+      - name: Smoke-test the image
+        run: |
+          docker run --rm perfpilot-app:latest perfpilot --help
+          docker run --rm perfpilot-app:latest python -c \
+            "from backend.reporting.renderers.pdf import available_pdf_engine as e; assert e() == 'weasyprint', e()"
+          docker run --rm perfpilot-worker:latest docker --version
+          test "$(docker run --rm perfpilot-app:latest id -u)" != "0"
