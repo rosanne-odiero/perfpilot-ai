@@ -91,7 +91,7 @@ def prioritize_stage(state: AuditState) -> None:
     build = state.require_build()
     if state.rules is None:
         raise RuntimeError("the STATIC_RULES stage must run before PRIORITIZING")
-    context = PriorityContext.build(build.index, build.import_graph, build.call_graph)
+    context = PriorityContext.build(build.index, build.import_graph, build.call_graph, build.parsed)
     state.findings = prioritize(state.rules.findings, context)
     counts: dict[str, int] = {}
     module_by_path = {m.file_path: m.module_name for m in build.index.modules}

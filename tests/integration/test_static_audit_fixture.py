@@ -61,6 +61,8 @@ def test_findings_are_static_prioritized_and_explained(result: StaticAuditResult
             "severity_weight",
             "confidence_weight",
             "entrypoint_reachability",
+            "path_role",
+            "path_loop",
             "loop_factor",
             "fan_in_factor",
             "path_criticality",
@@ -73,6 +75,9 @@ def test_route_handler_findings_rank_as_entrypoints(result: StaticAuditResult) -
     blocking = next(f for f in result.findings if f.location.symbol == "get_product")
     assert blocking.rule_id == "PP-ASYNC-001"
     assert blocking.priority_factors["entrypoint_reachability"] == 1.0
+    assert blocking.priority_factors["path_role"] == 1.0
+    assert blocking.code_role is not None
+    assert blocking.execution_path == ["shopfast.api:get_product"]
 
 
 def test_index_and_stats(result: StaticAuditResult) -> None:

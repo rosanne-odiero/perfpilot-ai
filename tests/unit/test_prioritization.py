@@ -82,7 +82,10 @@ def test_reachability_levels_and_score(tmp_path: Path) -> None:
     factors = finding.priority_factors
     assert factors["loop_depth"] == 1.0
     assert factors["path_criticality"] == pytest.approx(
-        factors["entrypoint_reachability"] * factors["loop_factor"] * factors["fan_in_factor"],
+        factors["entrypoint_reachability"]
+        * factors["path_role"]
+        * factors["loop_factor"]
+        * factors["fan_in_factor"],
         abs=1e-3,
     )
     expected = 100 * factors["severity_weight"] * factors["confidence_weight"]

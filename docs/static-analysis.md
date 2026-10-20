@@ -180,28 +180,56 @@ leading context, at most 12 lines) and always contains `line_start`. Duplicate I
 **Suppression.** Add `# perfpilot: ignore` or `# perfpilot: ignore[PP-LOOP-001,PP-STR-001]` to the
 first or last line of a finding to suppress it. Suppressed findings are counted in the stats.
 
-## Prioritization (`backend/audit/prioritization.py`)
+## Prioritization (`backend/audit/prioritization.py`, `backend/audit/path_ranking.py`)
 
 ```
 priority_score   = 100 * severity.weight * confidence.weight * path_criticality
-path_criticality = reachability * loop_factor * fan_in_factor
+path_criticality = reachability * path_role * loop_factor * fan_in_factor
 ```
 
 * Weights: severity CRITICAL 1.0, HIGH 0.8, MEDIUM 0.55, LOW 0.3, INFO 0.1; confidence HIGH 1.0,
   MEDIUM 0.7, LOW 0.4.
-* `reachability`:
+* `reachability` (how close the code is to *any* entry point):
   * **1.0**: the enclosing function (or an enclosing outer function) is an entry point.
   * **0.9**: the call graph reaches it from an entry-point function.
   * **0.75**: its module is reachable from an entry-point module through imports.
   * **0.5**: otherwise.
   * **0.3**: test code, always.
-* `loop_factor = min(1.0, 0.6 + 0.2 * loop_depth)`. `loop_depth` is the depth at the finding,
-  counting comprehensions.
+* `path_role` (what *kind* of execution path the code is on). `PathRanker` assigns one
+  `CodeRole`, stored in `Finding.code_role`, together with the path that justifies it in
+  `Finding.execution_path` (`module:qualname` items, entry point first):
+
+  | Role | Factor | Assigned when |
+  |---|---|---|
+  | `REQUEST_HANDLER` | 1.0 | HTTP route, Flask/Django view, `add_api_route` endpoint |
+  | `REQUEST_PATH` | 0.9 | the call graph reaches the function from a request handler |
+  | `BACKGROUND_TASK` | 0.9 | Celery task, code it calls, or a `tasks.py`/`workers/`/`jobs/` module |
+  | `LIBRARY` | 0.75 | the module is (transitively) imported by a handler/task module; call path unknown |
+  | `CLI_SCRIPT` | 0.5 | click/typer command, `__main__` callee, console script, code they call, `scripts/`, `bin/`, `tools/`, `benchmarks/`, `manage.py`, `setup.py` |
+  | `INTERNAL` | 0.5 | no known path from any request, task or CLI entry point |
+  | `SEED_MIGRATION` | 0.35 | `seed/`, `seeds/`, `fixtures/`, `migrations/`, `alembic/`, `seed_*.py`, `*_seed.py` |
+  | `EXAMPLE_DOCS` | 0.3 | `examples/`, `samples/`, `demos/`, `docs/`, `tutorials/`, `notebooks/` |
+  | `TEST` | 0.2 | `tests/`, `test_*.py`, `*_test.py`, `conftest.py` |
+
+  Path hints for tests, seed/migration code, examples, and script directories win over graph
+  evidence: a seed function is `SEED_MIGRATION` even when something calls it. Otherwise roles are
+  checked in table order. Paths come from a bounded multi-source BFS (at most 8 hops) over the
+  call graph, then over the import graph for `LIBRARY`. When a repository has no request handlers
+  and no background tasks (a CLI tool or library), the CLI is its primary interface and
+  `CLI_SCRIPT` uses 1.0.
+* `loop_factor = min(1.0, 0.6 + 0.2 * (loop_depth + path_loop))`. `loop_depth` is the depth at
+  the finding, counting comprehensions. `path_loop` is 1 when some caller on the execution path
+  invokes the next function inside one of its own loops (a hot loop upstream), else 0. A `for`
+  iterable and a comprehension's first iterable are evaluated once and do not count.
 * `fan_in_factor = 0.7 + 0.3 * fan_in / max_fan_in`. Fan-in is the number of modules that import
   the finding's module.
 
-Every factor is stored in `Finding.priority_factors`. Findings are sorted by score, then path, line,
-and rule.
+Every factor is stored in `Finding.priority_factors` (`path_role` and `path_loop` included).
+Findings are sorted by score, then path, line, and rule.
+
+Example: on a real 148-file FastAPI backend, N+1 findings in a one-off seed script ranked first
+before path roles (score 39.2). They now rank 45th (13.7), below every request handler and every
+function reachable from one.
 
 ## Limitations
 
@@ -210,7 +238,8 @@ and rule.
 * Loop invariance is best-effort. Aliasing through other functions, threads, or I/O can make an
   invariant-looking value change. Those findings are therefore MEDIUM confidence.
 * The call graph does not follow dynamic dispatch, decorators that replace functions, or calls
-  through instance attributes.
+  through instance attributes. Code called only that way gets `LIBRARY` or `INTERNAL` instead of
+  `REQUEST_PATH`, and path roles from directory names can be wrong for unusual layouts.
 * Static findings cannot know data sizes. A rule may flag a pattern whose input is always tiny, and
   severity reflects the pattern rather than measured impact. Runtime profiling (Phase 8) is what
   upgrades findings to `MEASURED`.

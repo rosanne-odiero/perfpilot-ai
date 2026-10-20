@@ -13,6 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.models.enums import (
+    CodeRole,
     Confidence,
     EffortEstimate,
     FindingCategory,
@@ -235,6 +236,13 @@ class Finding(Contract):
     priority_score: float = 0.0
     priority_factors: dict[str, float] = Field(default_factory=dict)
     measured: MeasuredEvidence | None = None
+    code_role: CodeRole | None = Field(
+        default=None, description="Execution role of the enclosing code (path ranking)"
+    )
+    execution_path: list[str] = Field(
+        default_factory=list,
+        description="Best-effort path from the most critical entry point: 'module:qualname' items",
+    )
 
 
 class Recommendation(Contract):
@@ -253,6 +261,7 @@ class Recommendation(Contract):
     suggested_diff: str | None = None
     priority_rank: int = 0
     generated_by: str = Field(default="deterministic", description="'deterministic' or model id")
+    kind: str | None = Field(default=None, description="Strategy family, e.g. 'batch-db-queries'")
 
 
 class ArchitectureInsight(Contract):
@@ -275,3 +284,13 @@ class LLMUsage(Contract):
     budget_exhausted: bool = False
     rejected_citations: int = 0
     fallbacks: int = 0
+    rejected_claims: int = Field(
+        default=0, description="Statements dropped for claiming unmeasured runtime numbers"
+    )
+    rejected_items: int = Field(
+        default=0, description="Model recommendations/insights dropped by validation or guards"
+    )
+    cache_hits: int = 0
+    redactions: int = 0
+    prompt_version: str | None = None
+    stage_status: dict[str, str] = Field(default_factory=dict)

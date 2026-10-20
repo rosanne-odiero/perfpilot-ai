@@ -2,30 +2,39 @@
 
 ``priority_score = 100 * severity.weight * confidence.weight * path_criticality``
 
-``path_criticality = reachability * loop_factor * fan_in_factor`` where
+``path_criticality = reachability * path_role * loop_factor * fan_in_factor`` where
 
 * ``reachability`` — 1.0 if the enclosing function is itself an entry point (route, task, CLI
   command, called from ``__main__``); 0.9 if the call graph reaches it from an entry-point function;
   0.75 if its module is reachable from an entry-point module through the import graph; 0.5
   otherwise; 0.3 for test code (always, regardless of the above).
-* ``loop_factor = min(1.0, 0.6 + 0.2 * loop_depth)`` — 0.6 outside loops, 0.8 in one loop,
-  1.0 at depth ≥ 2.
+* ``path_role`` — execution role of the enclosing code (``backend.audit.path_ranking``): request
+  handler 1.0, request path or background task 0.9, library imported by request code 0.75, CLI /
+  scripts 0.5 (1.0 when the repository has no handlers or tasks), internal 0.5, seed / fixtures /
+  migrations 0.35, examples / docs 0.3, tests 0.2.
+* ``loop_factor = min(1.0, 0.6 + 0.2 * (loop_depth + path_loop))`` — 0.6 outside loops, 0.8 in one
+  loop, 1.0 at depth ≥ 2; ``path_loop`` is 1 when a call on the execution path runs inside a loop
+  of its caller (a hot loop upstream), else 0.
 * ``fan_in_factor = 0.7 + 0.3 * fan_in / max_fan_in`` — modules imported by many others weigh more
   (0.7 when no module has importers).
 
-All factors are stored in ``Finding.priority_factors`` so the score can be audited.
+All factors are stored in ``Finding.priority_factors`` so the score can be audited; the role and
+the execution path are stored in ``Finding.code_role`` and ``Finding.execution_path``.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 import networkx as nx
 
+from backend.audit.path_ranking import PathRanker
 from backend.audit.rule_engine import RuleFinding
 from backend.indexing.call_graph import symbol_id
 from backend.indexing.code_index import is_test_path
 from backend.indexing.import_graph import reachable_modules
+from backend.indexing.source import ParsedModule
 from backend.models.audit_schemas import CodeIndex, Finding
 
 REACH_ENTRY_SYMBOL = 1.0
@@ -51,10 +60,15 @@ class PriorityContext:
     test_modules: set[str] = field(default_factory=set)
     fan_in: dict[str, int] = field(default_factory=dict)
     max_fan_in: int = 0
+    ranker: PathRanker | None = None
 
     @classmethod
     def build(
-        cls, index: CodeIndex, import_graph: nx.DiGraph, call_graph: nx.DiGraph
+        cls,
+        index: CodeIndex,
+        import_graph: nx.DiGraph,
+        call_graph: nx.DiGraph,
+        parsed: Mapping[str, ParsedModule] | None = None,
     ) -> PriorityContext:
         test_modules = {m.module_name for m in index.modules if is_test_path(m.file_path)}
         entry_symbols = {
@@ -81,6 +95,7 @@ class PriorityContext:
             test_modules=test_modules,
             fan_in=fan_in,
             max_fan_in=max(fan_in.values(), default=0),
+            ranker=PathRanker(index, import_graph, call_graph, parsed),
         )
 
     def reachability(self, module_name: str, symbol: str | None) -> float:
@@ -108,10 +123,20 @@ class PriorityContext:
 def score(item: RuleFinding, ctx: PriorityContext) -> Finding:
     finding = item.finding
     reach = ctx.reachability(item.module_name, finding.location.symbol)
-    loops = loop_factor(item.loop_depth)
+    role_factor = 1.0
+    path_loop = 0
+    if ctx.ranker is not None:
+        assessment = ctx.ranker.assess(
+            item.module_name, finding.location.file_path, finding.location.symbol
+        )
+        role_factor = assessment.factor
+        path_loop = int(assessment.path_in_loop)
+        finding.code_role = assessment.role
+        finding.execution_path = assessment.path
+    loops = loop_factor(item.loop_depth + path_loop)
     fan_in = ctx.fan_in.get(item.module_name, 0)
     fan = fan_in_factor(fan_in, ctx.max_fan_in)
-    criticality = reach * loops * fan
+    criticality = reach * role_factor * loops * fan
     severity_weight = finding.severity.weight
     confidence_weight = finding.confidence.weight
     finding.priority_score = round(100 * severity_weight * confidence_weight * criticality, 2)
@@ -119,7 +144,9 @@ def score(item: RuleFinding, ctx: PriorityContext) -> Finding:
         "severity_weight": severity_weight,
         "confidence_weight": confidence_weight,
         "entrypoint_reachability": reach,
+        "path_role": role_factor,
         "loop_depth": float(item.loop_depth),
+        "path_loop": float(path_loop),
         "loop_factor": round(loops, 4),
         "fan_in": float(fan_in),
         "fan_in_factor": round(fan, 4),
