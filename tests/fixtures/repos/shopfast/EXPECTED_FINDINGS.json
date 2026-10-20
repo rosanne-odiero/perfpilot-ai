@@ -1,0 +1,125 @@
+{
+  "description": "Every (rule_id, file_path, line_start) the static audit must report for this fixture. The audit test requires an exact match, so additions here must be deliberate.",
+  "findings": [
+    {
+      "rule_id": "PP-ASYNC-001",
+      "file_path": "shopfast/api.py",
+      "line_start": 19
+    },
+    {
+      "rule_id": "PP-ASYNC-001",
+      "file_path": "shopfast/api.py",
+      "line_start": 31
+    },
+    {
+      "rule_id": "PP-NET-001",
+      "file_path": "shopfast/api.py",
+      "line_start": 47
+    },
+    {
+      "rule_id": "PP-LOOP-001",
+      "file_path": "shopfast/catalog.py",
+      "line_start": 41
+    },
+    {
+      "rule_id": "PP-LOOP-001",
+      "file_path": "shopfast/catalog.py",
+      "line_start": 49
+    },
+    {
+      "rule_id": "PP-LOOP-004",
+      "file_path": "shopfast/catalog.py",
+      "line_start": 66
+    },
+    {
+      "rule_id": "PP-LOOP-002",
+      "file_path": "shopfast/inventory_sync.py",
+      "line_start": 11
+    },
+    {
+      "rule_id": "PP-COLL-002",
+      "file_path": "shopfast/inventory_sync.py",
+      "line_start": 32
+    },
+    {
+      "rule_id": "PP-LOOP-001",
+      "file_path": "shopfast/inventory_sync.py",
+      "line_start": 33
+    },
+    {
+      "rule_id": "PP-COLL-001",
+      "file_path": "shopfast/inventory_sync.py",
+      "line_start": 42
+    },
+    {
+      "rule_id": "PP-LOOP-001",
+      "file_path": "shopfast/inventory_sync.py",
+      "line_start": 42
+    },
+    {
+      "rule_id": "PP-DB-001",
+      "file_path": "shopfast/orders.py",
+      "line_start": 13
+    },
+    {
+      "rule_id": "PP-DB-001",
+      "file_path": "shopfast/orders.py",
+      "line_start": 19
+    },
+    {
+      "rule_id": "PP-ALLOC-001",
+      "file_path": "shopfast/orders.py",
+      "line_start": 52
+    },
+    {
+      "rule_id": "PP-ARCH-002",
+      "file_path": "shopfast/pricing.py",
+      "line_start": 13
+    },
+    {
+      "rule_id": "PP-LOOP-003",
+      "file_path": "shopfast/pricing.py",
+      "line_start": 42
+    },
+    {
+      "rule_id": "PP-COLL-003",
+      "file_path": "shopfast/pricing.py",
+      "line_start": 61
+    },
+    {
+      "rule_id": "PP-CACHE-002",
+      "file_path": "shopfast/pricing.py",
+      "line_start": 68
+    },
+    {
+      "rule_id": "PP-ARCH-001",
+      "file_path": "shopfast/reporting.py",
+      "line_start": 8
+    },
+    {
+      "rule_id": "PP-STR-001",
+      "file_path": "shopfast/reporting.py",
+      "line_start": 17
+    },
+    {
+      "rule_id": "PP-REGEX-001",
+      "file_path": "shopfast/reporting.py",
+      "line_start": 31
+    },
+    {
+      "rule_id": "PP-REGEX-001",
+      "file_path": "shopfast/reporting.py",
+      "line_start": 44
+    },
+    {
+      "rule_id": "PP-ALLOC-002",
+      "file_path": "shopfast/reporting.py",
+      "line_start": 52
+    },
+    {
+      "rule_id": "PP-CACHE-001",
+      "file_path": "shopfast/utils.py",
+      "line_start": 8
+    }
+  ]
+}

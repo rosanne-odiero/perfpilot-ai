@@ -82,6 +82,11 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+# Fixture repositories are audit inputs with their own test suites; never collect them here.
+norecursedirs = [
+    "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}",
+    "tests/fixtures/repos",
+]
 markers = [
     "docker: requires a working Docker daemon (sandbox)",
     "network: requires outbound network access",
