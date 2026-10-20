@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from backend.core.redaction import REDACTED, is_sensitive_path, redact_text
@@ -74,3 +76,12 @@ def test_url_credentials_keep_scheme_and_host() -> None:
 )
 def test_sensitive_paths(path: str, sensitive: bool) -> None:
     assert is_sensitive_path(path) is sensitive
+
+
+def test_redaction_is_linear_on_long_tokens() -> None:
+    value = "Zq81" + "hfKs02LmXp9d"
+    started = time.monotonic()
+    result = redact_text("x" * 200_000 + f" api_key = '{value}'")
+    assert time.monotonic() - started < 2.0
+    assert result.count == 1
+    assert value not in result.text

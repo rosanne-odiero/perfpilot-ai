@@ -63,6 +63,14 @@ class Settings(BaseSettings):
     sandbox_memory_mb: int = 2048
     sandbox_pids_limit: int = 256
     sandbox_timeout_seconds: int = 600
+    sandbox_tmpfs_mb: int = 256
+    sandbox_output_max_bytes: int = 16 * 1024 * 1024
+    # Absolute path to the docker CLI. When unset, a fixed lookup is used (PATH + well-known dirs).
+    sandbox_docker_path: Path | None = None
+    sandbox_install_timeout_seconds: int = 900
+    # Optional package index for the (separately approved) dependency-install step.
+    sandbox_pip_index_url: str | None = None
+    sandbox_approval_ttl_seconds: int = 24 * 3600
 
     @field_validator("local_allowlist", mode="before")
     @classmethod
