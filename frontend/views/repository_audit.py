@@ -15,6 +15,7 @@ from frontend.components.notices import NOT_AVAILABLE, show_api_error
 from frontend.components.provenance import render_legend
 from frontend.formatting import fmt_dt, human_bytes
 from frontend.theme import esc, status_badge
+from frontend.views.audit_runtime import render_sandbox_status
 from frontend.views.catalog import audit_rows
 
 PIPELINE_KEY = "audit_pipeline"
@@ -142,18 +143,6 @@ def _source_form(options: Any) -> ImportRequest:
     return request
 
 
-def _runtime_availability() -> tuple[bool, str]:
-    try:
-        status = data.runtime_status()
-    except ApiError as exc:
-        return False, f"runtime status unavailable: {exc.message}"
-    if isinstance(status, Unsupported):
-        return False, f"{NOT_AVAILABLE}."
-    available = bool(status.get("available"))
-    reason = status.get("reason") or status.get("detail") or ""
-    return available, str(reason)
-
-
 def _mode_selector() -> tuple[str, bool]:
     """Return (mode, allowed)."""
     choice = st.radio(
@@ -168,22 +157,68 @@ def _mode_selector() -> tuple[str, bool]:
     )
     if choice == "Static Audit":
         return "STATIC", True
-    available, reason = _runtime_availability()
     st.info(
         "Runtime audits never execute anything automatically: after the static audit, you review "
         "the discovered commands and approve one exact command line and its resource limits. It "
         "then runs in an isolated Docker sandbox (no network, read-only, CPU/memory/time caps).",
         icon="🛡️",
     )
+    try:
+        unsupported = isinstance(data.runtime_status(), Unsupported)
+    except ApiError as exc:
+        show_api_error(exc, "Runtime status")
+        return "RUNTIME", False
+    if unsupported:
+        st.warning(f"Runtime audit: {NOT_AVAILABLE}.", icon="🚫")
+        return "RUNTIME", False
+    status = render_sandbox_status()
+    available = bool(status and status.get("available"))
     if not available:
-        st.warning(f"Runtime audit is unavailable: {reason or 'no sandbox backend'}", icon="🚫")
-    return "RUNTIME", available
+        st.warning(
+            "The sandbox is unavailable, so runs cannot be approved. You can still start a "
+            "runtime audit: static results and command discovery work, and you can approve a "
+            "run once a worker reports the sandbox as available.",
+            icon="🚫",
+        )
+    return "RUNTIME", True
+
+
+def ai_disclosure_html(status: dict[str, Any]) -> str:
+    """What exactly leaves the machine, where it goes, and the budget (from /api/ai/status)."""
+    budget = status.get("budget") or {}
+    host = status.get("base_url_host") or "the configured endpoint"
+    cost = ""
+    if budget.get("input_cost_per_1k") or budget.get("output_cost_per_1k"):
+        cost = (
+            f" · cost ${budget.get('input_cost_per_1k', 0)}/1K in, "
+            f"${budget.get('output_cost_per_1k', 0)}/1K out"
+        )
+    return (
+        f"<b>What is sent to {esc(status.get('model') or 'the model')} at {esc(host)}:</b> "
+        f"{esc(status.get('data_sent', ''))}<br><span class='pp-muted'>Budget: at most "
+        f"{int(budget.get('max_tokens_per_audit', 0)):,} tokens per audit, "
+        f"{int(budget.get('max_tokens_per_call', 0)):,} per call{cost} · prompts "
+        f"{esc(status.get('prompt_version', ''))} · default advisor: "
+        f"{esc(status.get('default_advisor', 'deterministic'))}</span>"
+    )
+
+
+def _ai_status(health: dict[str, Any]) -> dict[str, Any]:
+    try:
+        status = data.ai_status()
+    except ApiError:
+        status = None
+    if isinstance(status, dict):
+        return status
+    configured = bool(health.get("llm_configured"))
+    return {"configured": configured, "model": health.get("llm_model")}
 
 
 def _ai_selector(health: dict[str, Any]) -> tuple[bool, bool, bool]:
     """Return (use_llm, consent, allowed)."""
-    configured = bool(health.get("llm_configured"))
-    model = health.get("llm_model")
+    status = _ai_status(health)
+    configured = bool(status.get("configured"))
+    model = status.get("model")
     use_llm = st.toggle(
         "Use AI (sends redacted snippets to your configured LLM)",
         value=False,
@@ -198,12 +233,19 @@ def _ai_selector(health: dict[str, Any]) -> tuple[bool, bool, bool]:
     )
     if not configured:
         st.caption("AI is off: no LLM configured on the server. Audits are fully deterministic.")
+        if status.get("data_sent"):
+            with st.expander("What AI mode would send, once configured"):
+                st.markdown(ai_disclosure_html(status), unsafe_allow_html=True)
         return False, False, True
     if not use_llm:
         return False, False, True
+    if status.get("data_sent"):
+        st.markdown(
+            f'<div class="pp-notice">{ai_disclosure_html(status)}</div>', unsafe_allow_html=True
+        )
     consent = st.checkbox(
-        f"I consent to sending redacted code snippets (secrets replaced with [REDACTED]) to "
-        f"`{model}`. AI output is labeled AI_HYPOTHESIS and is never presented as measured.",
+        f"I consent to sending the redacted snippets described above to `{model}`. AI output is "
+        "labeled AI_HYPOTHESIS and is never presented as measured.",
         key="llm_consent",
     )
     return True, consent, consent

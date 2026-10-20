@@ -199,3 +199,43 @@ def all_workloads() -> list[dict[str, Any]]:
 def clear_audit_caches() -> None:
     for fn in (audits, audit, reports, repositories, jobs, snapshot):
         fn.clear()
+
+
+def clear_runtime_caches() -> None:
+    for fn in (audit_optional, runtime_status, runtime_run, audit, findings, jobs):
+        fn.clear()
+
+
+def clear_optimization_caches() -> None:
+    for fn in (analysis, candidate, workload_candidates, jobs, benchmark):
+        fn.clear()
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def runtime_run(audit_id: str, run_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/audits/{audit_id}/runtime/runs/{run_id}"))
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def analysis(analysis_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/analyses/{analysis_id}"))
+
+
+@st.cache_data(ttl=MEDIUM, show_spinner=False)
+def analysis_recommendations(analysis_id: str) -> list[dict[str, Any]]:
+    return list(api.get(f"/analyses/{analysis_id}/recommendations"))
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def candidate(candidate_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/optimizations/{candidate_id}"))
+
+
+@st.cache_data(ttl=LONG, show_spinner=False)
+def candidate_diff(candidate_id: str) -> dict[str, Any]:
+    return dict(api.get(f"/optimizations/{candidate_id}/diff"))
+
+
+@st.cache_data(ttl=SHORT, show_spinner=False)
+def workload_candidates(workload_id: str) -> Any:
+    return api.get_if_supported(f"/workloads/{workload_id}/optimizations")
