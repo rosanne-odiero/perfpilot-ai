@@ -50,7 +50,8 @@ cov: ## Tests with coverage
 	$(UV) run pytest --cov --cov-report=term-missing --cov-report=xml
 
 sandbox-image: ## Build the runtime sandbox image (needs Docker)
-	docker build --file docker/sandbox.Dockerfile --tag $(SANDBOX_IMAGE) docker
+	docker build --file docker/sandbox.Dockerfile --tag $(SANDBOX_IMAGE) \
+		$(if $(PIP_INDEX_URL),--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL),) docker
 
 test-docker: ## Sandbox integration tests (need Docker + the sandbox image)
 	$(UV) run pytest -m docker -ra
