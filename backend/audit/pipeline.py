@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from backend.audit.prioritization import PriorityContext, prioritize
 from backend.audit.rule_engine import RuleRunResult, run_rules
 from backend.core.config import Settings
+from backend.core.observability import span
 from backend.indexing.code_index import IndexBuild, index_repository, link_repository
 from backend.models.audit_schemas import Finding, RepositoryInventory
 from backend.models.enums import AuditStage
@@ -132,5 +133,6 @@ def run_pipeline(
             on_stage(stage)
         state.report(0.0, stage.label)
         started = time.perf_counter()
-        stage.run(state)
+        with span(f"audit.{stage.stage.value.lower()}"):
+            stage.run(state)
         state.stage_seconds[stage.stage.value] = round(time.perf_counter() - started, 4)

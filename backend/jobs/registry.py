@@ -9,15 +9,19 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from backend.core.config import Settings
 from backend.core.exceptions import PerfPilotError
+from backend.core.logging import get_logger
 from backend.models.database import session_scope
 from backend.models.enums import JobStatus
 from backend.models.orm.platform import Job
+
+log = get_logger(__name__)
 
 
 class JobCancelledError(PerfPilotError):
@@ -31,9 +35,14 @@ class JobContext:
     payload: dict[str, Any]
     settings: Settings
     extra: dict[str, Any] = field(default_factory=dict)
+    _stage: str | None = field(default=None, init=False, repr=False)
+    _stage_started: float = field(default=0.0, init=False, repr=False)
 
     def progress(self, stage: str, fraction: float, message: str | None = None) -> None:
         """Persist progress so the API/UI can show it. Also acts as a cancellation point."""
+        if stage != self._stage:
+            self.close_stage("ok")
+            self._stage, self._stage_started = stage, time.perf_counter()
         with session_scope() as session:
             job = session.get(Job, self.job_id)
             if job is None:
@@ -44,6 +53,17 @@ class JobContext:
             cancel = job.cancel_requested
         if cancel:
             raise JobCancelledError("job cancelled by user")
+
+    def close_stage(self, status: str) -> None:
+        """Log the end of the current stage (stage boundaries carry ``duration_ms``)."""
+        if self._stage is None:
+            return
+        duration_ms = round((time.perf_counter() - self._stage_started) * 1000, 1)
+        log.info(
+            "job stage finished",
+            extra={"stage": self._stage, "status": status, "duration_ms": duration_ms},
+        )
+        self._stage = None
 
     def check_cancelled(self) -> None:
         with session_scope() as session:

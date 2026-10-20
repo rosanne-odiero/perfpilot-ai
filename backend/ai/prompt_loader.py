@@ -21,6 +21,8 @@ PIPELINE_PROMPTS = (
     "correlation",
     "recommendations",
 )
+# Prompts used outside the audit pipeline (not part of the summary-cache key).
+TASK_PROMPTS = ("patch_proposal",)
 _HEADER = re.compile(r"\A<!--\s*perfpilot-prompt\s+name=(\w+)\s+version=(\d+)\s*-->\s*\n")
 
 
@@ -33,7 +35,7 @@ class Prompt:
 
 @cache
 def load_prompt(name: str) -> Prompt:
-    if name not in PIPELINE_PROMPTS:
+    if name not in PIPELINE_PROMPTS and name not in TASK_PROMPTS:
         raise KeyError(f"unknown prompt {name!r}")
     raw = (PROMPT_DIR / f"{name}.md").read_text(encoding="utf-8")
     match = _HEADER.match(raw)

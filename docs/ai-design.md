@@ -149,6 +149,19 @@ prompt tells the model to:
 * **Logging.** Prompts, responses, and keys are never logged. Logs contain only model, token
   counts, attempt numbers, and failure classes.
 
+## LLM patch proposer (`backend/optimization/llm_proposer.py`)
+
+Separate from the audit pipeline, the same client can propose a code patch when the deterministic
+templates find no safe one. Consent is per use: the audit's `llm_consent` for repository
+candidates, `use_llm: true` on `POST /api/optimizations` for workload candidates. It sends only the
+target function (dedented, redacted; refused outright if it contains secret-like text), the finding
+and its measured evidence, under the token budget, with the versioned prompt
+`prompts/patch_proposal.md` (`TASK_PROMPTS` in `prompt_loader.py`, outside the summary-cache
+key). The answer must be a JSON `FunctionRewrite` replacing exactly that function; it is spliced
+into the real file, compiled and passed through the patch validator, with one bounded retry.
+Results are `AI_HYPOTHESIS` until validated and benchmarked. See
+[repo-optimization.md](repo-optimization.md#7-llm-patch-proposer).
+
 ## Configuration
 
 | Variable | Meaning |
@@ -211,5 +224,7 @@ the runner with a mocked LLM.
   `AI_HYPOTHESIS`.
 * Token counts before a call are heuristic (no tokenizer dependency). Providers that omit `usage`
   get estimated counts.
-* Only four rewrites produce diffs. Anything else is described but not patched. Applying,
-  validating, and benchmarking patches is the patch-validation workflow.
+* Only four rewrites produce diffs in the advisor. Anything else is described but not patched.
+  Applying, validating, and benchmarking patches is the patch-validation workflow
+  ([optimization-workflow.md](optimization-workflow.md),
+  [repo-optimization.md](repo-optimization.md)).

@@ -15,12 +15,18 @@ def _cmd_worker(_: argparse.Namespace) -> int:
 
 
 def _cmd_init_db(_: argparse.Namespace) -> int:
+    """Apply Alembic migrations (``alembic upgrade head``) to the configured database."""
     from backend.core.config import get_settings
-    from backend.models.database import init_engine
+    from backend.models.database import build_engine
+    from backend.models.migrations import upgrade_to_head
 
     settings = get_settings()
-    init_engine(settings)
-    print(f"database ready: {settings.effective_database_url}")
+    engine = build_engine(settings)
+    try:
+        revision = upgrade_to_head(engine)
+    finally:
+        engine.dispose()
+    print(f"database ready at revision {revision}: {engine.url.render_as_string()}")
     return 0
 
 
@@ -76,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="perfpilot", description="PerfPilot AI CLI")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("worker", help="run the persistent job worker").set_defaults(fn=_cmd_worker)
-    sub.add_parser("init-db", help="create database tables").set_defaults(fn=_cmd_init_db)
+    sub.add_parser("init-db", help="apply database migrations").set_defaults(fn=_cmd_init_db)
     sub.add_parser("drain", help="run all queued jobs, then exit").set_defaults(fn=_cmd_drain)
     prune = sub.add_parser(
         "prune-workspaces", help="delete imported repository working copies (keeps results)"

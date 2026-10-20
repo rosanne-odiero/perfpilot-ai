@@ -1,0 +1,74 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so newly published advisories are caught even without code changes.
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pip-audit:
+    name: Dependency audit (pip-audit on uv.lock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Export the locked dependency set (incl. dev + extras)
+        run: >
+          uv export --locked --all-extras --no-emit-project --format requirements-txt
+          --output-file requirements-audit.txt
+      - name: pip-audit
+        # Pinned, hash-locked requirements are audited as-is (no resolver, no install).
+        run: >
+          uvx pip-audit@2.9.0 --strict --require-hashes --disable-pip
+          --requirement requirements-audit.txt
+
+  gitleaks:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (full history)
+        # The CLI container needs no license key or other secret. Fake credentials used by tests
+        # are allowlisted in .gitleaks.toml (tests/ only).
+        run: >
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.28.0
+          git /repo --config /repo/.gitleaks.toml --redact --verbose --no-banner
+
+  codeql:
+    name: CodeQL (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          build-mode: none
+          queries: security-and-quality
+          config: |
+            paths-ignore:
+              - tests/fixtures/repos
+              - examples/*/reference
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:python

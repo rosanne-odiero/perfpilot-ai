@@ -118,8 +118,8 @@ def _report(audit_id: str) -> AuditReport:
         return build_audit_report(session, audit_id)
 
 
-def test_only_the_runtime_audit_provider_ships() -> None:
-    assert [name for name, _ in registered_providers()] == ["runtime-audit"]
+def test_only_the_runtime_providers_ship() -> None:
+    assert [name for name, _ in registered_providers()] == ["repo-optimization", "runtime-audit"]
 
 
 @pytest.mark.usefixtures("measured_provider")

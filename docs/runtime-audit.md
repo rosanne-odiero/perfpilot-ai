@@ -19,6 +19,10 @@ the static findings. Repository code never runs on the host or in the API proces
 | `backend/jobs/handlers/runtime.py` | `runtime.profile` and `runtime.check_backend` |
 | `backend/reporting/providers/runtime.py` | Report section 7 |
 
+The next step, patching a measured hotspot and proving the change in the sandbox (repository
+tests before/after, paired A/B benchmark of the approved workload), is documented in
+[repo-optimization.md](repo-optimization.md).
+
 ## Flow
 
 1. `POST /api/audits {"snapshot_id": …, "mode": "RUNTIME"}` runs the static stages, then
@@ -37,6 +41,9 @@ the static findings. Repository code never runs on the host or in the API proces
    earlier run succeeded) and adds an audit warning.
 5. `GET /api/audits/{id}/runtime` and `GET /api/audits/{id}/runtime/runs/{run_id}` return the
    results; reports gain a measured section 7.
+6. Optional deep dive: `POST /api/audits/{id}/optimizations {finding_id}` creates a patch
+   candidate; after explicit approval it is validated and benchmarked in the sandbox with the
+   commands approved here ([repo-optimization.md](repo-optimization.md)).
 
 If the sandbox is unavailable, step 1 still completes. Discovery runs, the static results are
 complete, `runtime_available=false` with the reason is recorded, and a warning says so. Approvals
@@ -210,7 +217,8 @@ limitations, without numbers. Audits without a successful run, including all sta
 
 * **One run, one process.** Each approval executes the command once. Timings include cProfile
   (and, by default, tracemalloc) overhead and Docker/VM effects; use shares, not absolute times,
-  and use the A/B benchmark for "did it get faster".
+  and use the A/B benchmark ([repo-optimization.md](repo-optimization.md)) for "did it get
+  faster".
 * **Profiled code can lie.** The harness runs in the same process as the repository code, which
   can tamper with the profiler or its output. Results are validated as data and labelled
   `MEASURED` from the sandbox, but they are not attested.

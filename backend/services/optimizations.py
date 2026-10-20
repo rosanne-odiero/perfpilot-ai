@@ -16,10 +16,12 @@ from sqlalchemy.orm import Session
 from backend.core.config import Settings
 from backend.core.exceptions import (
     ConflictError,
+    NotConfiguredError,
     NotFoundError,
     PerfPilotError,
     ValidationFailedError,
 )
+from backend.core.observability import traced
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.jobs.service import enqueue_job
 from backend.models.database import session_scope, utcnow
@@ -107,6 +109,7 @@ def _require_original(candidate: OptimizationCandidate, spec: WorkloadSpec, when
 # ------------------------------------------------------------------------------------------
 
 
+@traced("optimization.patch_generation")
 def create_candidate(
     session: Session, settings: Settings, request: OptimizationRequest
 ) -> OptimizationCandidate:
@@ -116,10 +119,14 @@ def create_candidate(
     analysis = session.get(AnalysisRun, recommendation.analysis_run_id)
     if analysis is None or analysis.state != OptimizationState.RECOMMENDED:
         raise ConflictError("the recommendation's analysis has not completed")
+    if request.use_llm and not settings.llm_configured:
+        raise NotConfiguredError(
+            "use_llm requires a configured LLM endpoint (PERFPILOT_LLM_BASE_URL and _MODEL)"
+        )
     spec = build_spec(get_workload(session, recommendation.workload_id))
     root = workspace_of(spec)
     original_tree = hash_tree(root)[0]
-    proposer = select_patch_proposer(settings)
+    proposer = select_patch_proposer(settings, allow_llm=request.use_llm)
     proposal = proposer.propose(
         PatchRequest(
             target=PatchTarget(
@@ -134,6 +141,10 @@ def create_candidate(
             title=recommendation.title,
             proposed_optimization=recommendation.proposed_optimization,
             correctness_risks=[str(r) for r in recommendation.correctness_risks],
+            evidence={
+                "observed_bottleneck": recommendation.observed_bottleneck,
+                "profiler_evidence (MEASURED)": recommendation.profiler_evidence,
+            },
         )
     )
     candidate = OptimizationCandidate(
@@ -151,7 +162,7 @@ def create_candidate(
         original_source=proposal.original_source,
         patched_source=proposal.patched_source,
         summary=proposal.summary,
-        notes=proposal.notes,
+        notes=[*proposal.notes, *(f"not proposed by {a}" for a in proposal.attempts)],
         approval_status=ApprovalStatus.PENDING,
         validation_status=ValidationStatus.NOT_RUN,
     )
@@ -358,6 +369,7 @@ def _finish_validation(
             )
 
 
+@traced("optimization.validation")
 def execute_validation(
     validation_id: str, settings: Settings, progress: ProgressFn | None = None
 ) -> ValidationRun:

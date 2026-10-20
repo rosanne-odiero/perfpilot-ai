@@ -6,7 +6,10 @@ import json
 import logging
 import re
 import sys
+from collections.abc import Mapping
+from contextvars import ContextVar
 from datetime import UTC, datetime
+from types import MappingProxyType
 from typing import Any
 
 _SECRET_PATTERNS = [
@@ -19,6 +22,11 @@ _SECRET_PATTERNS = [
 ]
 
 _RESERVED = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__) | {"message"}
+
+# Identifiers bound by ``backend.core.observability.log_context`` and added to every record.
+LOG_CONTEXT: ContextVar[Mapping[str, str | int | float | bool]] = ContextVar(
+    "perfpilot_log_context", default=MappingProxyType({})
+)
 
 
 def scrub(text: str) -> str:
@@ -37,6 +45,8 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "msg": scrub(record.getMessage()),
         }
+        for key, value in LOG_CONTEXT.get().items():
+            payload[key] = scrub(value) if isinstance(value, str) else value
         for key, value in record.__dict__.items():
             if key not in _RESERVED and not key.startswith("_"):
                 payload[key] = scrub(value) if isinstance(value, str) else value

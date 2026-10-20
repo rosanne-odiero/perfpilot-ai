@@ -198,7 +198,7 @@ every merge leaves `main` runnable.
 
 ### Phase 6 — Patch and correctness validation · `feature/patch-validation`
 - [x] Lifecycle state machine (base spec §17) with transition guards + tests
-- [ ] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot *(deterministic templates + `PatchProposer` protocol/registry done and tested; the LLM proposer is not plugged in yet)*
+- [x] Patch generation (deterministic templates for bundled rules + LLM when configured) against a hashed source snapshot *(LLM proposer plugged in behind explicit consent: `use_llm` on workload candidates, audit `llm_consent` on repository candidates; see `docs/repo-optimization.md`)*
 - [x] Patch validator: unified-diff parse, allowed-file list, deny secrets/CI/security config/benchmark harness/tests, path containment
 - [x] Explicit approval endpoint; patched copy in an isolated workspace; original tree hash verified unchanged
 - [x] Validation engine: unit tests, acceptance fixtures, output comparison with tolerances, exception parity, input-mutation detection; `PASSED/FAILED/INCONCLUSIVE/NOT_RUN`
@@ -227,7 +227,7 @@ every merge leaves `main` runnable.
 - [x] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; API + single-use enforcement in the `runtime.profile` job, see `docs/runtime-audit.md`)*
 - [x] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols *(verified in the real sandbox: `tests/runtime/test_runtime_docker_e2e.py` — ShopFast workload and its pytest suite profiled, hotspots correlated, failures/timeouts recorded honestly)*
 - [x] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
-- [ ] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload
+- [x] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload *(verified in the real sandbox: `tests/runtime/test_repo_optimization_docker_e2e.py`; see `docs/repo-optimization.md`)*
 - **Exit:** on a trusted fixture, an approved workload yields measured hotspots that are correlated to findings.
 
 ### Phase 9 — Reporting · `feature/reporting`
@@ -251,19 +251,20 @@ every merge leaves `main` runnable.
 - **Exit:** a user can audit a public repo end to end in the UI without an LLM key.
 
 ### Phase 11 — Hardening · `chore/hardening`
-- [ ] Alembic baseline migration generated from the final ORM metadata; `init-db` runs migrations
-- [ ] Security review of ingestion, sandbox, and patch paths; `tests/security/` complete
-- [ ] Observability: structured logs with job/project/run IDs, durations, token/cost; optional OpenTelemetry spans
-- [ ] Docker: `Dockerfile` (api/worker/ui), `docker-compose.yml` with volumes; separate sandbox image; non-root
-- [ ] `security.yml`: pip-audit, gitleaks, CodeQL (or bandit)
-- [ ] CI: coverage gate (≥80% on core logic), Docker build validation, no benchmarking on shared runners
-- [ ] Docs: `architecture.md`, `methodology.md`, `security.md`, `ai-design.md`, `api.md`, `limitations.md`
+- [x] Alembic baseline migration generated from the final ORM metadata; `init-db` runs migrations
+- [x] Security review of ingestion, sandbox, and patch paths; `tests/security/` complete
+- [x] Observability: structured logs with job/project/run IDs, durations, token/cost; optional OpenTelemetry spans
+- [x] Docker: `Dockerfile` (api/worker/ui), `docker-compose.yml` with volumes; separate sandbox image; non-root
+- [x] `security.yml`: pip-audit, gitleaks, CodeQL (or bandit)
+- [x] CI: coverage gate (≥80% on core logic), Docker build validation, no benchmarking on shared runners
+- [x] Docs: `architecture.md`, `methodology.md`, `security.md`, `ai-design.md`, `api.md`, `limitations.md`
 
 ### Phase 12 — End-to-end acceptance and demo · `test/e2e-acceptance`, then `docs/portfolio`
-- [ ] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
-  import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data
+- [x] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
+  import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data *(`tests/e2e/test_acceptance.py`: ZIP import of ShopFast, persistent worker with per-job child processes; steps 9–11 verified against the real Docker sandbox)*
 - [ ] Optional network-marked variant against a real small public repo
-- [ ] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence
+- [x] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence *(`tests/e2e/test_workload_deep_dive.py`: `duplicate_counter` + `nested_loop` via the HTTP API and the isolated worker — profile → hotspots → analysis → patch → approve → validate → benchmark → experiment reports — then engine disposal + fresh app on the same data dir; plus a wrong candidate that fails validation and a validator-rejected patch, both reported without benchmark numbers)*
+- [x] Experiment report export (base spec: final engineering report for an issue/PR): `ExperimentReport` for a candidate or a reference benchmark in Markdown, JSON, HTML (inline SVG box/strip plot), CSV (raw samples + validation checks) and PDF; `POST/GET /api/optimizations/{id}/reports`, `POST/GET /api/benchmarks/{id}/reports`, `GET /api/experiments` *(see `docs/reports.md`)*
 - [ ] Real screenshots, real benchmark table, evaluation report from measured results
 - [ ] README polish
 

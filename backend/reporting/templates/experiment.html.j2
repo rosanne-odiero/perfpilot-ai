@@ -1,0 +1,338 @@
+{#- PerfPilot experiment report. All stored values are auto-escaped. -#}
+{% macro prov(p) %}<span class="badge prov prov-{{ p|lower }}">{{ p }}</span>{% endmacro %}
+{% macro status(s) %}<span class="badge status status-{{ (s or 'not_run')|lower }}">{{ s or "n/a" }}</span>{% endmacro %}
+{% macro absent(title, text) %}
+<div class="callout not-measured">
+  <p class="callout-title">{{ title }}</p>
+  <p>{{ text }}</p>
+</div>
+{% endmacro %}
+{% macro heading(n) %}<h2 id="s{{ n }}"><span class="secnum">{{ n }}</span> {{ titles[n] }}</h2>{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="{{ r.metadata.generator }}">
+<title>{{ r.metadata.title }}</title>
+<style>
+{{ css }}
+.summary-box { border: 2px solid #0f172a; padding: 8px 14px; margin: 10px 0 14px; }
+.summary-box h3 { margin-top: 6px; }
+.verdict { font-weight: bold; padding: 6px 8px; background-color: #f8fafc; border-left: 4px solid #1d4ed8; }
+.outcome-ok { border-left: 4px solid #15803d; padding: 4px 10px; }
+.outcome-bad { border-left: 4px solid #b91c1c; padding: 4px 10px; }
+</style>
+</head>
+<body>
+{% if pdf and pdf_engine == "xhtml2pdf" %}
+<div id="pdf-footer">{{ r.metadata.title }} · {{ r.metadata.subject_type }} {{ r.metadata.subject_id }} · page <pdf:pagenumber> of <pdf:pagecount></div>
+{% endif %}
+<div class="page">
+
+<div class="cover">
+  <p class="eyebrow">PerfPilot AI · Workload optimization experiment</p>
+  <h1>{{ r.metadata.title }}</h1>
+  <table class="cover-meta">
+    <tr>
+      <td><span class="k">Workload</span><br>{{ r.workload.slug }}</td>
+      <td><span class="k">Experiment</span><br>{{ r.kind|human }}</td>
+      <td><span class="k">State</span><br>{{ r.outcome.state }}</td>
+      <td><span class="k">Size</span><br>{{ r.workload.size or "n/a" }}</td>
+      <td><span class="k">Generated</span><br>{{ r.metadata.generated_at|dt }}</td>
+    </tr>
+  </table>
+  <p class="cover-source">{{ r.metadata.subject_type }} {{ r.metadata.subject_id }}</p>
+</div>
+
+<div class="legend" id="legend">
+  <h3>How to read this report: provenance labels</h3>
+  <table class="data">
+    <thead><tr><th width="20%">Label</th><th width="40%">Meaning</th><th width="40%">Example</th></tr></thead>
+    <tbody>
+    {% for entry in legend %}
+      <tr><td><span class="legend-term legend-{{ entry.label|lower }}">{{ entry.label }}</span></td><td>{{ entry.meaning }}</td><td>{{ entry.example }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ---------------------------------------------------------------- 1 #}
+<section>
+{{ heading(1) }}
+<div class="{{ 'outcome-ok' if r.outcome.succeeded else 'outcome-bad' }}">
+  <p><strong>{{ r.outcome.headline }}</strong> {{ status(r.outcome.state) }}</p>
+  {% if r.outcome.reasons %}<ul>{% for reason in r.outcome.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+</div>
+<div class="summary-box" id="measured-vs-hypothesis">
+  <h3>Measured vs hypothesis</h3>
+  <table class="data">
+    <thead><tr><th width="28%">Measured</th><th width="56%">Value</th><th width="16%">Provenance</th></tr></thead>
+    <tbody>
+    {% for item in r.summary_box.measured %}
+      <tr><td>{{ item.label }}</td><td>{{ brk(item.value, 70) }}</td><td>{{ prov(item.provenance) }}</td></tr>
+    {% else %}
+      <tr><td colspan="3" class="muted">Nothing was measured for this experiment.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if r.summary_box.hypotheses %}
+  <table class="data">
+    <thead><tr><th width="28%">Hypothesis (not measured)</th><th width="56%">Statement</th><th width="16%">Provenance</th></tr></thead>
+    <tbody>
+    {% for item in r.summary_box.hypotheses %}
+      <tr><td>{{ item.label }}</td><td>{{ item.value }}</td><td>{{ prov(item.provenance) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="verdict">{{ r.summary_box.verdict }}</p>
+</div>
+</section>
+
+{# ---------------------------------------------------------------- 2 #}
+<section>
+{{ heading(2) }}
+{% set w = r.workload %}
+<table class="kv">
+  <tr><th>Workload</th><td>{{ w.name }} (<span class="mono">{{ w.slug }}</span>) · project {{ w.project }}</td></tr>
+  <tr><th>Description</th><td>{{ w.description }}</td></tr>
+  <tr><th>Entrypoint</th><td class="mono">{{ w.entrypoint }} · {{ w.invocation_mode }}</td></tr>
+  <tr><th>Fixture</th><td><span class="mono">{{ w.fixture }}</span>{% if w.fixture_description %}<br>{{ w.fixture_description }}{% endif %}</td></tr>
+  <tr><th>Input size</th><td>{{ w.size or "n/a" }}{% if w.size_parameters %} · {% for k, v in w.size_parameters.items() %}<span class="mono">{{ k }}={{ v }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</td></tr>
+  <tr><th>Input SHA-256</th><td class="mono">{{ brk(w.input_sha256 or "not recorded", 40) }}{% if w.input_sha256_source %}<br><span class="muted">{{ w.input_sha256_source }}</span>{% endif %}</td></tr>
+  <tr><th>Expected output</th><td>{% for k, v in w.expected_output.items() %}{{ k }}: <span class="mono">{{ v }}</span>{% if not loop.last %}; {% endif %}{% endfor %}</td></tr>
+  <tr><th>Limits</th><td>timeout {{ w.timeout_seconds }} s · memory {{ w.memory_limit_mb }} MB</td></tr>
+  <tr><th>Registered tree SHA-256</th><td class="mono">{{ brk(w.tree_sha256 or "unknown", 40) }}</td></tr>
+</table>
+</section>
+
+{# ---------------------------------------------------------------- 3 #}
+<section>
+{{ heading(3) }}
+{% if r.environment is none %}
+{{ absent("No environment fingerprint", "No run of this experiment recorded an environment fingerprint.") }}
+{% else %}
+{% set e = r.environment %}
+<p>{{ prov(e.provenance) }} <span class="muted">Captured by {{ e.source }}.</span></p>
+<table class="kv">
+  {% for k, v in e.fields.items() %}<tr><th>{{ k }}</th><td class="mono">{{ brk(v, 60) }}</td></tr>{% endfor %}
+  {% if e.packages %}<tr><th>Packages</th><td class="mono">{% for k, v in e.packages.items() %}{{ k }}=={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</td></tr>{% endif %}
+</table>
+{% for note in e.notes %}<p class="warning">{{ note }}</p>{% endfor %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 4 #}
+<section>
+{{ heading(4) }}
+{% if r.profiling is none %}
+{{ absent("No profile", r.profiling_absent_reason or "No profile is linked to this experiment.") }}
+{% else %}
+{% set p = r.profiling %}
+<p>{{ prov(p.provenance) }} Profile <span class="mono">{{ p.profile_id }}</span> · {{ p.status }} · size {{ p.size }} · {{ p.relation }}.</p>
+<p class="muted">Total profiled time {{ p.total_profiled_time_ms|ms }} · wall time under the profiler {{ p.wall_time_under_profiler_ms|ms }} · input SHA-256 <span class="mono">{{ brk(p.input_sha256 or "n/a", 40) }}</span></p>
+<table class="data">
+  <thead><tr><th width="5%">#</th><th width="33%">Function</th><th width="9%" class="num">Calls</th><th width="13%" class="num">Exclusive</th><th width="10%" class="num">Excl. %</th><th width="13%" class="num">Cumulative</th><th width="10%" class="num">Cum. %</th><th width="7%">User</th></tr></thead>
+  <tbody>
+  {% for h in p.hotspots %}
+    <tr><td>{{ h.rank }}</td><td><span class="mono">{{ brk(h.function_name, 40) }}</span><br><span class="mono loc">{{ brk(h.file_path ~ ":" ~ h.line_number, 40) }}</span></td><td class="num">{{ h.total_calls }}{% if h.primitive_calls != h.total_calls %}/{{ h.primitive_calls }}{% endif %}</td><td class="num">{{ h.exclusive_ms|ms }}</td><td class="num">{{ h.exclusive_percent|pct }}</td><td class="num">{{ h.cumulative_ms|ms }}</td><td class="num">{{ h.cumulative_percent|pct }}</td><td>{{ "yes" if h.is_user_code else "no" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<ul class="muted">{% for k, v in p.definitions.items() %}<li>{{ v }}</li>{% endfor %}</ul>
+<h3>Memory during the profile (three different quantities)</h3>
+<table class="data">
+  <thead><tr><th width="30%">Metric</th><th width="15%" class="num">Value</th><th width="55%">Definition</th></tr></thead>
+  <tbody>{% for m in p.memory %}<tr><td>{{ m.name }}</td><td class="num">{{ m.value_bytes|bytes }}</td><td>{{ m.definition }}</td></tr>{% endfor %}</tbody>
+</table>
+{% for u in p.memory_unavailable %}<p class="warning">Unavailable: {{ u }}</p>{% endfor %}
+{% for wn in p.warnings %}<p class="warning">{{ wn }}</p>{% endfor %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 5 #}
+<section>
+{{ heading(5) }}
+{% if r.recommendation is none %}
+<p class="muted">Not applicable: this experiment benchmarks the bundled reference implementation; no recommendation is involved.</p>
+{% else %}
+{% set rec = r.recommendation %}
+<p><strong>{{ rec.title }}</strong> · rule <span class="mono">{{ rec.rule_id or "n/a" }}</span> · rank {{ rec.rank }} · confidence {{ rec.confidence }} · generated by {{ rec.generated_by }}</p>
+<p class="mono loc">{{ brk(rec.target_file, 60) }}{% if rec.source_lines.start %}:{{ rec.source_lines.start }}{% if rec.source_lines.end and rec.source_lines.end != rec.source_lines.start %}-{{ rec.source_lines.end }}{% endif %}{% endif %}{% if rec.target_function %} · {{ rec.target_function }}{% endif %}</p>
+<table class="kv">
+  <tr><th>Observed bottleneck {{ prov(rec.observed_bottleneck.provenance) }}</th><td>{{ rec.observed_bottleneck.text }}</td></tr>
+  {% set tf = rec.profiler_evidence.get("target_function") %}
+  {% if tf %}<tr><th>Profiler evidence {{ prov(rec.profiler_evidence_provenance) }}</th><td>Profile <span class="mono">{{ rec.profiler_evidence.get("profile_id") }}</span> (size {{ rec.profiler_evidence.get("size") }}): <span class="mono">{{ tf.get("function_name") }}</span> exclusive {{ tf.get("internal_time_ms")|ms }} ({{ tf.get("percentage_of_profiled_time")|pct }}), cumulative {{ tf.get("cumulative_time_ms")|ms }} ({{ tf.get("cumulative_percentage")|pct }}), {{ tf.get("total_calls") }} call(s).{% if rec.profiler_evidence.get("largest_non_workspace_functions") %}<br><span class="muted">Largest non-workspace functions in the same profile (not attributed to a caller):</span>{% for f in rec.profiler_evidence.get("largest_non_workspace_functions")[:5] %}<br><span class="mono">{{ brk(f.get("function_name", "") | string, 50) }}</span>: exclusive {{ f.get("internal_time_ms")|ms }}, {{ f.get("total_calls") }} call(s){% endfor %}{% endif %}</td></tr>{% endif %}
+  <tr><th>Suspected root cause {{ prov(rec.suspected_root_cause.provenance) }}</th><td>{{ rec.suspected_root_cause.text }}</td></tr>
+  <tr><th>Proposed optimization {{ prov(rec.proposed_optimization.provenance) }}</th><td>{{ rec.proposed_optimization.text }}</td></tr>
+  <tr><th>Expected effect {{ prov(rec.expected_effect.provenance) }}</th><td>{{ rec.expected_effect.text }}{% if rec.expected_effect.note %}<br><span class="muted">{{ rec.expected_effect.note }}</span>{% endif %}</td></tr>
+  <tr><th>Estimated impact {{ prov(rec.estimated_impact.provenance) }}</th><td>{{ rec.estimated_impact.text }}{% if rec.estimated_impact.note %}<br><span class="muted">{{ rec.estimated_impact.note }}</span>{% endif %}</td></tr>
+  <tr><th>Correctness risks</th><td>{% if rec.correctness_risks %}<ul>{% for risk in rec.correctness_risks %}<li>{{ risk }}</li>{% endfor %}</ul>{% else %}none stated{% endif %}</td></tr>
+  <tr><th>Memory trade-offs {{ prov(rec.memory_tradeoffs.provenance) }}</th><td>{{ rec.memory_tradeoffs.text }}</td></tr>
+  <tr><th>Validation plan</th><td><ol>{% for step in rec.validation_plan %}<li>{{ step }}</li>{% endfor %}</ol></td></tr>
+</table>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 6 #}
+<section>
+{{ heading(6) }}
+{% if r.patch is none %}
+<p class="muted">Not applicable: the reference implementation is a bundled file, not a generated patch.</p>
+{% else %}
+{% set d = r.patch %}
+<table class="kv">
+  <tr><th>Generated by</th><td>{{ d.generated_by }}{% if d.transform %} · transform <span class="mono">{{ d.transform }}</span>{% endif %}</td></tr>
+  <tr><th>Target file</th><td class="mono">{{ brk(d.target_file, 60) }}{% if d.changed_lines is not none %} · {{ d.changed_lines }} changed line(s){% endif %}</td></tr>
+  <tr><th>Original file SHA-256</th><td class="mono">{{ brk(d.original_file_sha256, 40) }}</td></tr>
+  <tr><th>Patched file SHA-256</th><td class="mono">{{ brk(d.patched_file_sha256 or "n/a", 40) }}</td></tr>
+  <tr><th>Original tree SHA-256</th><td class="mono">{{ brk(d.original_tree_sha256, 40) }}</td></tr>
+  <tr><th>Patched tree SHA-256</th><td class="mono">{{ brk(d.patched_tree_sha256 or "not built (never validated)", 40) }}</td></tr>
+  <tr><th>Patch validator</th><td>{% if d.patch_validator_valid is none %}not run{% elif d.patch_validator_valid %}{{ status("PASSED") }}{% else %}{{ status("FAILED") }}{% endif %}{% if d.patch_validator_checks %} · {% for k, v in d.patch_validator_checks.items() %}{{ k }}: {{ v }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</td></tr>
+</table>
+{% for v in d.patch_validator_violations %}<p class="warning">{{ v }}</p>{% endfor %}
+{% if d.summary %}<p>{{ d.summary }}</p>{% endif %}
+{% if d.notes %}<ul>{% for n in d.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+{% if d.unified_diff %}
+<div class="diff">
+{% for line in d.unified_diff.splitlines() %}
+  {% set kind = "add" if line.startswith("+") and not line.startswith("+++") else ("del" if line.startswith("-") and not line.startswith("---") else ("hunk" if line.startswith("@@") else "ctx")) %}
+  <div class="dl {{ kind }}">{{ line|code_line }}</div>
+{% endfor %}
+</div>
+{% else %}
+{{ absent("No diff", d.diff_withheld_reason or "No diff was produced.") }}
+{% endif %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 7 #}
+<section>
+{{ heading(7) }}
+{% if r.approval is none %}
+<p class="muted">Not applicable: benchmarking the bundled reference implementation needs no patch approval.</p>
+{% else %}
+{% set a = r.approval %}
+<table class="kv">
+  <tr><th>Approval</th><td>{{ status(a.status) }}</td></tr>
+  <tr><th>Approved by / at</th><td>{{ a.approved_by or "n/a" }} · {{ a.approved_at|dt }}</td></tr>
+  {% if a.rejected_by %}<tr><th>Rejected by / at</th><td>{{ a.rejected_by }} · {{ a.rejected_at|dt }}</td></tr>{% endif %}
+</table>
+{% for reason in a.rejection_reasons %}<p class="warning">Rejection: {{ reason }}</p>{% endfor %}
+<table class="data">
+  <thead><tr><th width="22%">From</th><th width="22%">To</th><th width="22%">At</th><th width="34%">Reason</th></tr></thead>
+  <tbody>{% for h in a.state_history %}<tr><td>{{ h.from_state }}</td><td>{{ h.to_state }}</td><td class="mono loc">{{ brk(h.at, 30) }}</td><td>{{ h.reason }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 8 #}
+<section>
+{{ heading(8) }}
+{% if r.validation is none %}
+{{ absent("Validation did not run", r.validation_absent_reason or "No validation run is linked to this experiment.") }}
+{% else %}
+{% set v = r.validation %}
+<p>{{ prov(v.provenance) }} {{ status(v.status) }} {{ v.summary }}{% if v.duration_seconds is not none %} <span class="muted">({{ v.duration_seconds|fixed(1) }} s)</span>{% endif %}</p>
+<p class="muted">Required checks: {{ v.required_checks|join(", ") or "none" }}</p>
+{% if v.error %}<p class="warning">{{ v.error }}</p>{% endif %}
+<table class="data">
+  <thead><tr><th width="22%">Check</th><th width="10%">Required</th><th width="14%">Status</th><th width="54%">Detail</th></tr></thead>
+  <tbody>
+  {% for c in v.checks %}
+    <tr><td class="mono">{{ c.name }}</td><td>{{ "yes" if c.required else "no" }}</td><td>{{ status(c.status) }}</td><td>{{ brk(c.detail, 70) }}{% for f in c.failures %}<br><span class="mono loc">{{ brk(f, 70) }}</span>{% endfor %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if v.baseline_input_hashes %}<p class="muted">Validated baseline input hashes: {% for k, h in v.baseline_input_hashes.items() %}<span class="mono">{{ k }}</span>={{ h[:12] }}…{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 9 #}
+<section>
+{{ heading(9) }}
+{% if r.benchmark is none %}
+{{ absent("No benchmark ran", r.benchmark_absent_reason or "No benchmark is linked to this experiment.") }}
+{% else %}
+{% set b = r.benchmark %}
+<p>{{ prov(b.provenance) }} Benchmark <span class="mono">{{ b.benchmark_id }}</span> · {{ status(b.status) }} · baseline (original) vs {{ b.candidate_label }}</p>
+{% if b.error %}<p class="warning">{{ b.error }}</p>{% endif %}
+{% set s = b.settings %}
+<p class="muted">Settings: size {{ s.size }} · {{ s.warmups }} warmup(s) · {{ s.runs }} timed runs per variant ({{ s.timed_iterations_per_process }} call per fresh process) · {{ s.memory_runs }} memory runs · order {{ s.order }} · seed {{ s.seed }} · {{ s.bootstrap_resamples }} bootstrap resamples · practical threshold {{ s.threshold_percent }}%</p>
+<p class="muted">Input SHA-256 <span class="mono">{{ brk(b.input_sha256 or "n/a", 40) }}</span> · baseline tree <span class="mono">{{ (b.baseline_tree_sha256 or "n/a")[:16] }}</span> · candidate tree <span class="mono">{{ (b.candidate_tree_sha256 or "n/a")[:16] }}</span></p>
+{% if b.stats %}
+<table class="kpis">
+  <tr>
+    <td><span class="kpi">{{ b.speedup|ratio }}</span><br><span class="kpi-label">median speedup</span></td>
+    <td><span class="kpi">{{ b.ci_low|ratio }} – {{ b.ci_high|ratio }}</span><br><span class="kpi-label">{% if b.ci_confidence %}{{ (b.ci_confidence * 100)|round|int }}% {% endif %}bootstrap CI</span></td>
+    <td><span class="kpi">{{ b.latency_reduction_percent|pct }}</span><br><span class="kpi-label">latency reduction</span></td>
+    <td><span class="kpi">{{ b.throughput_speedup|ratio }}</span><br><span class="kpi-label">throughput speedup</span></td>
+    <td><span class="kpi">{{ status(b.classification) }}</span><br><span class="kpi-label">classification</span></td>
+  </tr>
+</table>
+<p>CPU-time speedup: {% if b.cpu_speedup is not none %}{{ b.cpu_speedup|ratio }}{% else %}unavailable — {{ b.cpu_speedup_unavailable_reason }}{% endif %}</p>
+<p class="muted">Classification: {{ b.classification_reason or "n/a" }}{% if b.improvement_speedup_threshold %} (IMPROVED needs speedup >= {{ b.improvement_speedup_threshold|fixed(3) }}× and a CI excluding 1; REGRESSED <= {{ b.regression_speedup_threshold|fixed(3) }}×){% endif %}. CI method: {{ b.ci_method or "n/a" }}.</p>
+{% if chart %}<div class="figure">{{ chart }}<p class="caption">Figure 1. Raw wall-time samples per variant (MEASURED): box = interquartile range, thick line = median, whiskers = min–max, dots = individual timed runs.</p></div>{% endif %}
+<h3>Per-variant statistics</h3>
+<table class="data">
+  <thead><tr><th>Variant</th><th>Metric</th><th class="num">n</th><th class="num">Median</th><th class="num">Mean</th><th class="num">Min</th><th class="num">Max</th><th class="num">Stdev</th><th class="num">p95</th><th class="num">CV</th></tr></thead>
+  <tbody>
+  {% for st in b.stats %}
+    <tr><td>{{ st.variant }}</td><td>{{ "wall" if st.metric == "wall_ms" else "CPU" }}</td><td class="num">{{ st.n }}</td><td class="num">{{ st.median|ms }}</td><td class="num">{{ st.mean|ms }}</td><td class="num">{{ st.min|ms }}</td><td class="num">{{ st.max|ms }}</td><td class="num">{{ st.stdev|ms }}</td><td class="num">{{ st.p95|ms }}</td><td class="num">{{ st.cv_percent|pct }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% set small = b.stats|selectattr("small_n_warning")|map(attribute="small_n_warning")|unique|list %}
+{% for warn in small %}<p class="warning">Small sample: {{ warn }}</p>{% endfor %}
+{% endif %}
+<h3>Memory comparison</h3>
+{% if b.memory is none %}
+<p class="muted">No memory runs were recorded.</p>
+{% else %}
+<p class="muted">{{ b.memory.runs_per_variant.baseline }} baseline / {{ b.memory.runs_per_variant.candidate }} candidate memory run(s), separate from the timed runs. tracemalloc and RSS are different quantities and are not compared with each other.</p>
+<table class="data">
+  <thead><tr><th width="26%">Metric</th><th width="13%" class="num">Baseline (median)</th><th width="13%" class="num">Candidate (median)</th><th width="10%" class="num">Ratio</th><th width="38%">Definition</th></tr></thead>
+  <tbody>{% for m in b.memory.rows %}<tr><td>{{ m.label }}</td><td class="num">{{ m.baseline_bytes_median|bytes }}</td><td class="num">{{ m.candidate_bytes_median|bytes }}</td><td class="num">{{ m.ratio_candidate_to_baseline|ratio }}</td><td>{{ m.definition }}</td></tr>{% endfor %}</tbody>
+</table>
+{% for u in b.memory.unavailable %}<p class="warning">Unavailable: {{ u }}</p>{% endfor %}
+{% endif %}
+{% if b.correctness %}<p class="muted">Output check during the benchmark: {% for k, val in b.correctness.items() %}{{ k }}={{ val }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+{% if b.formulas %}<ul class="muted">{% for k, f in b.formulas.items() %}<li>{{ k }} = {{ f }}</li>{% endfor %}</ul>{% endif %}
+<h3>Warnings and noise</h3>
+{% for wn in b.warnings %}<p class="warning">{{ wn }}</p>{% else %}<p class="muted">No warnings.</p>{% endfor %}
+<h3>Raw timing samples</h3>
+{% set timing = b.samples|selectattr("kind", "equalto", "timing")|list %}
+<p class="muted">{{ b.samples|length }} sample rows ({{ timing|length }} timed); every row is in the CSV export.</p>
+{% if timing %}
+<table class="data">
+  <thead><tr><th class="num">Pair</th><th>Variant</th><th class="num">Position</th><th class="num">Wall</th><th class="num">CPU</th><th>OK</th></tr></thead>
+  <tbody>{% for x in timing[:max_sample_rows] %}<tr><td class="num">{{ x.pair_index }}</td><td>{{ x.variant }}</td><td class="num">{{ x.position_in_pair }}</td><td class="num">{{ x.wall_ms|ms }}</td><td class="num">{{ x.cpu_ms|ms }}</td><td>{{ "yes" if x.ok else "no" }}</td></tr>{% endfor %}</tbody>
+</table>
+{% if timing|length > max_sample_rows %}<p class="muted">Showing the first {{ max_sample_rows }} timed samples.</p>{% endif %}
+{% endif %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 10 #}
+<section>
+{{ heading(10) }}
+<p>Command line:</p>
+<div class="commands">{% for cmd in r.reproducibility.cli %}<div class="dl ctx">{{ cmd|code_line }}</div>{% endfor %}</div>
+<p>HTTP API (relative to the PerfPilot base URL):</p>
+<div class="commands">{% for call in r.reproducibility.api_calls %}<div class="dl ctx">{{ call|code_line }}</div>{% endfor %}</div>
+{% if r.reproducibility.notes %}<ul class="muted">{% for n in r.reproducibility.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 11 #}
+<section>
+{{ heading(11) }}
+<ul>{% for item in r.limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+</section>
+
+<footer class="report-footer">
+  <p>Generated by {{ r.metadata.generator }} on {{ r.metadata.generated_at|dt }} · {{ r.metadata.subject_type }} <span class="mono">{{ r.metadata.subject_id }}</span> · experiment schema {{ r.schema_version }}{% if r.metadata.pdf_engine %} · PDF engine: {{ r.metadata.pdf_engine }}{% endif %} · {{ r.metadata.redactions_applied }} secret-like values redacted.</p>
+</footer>
+</div>
+</body>
+</html>

@@ -37,3 +37,6 @@ workspaces/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Local browser automation output
+.playwright-mcp/

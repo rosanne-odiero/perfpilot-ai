@@ -17,7 +17,9 @@ The request is a JSON object; the result is always written (atomically) as a JSO
 ``command``  run a module, script, or pytest target from the workspace under cProfile.
              Opt-in flags on the command object: ``trace_memory`` (tracemalloc concurrently
              with cProfile) and ``stats_json`` (``profile_stats.json``: the pstats table as JSON,
-             so consumers never need to unmarshal an untrusted ``.prof``).
+             so consumers never need to unmarshal an untrusted ``.prof``), and ``profile``
+             (default true; ``false`` runs the command once *without* any profiler and reports
+             only ``timing.wall_ns``/``timing.cpu_ns`` around the command itself).
 ``cases``    call the workload once per listed case (a fixture call or a literal JSON input)
              and report each output digest or raised exception plus input mutation.
 
@@ -398,9 +400,13 @@ def _command_argv(command: dict[str, Any]) -> tuple[str, str, list[str]]:
         raise HarnessError("bad_request", "command.target must be a non-empty string")
     if not isinstance(args, list) or not all(isinstance(a, str) and "\x00" not in a for a in args):
         raise HarnessError("bad_request", "command.args must be a list of strings")
-    for flag in ("trace_memory", "stats_json"):
-        if not isinstance(command.get(flag, False), bool):
+    for flag in ("trace_memory", "stats_json", "profile"):
+        if not isinstance(command.get(flag, flag == "profile"), bool):
             raise HarnessError("bad_request", f"command.{flag} must be a boolean")
+    if command.get("profile", True) is False and (
+        command.get("trace_memory") or command.get("stats_json")
+    ):
+        raise HarnessError("bad_request", "trace_memory/stats_json need profile=true")
     return kind, target, args
 
 
@@ -472,6 +478,34 @@ def _pytest_runner(target: str, args: list[str]) -> Callable[[], int]:
     return run
 
 
+def _run_guarded(runner: Callable[[], int]) -> int:
+    try:
+        return runner()
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+
+
+def _timed_command(
+    kind: str, target: str, args: list[str], runner: Callable[[], int]
+) -> dict[str, Any]:
+    """Run the command once without any profiler. Only the command itself is timed: interpreter
+    start-up, harness imports and target resolution happen before the first clock read."""
+    gc.collect()
+    wall0, cpu0 = time.perf_counter_ns(), time.process_time_ns()
+    exit_code = _run_guarded(runner)
+    cpu1, wall1 = time.process_time_ns(), time.perf_counter_ns()
+    return {
+        "command": {"kind": kind, "target": target, "args": args, "exit_code": exit_code},
+        "timing": {
+            "wall_ns": wall1 - wall0,
+            "cpu_ns": cpu1 - cpu0,
+            "clock": "time.perf_counter_ns / time.process_time_ns",
+            "profiled": False,
+            "gc_enabled": gc.isenabled(),
+        },
+    }
+
+
 def run_command(request: dict[str, Any], root: Path) -> dict[str, Any]:
     command = request.get("command")
     if not isinstance(command, dict):
@@ -490,6 +524,9 @@ def run_command(request: dict[str, Any], root: Path) -> dict[str, Any]:
         path_part, sep, node = target.partition("::")
         test_path = _workspace_file(root, path_part, "pytest target")
         runner = _pytest_runner(f"{test_path}{sep}{node}", args)
+
+    if command.get("profile", True) is False:
+        return _timed_command(kind, target, args, runner)
 
     # Opt-in: tracemalloc runs *concurrently* with cProfile, so timings include its overhead.
     trace_memory = bool(command.get("trace_memory", False))

@@ -67,8 +67,8 @@ recorded as an event in the history (same state) plus `approved_by` / `approved_
 ## 3. Patch generation
 
 `backend/optimization/patch_generator.py` is generic over *(source root, target file, target
-function and line span, rule id)*, so the runtime repository audit can reuse it for hotspots in
-imported repositories. Steps:
+function and line span, rule id)*, so the runtime repository audit reuses it for hotspots in
+imported repositories ([repo-optimization.md](repo-optimization.md)). Steps:
 
 1. Resolve the target inside the source root (no symlinks, no `..`) and **verify its SHA-256**
    against the hash recorded by the analysis snapshot (`409 source_changed` otherwise).
@@ -92,9 +92,15 @@ generated from the original `workload.py`, and they differ from the hand-written
 `reference/optimized.py` files.
 
 **Proposers.** `PatchProposer` is a protocol (`name`, `propose(PatchRequest) -> PatchProposal`).
-`DeterministicPatchProposer` is the default. An LLM proposer can be plugged in with
-`register_patch_proposer(factory)`, and the candidate records the model identifier in
-`generated_by`. Whatever produced the diff, it passes through the same validator.
+`DeterministicPatchProposer` is the default; another proposer can be registered with
+`register_patch_proposer(factory)`. The LLM proposer (`backend/optimization/llm_proposer.py`) is
+chained after it only with consent: `POST /api/optimizations {"recommendation_id", "use_llm":
+true}` (`501 not_configured` when no model is configured). It is asked only when no safe
+deterministic patch exists, sees only the target function, the recommendation and its
+`MEASURED` profiler evidence, and its rewrite must pass the compile check and the validator below
+(details in [repo-optimization.md](repo-optimization.md#7-llm-patch-proposer)). The candidate
+records the model identifier in `generated_by` and earlier refusals in `notes`. Whatever produced
+the diff, it passes through the same validator.
 
 ## 4. Patch validator
 
@@ -199,7 +205,15 @@ is applied, validated or benchmarked. The printed JSON includes the profile, ana
 recommendation, diff, validation checks, the benchmark summary (medians, speedup, 95% CI,
 classification), the state history, and `original_tree_unchanged`.
 
-## 9. Limitations
+## 9. Experiment reports
+
+`POST /api/optimizations/{id}/reports {"formats": ["md", "json", "html", "csv", "pdf"]}` exports
+the whole experiment (profile evidence, recommendation, diff and hashes, approval, per-check
+validation, benchmark distributions, memory, reproducibility commands) as an engineering report for
+an issue or pull request. Failed and rejected candidates are reported too, with the reason and
+without benchmark numbers. See [reports.md](reports.md#experiment-reports-workload-deep-dive).
+
+## 10. Limitations
 
 * The deterministic templates cover five rule families. Other findings stay recommendations with
   `no safe deterministic patch`.
@@ -207,5 +221,6 @@ classification), the state history, and `original_tree_unchanged`.
   list inside the loop) and exotic `__hash__`/`__eq__` implementations are documented risks. The
   validation checks cover only the inputs they exercise.
 * Bundled workloads are trusted and run in a constrained subprocess on the host. Patches to
-  imported repositories must be validated in the Docker sandbox (Phase 8).
+  imported repositories are validated and benchmarked in the Docker sandbox instead; see
+  [repo-optimization.md](repo-optimization.md).
 * Approval identity is a free-text `approved_by`. There is no authentication yet.

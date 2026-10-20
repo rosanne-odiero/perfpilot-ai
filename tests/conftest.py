@@ -17,6 +17,9 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Settin
     for var in ("PERFPILOT_LLM_BASE_URL", "PERFPILOT_LLM_API_KEY", "PERFPILOT_LLM_MODEL"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("PERFPILOT_JOB_LEASE_SECONDS", "4")
+    # Throwaway per-test databases are built from the ORM metadata; tests/unit/test_migrations.py
+    # proves the Alembic head yields the identical schema.
+    monkeypatch.setenv("PERFPILOT_DATABASE_SCHEMA_MODE", "create_all")
     reset_settings_cache()
     cfg = get_settings()
     init_engine(cfg)
