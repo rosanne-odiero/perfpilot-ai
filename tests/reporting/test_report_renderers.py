@@ -295,3 +295,20 @@ def test_file_line_references_survive_redaction(make_audit: AuditFactory) -> Non
     assert redact_report_text("x.py:10 token = 'Zx81kLm2Qp9vRt'").text == (
         "x.py:10 token = '[REDACTED]'"
     )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "DB_PASSWORD=Hunter2.prod:9876",
+        'api_key: "k3y.Zx9q:443"',
+        "Password=Hunter2.prod:9876;",
+        "secret_token = v1.release:20240101",
+    ],
+)
+def test_location_masking_does_not_hide_secret_values(text: str) -> None:
+    from backend.reporting.redaction import redact_report_text
+
+    result = redact_report_text(text)
+    assert "[REDACTED]" in result.text
+    assert result.count >= 1

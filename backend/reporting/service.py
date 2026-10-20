@@ -80,11 +80,11 @@ def request_report(
         existing = _job_by_key(session, key)
         if existing is None:
             break
+        record = session.scalar(select(ReportRecord).where(ReportRecord.job_id == existing.id))
         if JobStatus(existing.status) not in _RETRYABLE:
-            record = session.scalar(select(ReportRecord).where(ReportRecord.job_id == existing.id))
-            if record is None:
-                record = _new_record(session, audit.id, fmt, existing.id)
-            return record, existing
+            return record or _new_record(session, audit.id, fmt, existing.id), existing
+        if record is not None:
+            reconcile_status(session, record)
         key = f"{base}:r{attempt}"
     else:
         raise ConflictError("too many failed attempts for this report", details={"key": base})
@@ -124,22 +124,38 @@ def request_reports(
     return [request_report(session, audit, fmt) for fmt in unique]
 
 
+def reconcile_status(session: Session, record: ReportRecord) -> ReportRecord:
+    """Mark a PENDING/RUNNING report FAILED when its job ended without the handler finishing.
+
+    This happens when the worker kills the job (timeout, cancellation, crash), so the handler's
+    own error path never ran.
+    """
+    if record.status not in {ReportStatus.PENDING, ReportStatus.RUNNING} or not record.job_id:
+        return record
+    job = session.get(Job, record.job_id)
+    if job is None or not JobStatus(job.status).is_terminal or job.status == JobStatus.SUCCEEDED:
+        return record
+    record.status = ReportStatus.FAILED
+    record.error = record.error or f"report job {job.status}: {job.error or job.message or ''}"
+    session.flush()
+    return record
+
+
 def list_reports(session: Session, audit_id: str) -> list[ReportRecord]:
     get_audit(session, audit_id)
-    return list(
-        session.scalars(
-            select(ReportRecord)
-            .where(ReportRecord.audit_id == audit_id)
-            .order_by(ReportRecord.created_at.desc())
-        )
+    records = session.scalars(
+        select(ReportRecord)
+        .where(ReportRecord.audit_id == audit_id)
+        .order_by(ReportRecord.created_at.desc())
     )
+    return [reconcile_status(session, r) for r in records]
 
 
 def get_report(session: Session, report_id: str) -> ReportRecord:
     record = session.get(ReportRecord, report_id)
     if record is None:
         raise NotFoundError(f"report {report_id} not found")
-    return record
+    return reconcile_status(session, record)
 
 
 def report_artifacts(session: Session, record: ReportRecord) -> list[Artifact]:

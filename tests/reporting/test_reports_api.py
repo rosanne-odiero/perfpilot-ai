@@ -202,3 +202,24 @@ def test_job_with_invalid_payload_fails_cleanly(settings: Settings) -> None:
         assert job.error_details is not None
         assert job.error_details["code"] == "validation_failed"
         assert session.query(ReportRecord).count() == 0
+
+
+def test_killed_job_marks_report_failed(client: TestClient, make_audit: AuditFactory) -> None:
+    """The worker kills timed-out jobs, so the handler cannot record the failure itself."""
+    audit_id = make_audit()
+    accepted = _request(client, audit_id, ["pdf"])["reports"][0]
+    with session_scope() as session:
+        job = session.get(Job, accepted["job_id"])
+        record = session.get(ReportRecord, accepted["report_id"])
+        assert job is not None
+        assert record is not None
+        record.status = "RUNNING"
+        job.status = "TIMED_OUT"
+        job.error = "job exceeded 1800s"
+    body = client.get(f"/api/reports/{accepted['report_id']}").json()
+    assert body["status"] == "FAILED"
+    assert "TIMED_OUT" in body["error"]
+    listed = client.get(f"/api/audits/{audit_id}/reports").json()
+    assert [r["status"] for r in listed] == ["FAILED"]
+    retry = _request(client, audit_id, ["pdf"])["reports"][0]
+    assert retry["report_id"] != accepted["report_id"]

@@ -20,23 +20,28 @@ _TAG = re.compile(r"(<[^>]*>)")
 # ``path/to/file.ext:120-140`` references. The generic assignment rule would read
 # ``auth.py:1012-1040`` as ``auth...: <secret>``; a trailing ``@`` (URL credentials) is excluded.
 _LOCATION = re.compile(r"[\w./-]*\.[A-Za-z0-9]{1,10}:\d+(?:-\d+)?(?![\w@:])")
-_PLACEHOLDER = re.compile("\x00(\\d+)\x00")
+_STASHED = re.compile("\x00PPLOC(\\d{6})\x00")
 
 
 def redact_report_text(text: str) -> RedactionResult:
-    """``redact_text`` that leaves ``file:line`` references intact."""
+    """``redact_text`` that leaves standalone ``file:line`` references intact.
+
+    References are swapped for long, secret-looking placeholders before matching. A reference
+    that is itself the value of a secret assignment (``password=v1.prod:9876``) therefore still
+    triggers the assignment rule and is redacted together with its placeholder.
+    """
     if "\x00" in text:
         return redact_text(text)
     kept: list[str] = []
 
     def _stash(match: re.Match[str]) -> str:
         kept.append(match.group(0))
-        return f"\x00{len(kept) - 1}\x00"
+        return f"\x00PPLOC{len(kept) - 1:06d}\x00"
 
     result = redact_text(_LOCATION.sub(_stash, text))
     if not kept:
         return result
-    restored = _PLACEHOLDER.sub(lambda m: kept[int(m.group(1))], result.text)
+    restored = _STASHED.sub(lambda m: kept[int(m.group(1))], result.text)
     return RedactionResult(text=restored, count=result.count, kinds=result.kinds)
 
 

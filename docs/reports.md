@@ -113,9 +113,11 @@ The total number of redactions is stored in the artifact metadata (`redaction_co
 `redaction_kinds`). The number from the first pass is also printed in the report footer. The
 contents of sensitive files are never included, redacted or not.
 
-`file:line` references such as `app/auth.py:1012-1040` are masked before matching. Without this,
-the generic `name: value` secret rule would treat them as an assignment and redact the line range.
-References followed by `@` are not masked, so URL credentials are still redacted.
+`file:line` references such as `app/auth.py:1012-1040` are replaced by long placeholders before
+matching. Without this, the generic `name: value` secret rule would treat them as an assignment and
+redact the line range. The placeholders look like secrets to the matcher, so a location-shaped
+string that is the value of a secret assignment (`password=v1.prod:9876`) is still redacted.
+References followed by `@` are never masked, so URL credentials are always redacted.
 
 ## Jobs and API
 
@@ -123,7 +125,9 @@ The `report.generate` job (`backend/jobs/handlers/reports.py`) takes the payload
 `{"audit_id": "...", "format": "html|md|json|csv|pdf"}`. It builds the report, renders it, and
 stores the file(s) with `ArtifactStore` (`kind="report"`, `owner_type="report"`). It then sets the
 `ReportRecord` to `SUCCEEDED` with its `artifact_id`. If anything fails, the record is set to
-`FAILED` with the error.
+`FAILED` with the error. The worker can kill a job (timeout, cancellation, crash) before the
+handler records anything; in that case, reading or listing the report reconciles it with the
+terminal job status and marks it `FAILED`.
 
 | Method | Path | Result |
 |---|---|---|
