@@ -8,7 +8,7 @@
 # trusted profiling harness under /perfpilot.
 #
 # Build: make sandbox-image
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ARG PYTEST_VERSION=9.1.1
 ARG PYTEST_BENCHMARK_VERSION=5.3.0
