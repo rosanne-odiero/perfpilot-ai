@@ -119,17 +119,18 @@ every merge leaves `main` runnable.
 - [x] Write this plan, the decisions log, and the development workflow
 - [x] Merge to `main`
 
-### Phase 1 — Foundation · `feature/foundation`
-- [ ] `pyproject.toml` managed by `uv`, Python 3.12, committed `uv.lock`
-- [ ] Ruff, mypy (strict on `backend/`), pre-commit, Makefile targets
-- [ ] `core/config.py` (pydantic-settings; `.env.example`), `core/logging.py` (structured JSON logs, secret scrubbing), `core/exceptions.py`
-- [ ] SQLAlchemy 2.x models + Alembic baseline migration, UUID PKs, timestamps, status + error fields
-- [ ] Repository abstraction (`infrastructure/repository.py`) and artifact store (path + sha256 + metadata)
-- [ ] Job system: `Job` table, states `QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELLED/TIMED_OUT`, idempotency key, lease/heartbeat, persistent local worker process (`python -m backend.infrastructure.worker`)
-- [ ] FastAPI app: `GET /api/health`, `GET /api/jobs/{id}`, `GET /api/projects`, error envelope, OpenAPI
-- [ ] Streamlit shell: sidebar nav, theme/CSS, API client, empty states that show real DB data only
-- [ ] CI v1 (`.github/workflows/ci.yml`): ruff, mypy, pytest
-- **Exit:** `make dev` starts API, worker, and UI; health check is green; a test job is enqueued, run by the worker, and survives restart.
+### Phase 1 — Foundation · `feature/foundation` ✅
+- [x] `pyproject.toml` managed by `uv`, Python 3.12, committed `uv.lock` (sources pinned to public PyPI)
+- [x] Ruff, mypy (strict on `backend/`), pre-commit, Makefile targets (`make dev/check/test/...`)
+- [x] `core/config.py` (pydantic-settings; `.env.example`), `core/logging.py` (structured JSON logs, secret scrubbing), `core/exceptions.py` (typed errors → API error envelope)
+- [x] SQLAlchemy 2.x models with UUID PKs, timestamps, status + error fields; ORM modules auto-discovered from `backend/models/orm/` (Alembic baseline moved to Phase 11 once the schema stabilises)
+- [x] Artifact store (`infrastructure/artifact_store.py`: path + sha256 + metadata, traversal-safe)
+- [x] Job system (`backend/jobs/`): `Job` table, states `QUEUED/RUNNING/SUCCEEDED/FAILED/CANCELLED/TIMED_OUT`, idempotency key with conflict detection, leases + heartbeat + expired-lease reclaim, one child process per job (timeouts + cancellation enforced), handler auto-discovery from `backend/jobs/handlers/`
+- [x] FastAPI app: `GET /api/health`, `GET /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/cancel`, error envelope, OpenAPI; routers auto-discovered from `backend/api/routes/`
+- [x] Shared audit contracts (`backend/models/audit_schemas.py`) and enums incl. provenance labels
+- [x] Streamlit shell: navigation, theme/CSS, API client, System Status page (real data only)
+- [x] CI v1 (`.github/workflows/ci.yml`): ruff, mypy, pytest + coverage
+- **Exit (verified 2026-10-20):** API, worker and UI started; `/api/health` green; a job enqueued in the DB was claimed by the worker, executed in a child process and persisted as `SUCCEEDED`; 19 tests pass incl. timeout and child-process execution.
 
 ### Phase 2 — Repository ingestion · `feature/repo-ingestion`
 - [ ] `RepositoryProvider` protocol: `resolve(ref) -> AcquiredSource` with typed `RepositoryRef`
@@ -250,6 +251,7 @@ every merge leaves `main` runnable.
 - **Exit:** a user can audit a public repo end to end in the UI without an LLM key.
 
 ### Phase 11 — Hardening · `chore/hardening`
+- [ ] Alembic baseline migration generated from the final ORM metadata; `init-db` runs migrations
 - [ ] Security review of ingestion, sandbox, and patch paths; `tests/security/` complete
 - [ ] Observability: structured logs with job/project/run IDs, durations, token/cost; optional OpenTelemetry spans
 - [ ] Docker: `Dockerfile` (api/worker/ui), `docker-compose.yml` with volumes; separate sandbox image; non-root
@@ -346,3 +348,4 @@ be implemented, but runtime mode will report `isolation backend unavailable` loc
 |---|---|---|
 | 2026-10-20 | `main` | Repository initialized |
 | 2026-10-20 | `docs/implementation-plan` | Implementation plan, decisions log, and development workflow |
+| 2026-10-20 | `feature/foundation` | Config, DB, job queue + worker, artifact store, API/UI shells, CI |
