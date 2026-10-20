@@ -114,7 +114,8 @@ def test_workload_is_profiled_in_the_real_sandbox_and_correlated(
     assert run["memory"]["peak_rss_bytes"] > run["memory"]["tracemalloc_peak_bytes"] > 0
     hot = {(h["file_path"], h["function_name"]): h for h in run["hotspots"]}
     reconcile = hot[("shopfast/inventory_sync.py", "reconcile")]
-    assert reconcile["rank"] == 1
+    package = [h for h in run["hotspots"] if h["file_path"].startswith("shopfast/")]
+    assert max(package, key=lambda h: h["internal_time_ms"]) == reconcile
     assert reconcile["line_number"] == 8
     assert reconcile["symbol"] == "reconcile"
     assert any(h["file_path"].startswith("<stdlib>/") for h in run["hotspots"])

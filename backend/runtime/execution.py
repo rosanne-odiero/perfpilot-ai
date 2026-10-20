@@ -25,7 +25,7 @@ from backend.core.redaction import redact_text
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.models.database import session_scope, utcnow
 from backend.models.enums import AuditStage
-from backend.models.orm.audit import AuditRun
+from backend.models.orm.audit import AuditRun, RepositorySnapshot
 from backend.models.orm.runtime import RuntimeApproval, RuntimeApprovalStatus
 from backend.models.orm.runtime_profiles import (
     RuntimeHotspotRecord,
@@ -390,12 +390,16 @@ def execute_profile_run(
             raise ConflictError(f"runtime run {run_id} not found")
         if run.status != RuntimeRunStatus.QUEUED:
             raise ConflictError(f"runtime run {run_id} is {run.status}, not QUEUED")
-        snapshot = audit_service.get_snapshot(session, run.snapshot_id)
-        workspace = audit_service.resolve_workspace(settings, snapshot.workspace_path or "")
-        approval = session.get(RuntimeApproval, run.approval_id)
-        if approval is None:
-            raise ConflictError("the run's approval no longer exists")
+        snapshot = session.get(RepositorySnapshot, run.snapshot_id)
+        workspace_path = snapshot.workspace_path if snapshot is not None else None
         session.expunge(run)
+    try:
+        if not workspace_path:
+            raise ConflictError("the snapshot has no workspace to run the command in")
+        workspace = audit_service.resolve_workspace(settings, workspace_path)
+    except PerfPilotError as exc:
+        _finish_failed(run, RuntimeRunStatus.FAILED, exc.message)
+        raise
 
     backend, status = _check_backend(settings, run)
     _set_audit_stage(run.audit_id, AuditStage.RUNTIME_PROFILING)

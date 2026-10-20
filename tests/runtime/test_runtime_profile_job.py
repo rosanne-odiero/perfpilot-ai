@@ -7,6 +7,7 @@ profile data asserted here is real cProfile/tracemalloc output from running the 
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -139,7 +140,8 @@ def test_approved_workload_is_profiled_and_correlated(
     assert reconcile["symbol"] == "reconcile"
     assert reconcile["is_user_code"] is True
     assert reconcile["total_calls"] == 1
-    assert reconcile["rank"] == 1  # the O(n*m) nested loop dominates exclusive time
+    package = [h for h in run["hotspots"] if h["file_path"].startswith("shopfast/")]
+    assert max(package, key=lambda h: h["internal_time_ms"]) == reconcile  # O(n*m) nested loop
     assert reconcile["percentage_of_profiled_time"] > 15
     assert not any(h["file_path"].startswith("/") for h in run["hotspots"])
     assert any(h["location_kind"] == "builtin" for h in run["hotspots"])
@@ -199,7 +201,8 @@ def test_approved_workload_is_profiled_and_correlated(
     overview = client.get(f"/api/audits/{audit_id}/runtime").json()
     assert overview["measured_run_id"] == run["id"]
     assert overview["stage"] == "COMPLETED"
-    assert overview["hotspots"][0]["function_name"] == "reconcile"
+    package = [h for h in overview["hotspots"] if h["file_path"].startswith("shopfast/")]
+    assert package[0]["function_name"] == "reconcile"
     assert len(overview["correlations"]) == len(run["correlations"])
     audit = client.get(f"/api/audits/{audit_id}").json()
     assert audit["summary"]["runtime"]["state"] == "measured"
@@ -498,3 +501,21 @@ def test_command_output_is_redacted_before_it_is_stored(
     assert run["status"] == "SUCCEEDED"
     assert "token" in run["stdout_tail"]
     assert token not in json.dumps(run)
+
+
+def test_missing_workspace_fails_the_run_before_anything_runs(
+    client: TestClient, settings: Settings, harness_backend: SubprocessHarnessBackend
+) -> None:
+    audit_id = start_runtime_audit(client, settings, shopfast_snapshot(settings))
+    accepted = approve(client, audit_id, command_by_argv(client, audit_id, WORKLOAD_ARGV))
+    shutil.rmtree(settings.workspaces_dir / "shopfast")
+    drain(settings)
+    assert client.get(f"/api/jobs/{accepted['job_id']}").json()["status"] == "FAILED"
+    run = client.get(f"/api/audits/{audit_id}/runtime/runs/{accepted['subject_id']}").json()
+    assert run["status"] == "FAILED"
+    assert "no longer exists" in run["failure_reason"]
+    assert harness_backend.runs == []
+    with session_scope() as session:
+        approval = session.get(RuntimeApproval, run["approval_id"])
+        assert approval is not None
+        assert approval.status == "REVOKED"

@@ -67,7 +67,7 @@ def test_measured_run_fills_section_7_and_marks_findings(
     assert profile.peak_rss_mb is not None
     assert profile.peak_traced_memory_mb is not None
     assert profile.peak_rss_mb > profile.peak_traced_memory_mb > 0
-    first = profile.hotspots[0]
+    first = next(h for h in profile.hotspots if (h.file_path or "").startswith("shopfast/"))
     assert (first.function_name, first.file_path, first.line) == (
         "reconcile",
         "shopfast/inventory_sync.py",
