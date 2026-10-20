@@ -481,7 +481,7 @@ class HierarchicalPipeline:
         output = self._attempt("correlation", payload, Correlations)
         for draft in (output.insights if output else [])[:MAX_CORRELATION_INSIGHTS]:
             insight = self.guard.insight(draft, self.client.model)
-            if insight is not None:
+            if insight is not None and all(i.id != insight.id for i in self.result.insights):
                 self.result.insights.append(insight)
 
     # ------------------------------------------------------------------ step 5
@@ -523,6 +523,7 @@ class HierarchicalPipeline:
         self, summaries: dict[str, str], modules: dict[str, str], hot_paths: list[str]
     ) -> None:
         top = self.groups[:MAX_LLM_GROUPS]
+        seen: set[str] = set()
         allowance = self.context_allowance("recommendations", RecommendationDrafts)
         for start in range(0, len(top), GROUPS_PER_CALL):
             batch = top[start : start + GROUPS_PER_CALL]
@@ -535,7 +536,8 @@ class HierarchicalPipeline:
             output = self._attempt("recommendations", payload, RecommendationDrafts)
             for draft in output.recommendations if output else []:
                 recommendation = self.guard.recommendation(draft, self.client.model)
-                if recommendation is not None:
+                if recommendation is not None and recommendation.id not in seen:
+                    seen.add(recommendation.id)
                     self.result.recommendations.append(recommendation)
 
     # ------------------------------------------------------------------ run
