@@ -231,11 +231,11 @@ every merge leaves `main` runnable.
 - **Exit:** on a trusted fixture, an approved workload yields measured hotspots that are correlated to findings.
 
 ### Phase 9 — Reporting · `feature/reporting`
-- [ ] Single `AuditReport` model rendered to HTML (Jinja2), Markdown, JSON, CSV (findings/samples), PDF
-- [ ] Sections 1–15 from the feature spec; each metric carries its provenance badge; empty sections say "not measured" instead of being omitted or invented
-- [ ] Embedded dependency-graph image and charts (Plotly → static SVG via kaleido)
-- [ ] Reproducibility block: commit SHA, PerfPilot version, config, exact commands, environment fingerprint
-- [ ] Secret-redaction pass + test that no secret from a fixture leaks into any format
+- [x] Single `AuditReport` model rendered to HTML (Jinja2), Markdown, JSON, CSV (findings/samples), PDF
+- [x] Sections 1–15 from the feature spec; each metric carries its provenance badge; empty sections say "not measured" instead of being omitted or invented
+- [x] Embedded dependency-graph image and charts (Plotly → static SVG via kaleido)
+- [x] Reproducibility block: commit SHA, PerfPilot version, config, exact commands, environment fingerprint
+- [x] Secret-redaction pass + test that no secret from a fixture leaks into any format
 - **Exit:** reports in all formats are generated from the fixture audit and are contract-tested.
 
 ### Phase 10 — Frontend: Repository Audit primary · `feature/frontend-audit`

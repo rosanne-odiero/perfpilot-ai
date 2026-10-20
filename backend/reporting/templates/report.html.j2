@@ -1,0 +1,507 @@
+{#- PerfPilot audit report. All repository-derived values are auto-escaped. -#}
+{% macro prov(p) %}<span class="badge prov prov-{{ p|lower }}">{{ p }}</span>{% endmacro %}
+{% macro sev(s) %}<span class="badge sev sev-{{ s|lower }}">{{ s }}</span>{% endmacro %}
+{% macro effort(e) %}<span class="badge effort">{{ e }}</span>{% endmacro %}
+{% macro not_measured_box(explanation) %}
+<div class="callout not-measured">
+  <p class="callout-title">{{ not_measured }}</p>
+  <p>{{ explanation }}</p>
+</div>
+{% endmacro %}
+{% macro heading(n) %}<h2 id="s{{ n }}"><span class="secnum">{{ n }}</span> {{ titles[n] }}</h2>{% endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="{{ r.metadata.generator }}">
+<title>{{ r.metadata.title }}</title>
+<style>
+{{ css }}
+</style>
+</head>
+<body>
+{% if pdf and pdf_engine == "xhtml2pdf" %}
+<div id="pdf-footer">{{ r.metadata.title }} · commit {{ r.repository.short_sha or "unknown" }} · page <pdf:pagenumber> of <pdf:pagecount></div>
+{% endif %}
+<div class="page">
+
+<div class="cover">
+  <p class="eyebrow">PerfPilot AI · Repository performance audit</p>
+  <h1>{{ r.repository.name }}</h1>
+  <table class="cover-meta">
+    <tr>
+      <td><span class="k">Commit</span><br>{{ r.repository.short_sha or "unknown" }}</td>
+      <td><span class="k">Branch</span><br>{{ r.repository.branch or "n/a" }}</td>
+      <td><span class="k">Mode</span><br>{{ r.repository.mode }}</td>
+      <td><span class="k">Analyzed</span><br>{{ r.repository.analyzed_at|dt }}</td>
+      <td><span class="k">Generated</span><br>{{ r.metadata.generated_at|dt }}</td>
+    </tr>
+  </table>
+  <p class="cover-source">{{ brk(r.repository.source_display, 90) }}</p>
+</div>
+
+<div class="toc">
+  <h2 class="toc-title">Contents</h2>
+  <ol>
+  {% for n, title in titles.items() %}
+    <li><a href="#s{{ n }}">{{ title }}</a></li>
+  {% endfor %}
+  </ol>
+</div>
+
+<div class="legend" id="legend">
+  <h3>How to read this report: provenance labels</h3>
+  <table class="data">
+    <thead><tr><th width="20%">Label</th><th width="40%">Meaning</th><th width="40%">Example</th></tr></thead>
+    <tbody>
+    {% for entry in r.legend %}
+      <tr><td><span class="legend-term legend-{{ entry.label|lower }}">{{ entry.label }}</span></td><td>{{ entry.meaning }}</td><td>{{ entry.example }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ---------------------------------------------------------------- 1 #}
+<section>
+{{ heading(1) }}
+{% for paragraph in r.executive_summary.text %}
+<p>{{ paragraph }}</p>
+{% endfor %}
+{% set c = r.executive_summary.counts %}
+<table class="kpis">
+  <tr>
+    <td><span class="kpi">{{ c.files_seen|num }}</span><br><span class="kpi-label">files seen</span></td>
+    <td><span class="kpi">{{ c.python_files_analyzed|num }}</span><br><span class="kpi-label">Python files analyzed</span></td>
+    <td><span class="kpi">{{ c.modules_indexed|num }}</span><br><span class="kpi-label">modules indexed</span></td>
+    <td><span class="kpi">{{ c.findings_total|num }}</span><br><span class="kpi-label">findings</span></td>
+    <td><span class="kpi">{{ c.recommendations_total|num }}</span><br><span class="kpi-label">recommendations</span></td>
+  </tr>
+</table>
+<p class="sev-row">
+{% for s, n in c.findings_by_severity.items() %}{{ sev(s) }} {{ n }}&nbsp;&nbsp; {% endfor %}
+</p>
+<h3>Top risks</h3>
+{% if r.executive_summary.top_risks %}
+<table class="data">
+  <thead><tr><th width="14%">Severity</th><th width="68%">Finding</th><th width="18%">Provenance</th></tr></thead>
+  <tbody>
+  {% for t in r.executive_summary.top_risks %}
+    <tr><td>{{ sev(t.severity) }}</td><td>{{ t.title }}<br><span class="mono loc">{{ brk(t.location) }}</span></td><td>{{ prov(t.provenance) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No findings were reported.</p>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 2 #}
+<section>
+{{ heading(2) }}
+{% set repo = r.repository %}
+<table class="kv">
+  <tr><th>Repository</th><td>{{ repo.name }}</td></tr>
+  <tr><th>Source</th><td>{{ repo.source_type|human }} · <span class="mono">{{ brk(repo.source_display, 60) }}</span></td></tr>
+  <tr><th>Commit SHA</th><td class="mono">{{ repo.commit_sha or "unknown" }}</td></tr>
+  <tr><th>Branch</th><td>{{ repo.branch or "n/a" }}</td></tr>
+  <tr><th>Requested ref</th><td>{{ repo.requested_ref or "default branch" }}</td></tr>
+  <tr><th>Commit date</th><td>{{ repo.commit_date|dt }}</td></tr>
+  <tr><th>Audit started</th><td>{{ repo.audit_started_at|dt }}</td></tr>
+  <tr><th>Analyzed at</th><td>{{ repo.analyzed_at|dt }}</td></tr>
+  <tr><th>Audit mode / status</th><td>{{ repo.mode }} / {{ repo.audit_status }}</td></tr>
+  <tr><th>PerfPilot version</th><td>{{ repo.perfpilot_version }}</td></tr>
+  <tr><th>Python (report environment)</th><td>{{ repo.python_version }} on {{ repo.platform }}</td></tr>
+  <tr><th>LLM model used</th><td>{{ repo.llm_model }}{% if repo.llm_calls %} ({{ repo.llm_calls }} calls){% endif %}</td></tr>
+</table>
+</section>
+
+{# ---------------------------------------------------------------- 3 #}
+<section>
+{{ heading(3) }}
+{% set f = r.files %}
+{% if not f.inventory_available %}
+<p class="muted">No file inventory was stored for this snapshot.</p>
+{% endif %}
+<table class="kpis">
+  <tr>
+    <td><span class="kpi">{{ f.files_seen|num }}</span><br><span class="kpi-label">files seen</span></td>
+    <td><span class="kpi">{{ f.python_files_analyzed|num }}</span><br><span class="kpi-label">Python files analyzed</span></td>
+    <td><span class="kpi">{{ f.modules_indexed|num }}</span><br><span class="kpi-label">modules indexed</span></td>
+    <td><span class="kpi">{{ f.skipped_total|num }}</span><br><span class="kpi-label">files skipped</span></td>
+    <td><span class="kpi">{{ f.parse_errors|length }}</span><br><span class="kpi-label">parse errors</span></td>
+  </tr>
+</table>
+<p class="muted">Total size seen: {{ f.bytes_seen|num }} bytes across {{ f.files_listed|num }} listed files.</p>
+<div class="cols">
+<div class="col">
+<h3>Languages</h3>
+{% if f.languages %}
+<table class="data">
+  <thead><tr><th>Language</th><th class="num">Files</th></tr></thead>
+  <tbody>{% for lang, n in f.languages.items() %}<tr><td>{{ lang }}</td><td class="num">{{ n|num }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">None recorded.</p>{% endif %}
+</div>
+<div class="col">
+<h3>Skipped files by reason</h3>
+{% if f.skipped_by_reason %}
+<table class="data">
+  <thead><tr><th>Reason</th><th class="num">Files</th></tr></thead>
+  <tbody>{% for reason, n in f.skipped_by_reason.items() %}<tr><td>{{ reason }}</td><td class="num">{{ n|num }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">No files were skipped.</p>{% endif %}
+</div>
+</div>
+<h3>Limits reached</h3>
+{% if f.limits_hit %}
+<ul>{% for limit in f.limits_hit %}<li>{{ limit }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No ingestion limits were reached.</p>{% endif %}
+{% if f.sensitive_files_withheld %}
+<p>{{ f.sensitive_files_withheld }} sensitive files (e.g. <span class="mono">.env</span>, keys) were detected. Their content is never included in this report.</p>
+{% endif %}
+<h3>Parse errors</h3>
+{% if f.parse_errors %}
+<table class="data">
+  <thead><tr><th>File and error</th></tr></thead>
+  <tbody>{% for e in f.parse_errors %}<tr><td><span class="mono">{{ brk(e.file_path, 90) }}</span><br>{{ e.error }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}<p class="muted">All analyzed Python files parsed successfully.</p>{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 4 #}
+<section>
+{{ heading(4) }}
+{% set a = r.architecture %}
+<p>{{ prov(a.provenance) }} Module dependency graph built from import statements (no code executed).</p>
+{% if not a.index_available %}
+<p class="muted">No code index was stored for this audit, so no dependency graph is available.</p>
+{% else %}
+<table class="kpis">
+  <tr>
+    <td><span class="kpi">{{ a.node_count|num }}</span><br><span class="kpi-label">modules (nodes)</span></td>
+    <td><span class="kpi">{{ a.edge_count|num }}</span><br><span class="kpi-label">internal imports (edges)</span></td>
+    <td><span class="kpi">{{ a.entrypoints|length }}</span><br><span class="kpi-label">entrypoints</span></td>
+    <td><span class="kpi">{{ a.cycles|length }}</span><br><span class="kpi-label">import cycles</span></td>
+    <td><span class="kpi">{{ a.external_import_count|num }}</span><br><span class="kpi-label">external packages</span></td>
+  </tr>
+</table>
+{% if graph_figure %}
+<div class="figure">
+  {{ graph_figure }}
+  <p class="caption">Figure 1. Module dependency graph. Node size reflects fan-in, color reflects the number of findings, entrypoints are outlined in blue and import cycles are drawn in red.{% if a.graph.note %} {{ a.graph.note }}.{% endif %}</p>
+</div>
+{% endif %}
+<h3>Most depended-upon modules (fan-in)</h3>
+{% if a.top_fan_in %}
+<table class="data">
+  <thead><tr><th width="52%">Module</th><th width="10%" class="num">Fan-in</th><th width="10%" class="num">Fan-out</th><th width="10%" class="num">Findings</th><th width="18%">Flags</th></tr></thead>
+  <tbody>
+  {% for m in a.top_fan_in %}
+    <tr><td><span class="mono">{{ brk(m.module_name) }}</span><br><span class="mono loc">{{ brk(m.file_path) }}</span></td><td class="num">{{ m.fan_in }}</td><td class="num">{{ m.fan_out }}</td><td class="num">{{ m.finding_count }}</td><td>{% if m.is_entrypoint %}entrypoint {% endif %}{% if m.in_cycle %}in cycle{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">No modules indexed.</p>{% endif %}
+<h3>Entrypoints</h3>
+{% if a.entrypoints %}
+<ul>{% for e in a.entrypoints %}<li><span class="mono">{{ e.module_name }}</span> ({{ e.file_path }}){% if e.reasons %}: {{ e.reasons|join(", ") }}{% endif %}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No entrypoints detected.</p>{% endif %}
+<h3>Import cycles</h3>
+{% if a.cycles %}
+<ul>{% for cycle in a.cycles %}<li class="mono">{{ cycle|join(" -> ") }} -> {{ cycle[0] }}</li>{% endfor %}</ul>
+{% else %}<p class="muted">No import cycles detected.</p>{% endif %}
+{% endif %}
+<h3>Technologies</h3>
+{% if a.technologies %}
+<p>{% for t in a.technologies %}<span class="tag">{{ t.name }} <span class="muted">({{ t.kind }})</span></span> {% endfor %}</p>
+{% else %}<p class="muted">None detected.</p>{% endif %}
+{% if a.top_external_imports %}
+<h3>Most imported external packages</h3>
+<p>{% for name, n in a.top_external_imports.items() %}<span class="tag">{{ name }} · {{ n }}</span> {% endfor %}</p>
+{% endif %}
+{% if a.insights %}
+<h3>Architecture insights</h3>
+{% for i in a.insights %}
+<div class="card">
+  <p class="card-title">{{ prov(i.provenance) }} {{ i.title }}</p>
+  <p>{{ i.description }}</p>
+  {% if i.modules %}<p class="muted">Modules: <span class="mono">{{ i.modules|join(", ") }}</span> · generated by {{ i.generated_by }}</p>{% endif %}
+</div>
+{% endfor %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 5 #}
+<section>
+{{ heading(5) }}
+{% set fs = r.findings %}
+<p>{{ fs.total|num }} findings, ordered by priority score (severity, confidence and structural importance). Each finding is a hypothesis about where performance may be lost.</p>
+{% if fs.entries %}
+<table class="data findings-table" repeat="1">
+  <thead><tr><th width="5%">#</th><th width="13%">Severity</th><th width="50%">Finding</th><th width="12%">Confidence</th><th width="12%">Provenance</th><th width="8%" class="num">Priority</th></tr></thead>
+  <tbody>
+  {% for e in fs.entries %}
+    <tr><td>{{ e.rank }}</td><td>{{ sev(e.severity) }}</td><td><a href="#f-{{ e.rank }}">{{ e.title }}</a><br><span class="mono loc">{{ brk(e.location) }} · {{ e.rule_id }}</span></td><td>{{ e.confidence }}</td><td>{{ prov(e.provenance) }}</td><td class="num">{{ e.priority_score|fixed(2) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% for e in fs.entries %}
+<div class="card finding" id="f-{{ e.rank }}">
+  <p class="card-title">#{{ e.rank }} {{ sev(e.severity) }} {{ prov(e.provenance) }} {{ e.title }}</p>
+  <p class="muted"><span class="mono">{{ brk(e.location, 90) }}</span>{% if e.symbol %} · <span class="mono">{{ e.symbol }}</span>{% endif %} · rule <span class="mono">{{ e.rule_id }}</span> · {{ e.category|human }} · confidence {{ e.confidence|lower }}</p>
+  <p>{{ e.description }}</p>
+  <p><strong>Suggestion.</strong> {{ e.suggestion }}</p>
+  {% if e.tradeoffs %}<p><strong>Trade-offs.</strong> {{ e.tradeoffs }}</p>{% endif %}
+  {% if e.measured %}
+  <p class="measured-evidence">{{ prov("MEASURED") }} Profile <span class="mono">{{ e.measured.profile_id }}</span>: <span class="mono">{{ e.measured.function_name }}</span> — {{ e.measured.cumulative_time_ms|fixed(2) }} ms cumulative, {{ e.measured.internal_time_ms|fixed(2) }} ms internal, {{ e.measured.call_count|num }} calls, {{ e.measured.percentage_of_profiled_time|fixed(1) }}% of profiled time.{% if e.measured.note %} {{ e.measured.note }}{% endif %}</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<p class="muted">No findings were reported.</p>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 6 #}
+<section>
+{{ heading(6) }}
+{% if r.evidence.permalinks_available %}
+<p>Each reference links to the exact lines on GitHub at commit <span class="mono">{{ r.repository.short_sha }}</span>.</p>
+{% else %}
+<p class="muted">Permalinks are only available for GitHub sources with a known commit SHA.</p>
+{% endif %}
+{% for ev in r.evidence.entries %}
+<div class="evidence">
+  <p class="evidence-head">#{{ ev.rank }} {{ prov(ev.provenance) }} {{ ev.title }} · <span class="mono">{{ brk(ev.location, 90) }}</span>{% if ev.permalink %} · <a href="{{ ev.permalink }}">view on GitHub</a>{% endif %}</p>
+  {% if ev.withheld_reason %}
+  <p class="muted">{{ ev.withheld_reason }}</p>
+  {% elif ev.lines %}
+  <table class="code">
+    {% for line in ev.lines %}<tr><td class="ln">{{ line.number }}</td><td class="src">{{ line.text|code_line }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if ev.truncated %}<p class="muted">Snippet truncated.</p>{% endif %}
+  {% else %}
+  <p class="muted">No snippet recorded.</p>
+  {% endif %}
+</div>
+{% else %}
+<p class="muted">No source references.</p>
+{% endfor %}
+</section>
+
+{# ---------------------------------------------------------------- 7 #}
+<section>
+{{ heading(7) }}
+{% if r.runtime is none %}
+{{ not_measured_box("No repository code was executed for this audit, so there are no CPU or memory measurements. Runtime profiling requires an explicitly approved Runtime Audit in the isolated sandbox.") }}
+{% else %}
+{% for p in r.runtime.profiles %}
+<div class="card">
+  <p class="card-title">{{ prov(p.provenance) }} Profile <span class="mono">{{ p.profile_id }}</span> · {{ p.profiler }}</p>
+  <p>Command: <span class="mono">{{ p.command|join(" ") }}</span></p>
+  <table class="kpis">
+    <tr>
+      <td><span class="kpi">{{ p.wall_time_ms|fixed(1) }} ms</span><br><span class="kpi-label">wall time</span></td>
+      <td><span class="kpi">{% if p.cpu_time_ms is not none %}{{ p.cpu_time_ms|fixed(1) }} ms{% else %}n/a{% endif %}</span><br><span class="kpi-label">CPU time</span></td>
+      <td><span class="kpi">{% if p.peak_rss_mb is not none %}{{ p.peak_rss_mb|fixed(1) }} MB{% else %}n/a{% endif %}</span><br><span class="kpi-label">peak RSS</span></td>
+      <td><span class="kpi">{% if p.peak_traced_memory_mb is not none %}{{ p.peak_traced_memory_mb|fixed(1) }} MB{% else %}n/a{% endif %}</span><br><span class="kpi-label">peak traced memory</span></td>
+    </tr>
+  </table>
+  {% if p.hotspots %}
+  <table class="data">
+    <thead><tr><th width="40%">Function</th><th width="13%" class="num">Internal</th><th width="13%" class="num">Cumulative</th><th width="9%" class="num">Calls</th><th width="9%" class="num">Share</th><th width="16%">Findings</th></tr></thead>
+    <tbody>
+    {% for h in p.hotspots %}
+      <tr><td><span class="mono">{{ brk(h.function_name) }}</span>{% if h.file_path %}<br><span class="mono loc">{{ brk(h.file_path ~ (":" ~ h.line if h.line else "")) }}</span>{% endif %}</td><td class="num">{{ h.internal_time_ms|fixed(2) }} ms</td><td class="num">{{ h.cumulative_time_ms|fixed(2) }} ms</td><td class="num">{{ h.call_count|num }}</td><td class="num">{{ h.percentage_of_profiled_time|fixed(1) }}%</td><td class="mono">{{ h.finding_ids|join(", ") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if p.environment %}<p class="muted">Environment: {% for k, v in p.environment.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  {% for note in p.notes %}<p class="muted">{{ note }}</p>{% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 8 #}
+<section>
+{{ heading(8) }}
+<p class="muted">{{ r.complexity.note }}</p>
+{% if r.complexity.entries %}
+<table class="data">
+  <thead><tr><th width="5%">#</th><th width="47%">Finding</th><th width="33%">Estimate</th><th width="15%">Provenance</th></tr></thead>
+  <tbody>
+  {% for c in r.complexity.entries %}
+    <tr><td>{{ c.rank }}</td><td>{{ c.title }}<br><span class="mono loc">{{ brk(c.location) }}</span></td><td><span class="estimate">estimate</span> {{ c.estimate }}</td><td>{{ prov(c.provenance) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No complexity estimates were produced by the analysis.</p>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 9 #}
+<section>
+{{ heading(9) }}
+{% if r.strategies.entries %}
+{% for s in r.strategies.entries %}
+<div class="card">
+  <p class="card-title">{{ s.rank }}. {{ prov(s.provenance) }} {{ effort(s.effort) }} {{ s.title }}</p>
+  <p>{{ s.summary }}</p>
+  <table class="kv">
+    <tr><th>Strategy</th><td>{{ s.proposed_strategy }}</td></tr>
+    <tr><th>Rationale</th><td>{{ s.rationale }}</td></tr>
+    <tr><th>Expected effect (hypothesis)</th><td>{{ s.expected_effect }}</td></tr>
+    {% if s.correctness_risks %}<tr><th>Correctness risks</th><td>{{ s.correctness_risks }}</td></tr>{% endif %}
+    <tr><th>Uncertainty</th><td>{{ s.uncertainty }}</td></tr>
+    {% if s.finding_ids %}<tr><th>Findings</th><td class="mono">{{ s.finding_ids|join(", ") }}</td></tr>{% endif %}
+    {% if s.citations %}<tr><th>Citations</th><td class="mono">{{ s.citations|join(", ") }}</td></tr>{% endif %}
+    <tr><th>Generated by</th><td>{{ s.generated_by }}</td></tr>
+  </table>
+</div>
+{% endfor %}
+{% else %}
+<p class="muted">No recommendations were generated.</p>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 10 #}
+<section>
+{{ heading(10) }}
+<p class="muted">{{ r.code_changes.note }}</p>
+{% for d in r.code_changes.entries %}
+<div class="card">
+  <p class="card-title">{{ prov(d.provenance) }} {{ d.title }}</p>
+  {% if d.files %}<p class="muted">Files: <span class="mono">{{ d.files|join(", ") }}</span></p>{% endif %}
+  {% if d.withheld_reason %}
+  <p class="muted">{{ d.withheld_reason }}</p>
+  {% elif d.diff %}
+  <div class="diff">
+  {% for line in d.diff.splitlines() %}
+    {% set kind = "add" if line.startswith("+") and not line.startswith("+++") else ("del" if line.startswith("-") and not line.startswith("---") else ("hunk" if line.startswith("@@") else "ctx")) %}
+    <div class="dl {{ kind }}">{{ line|code_line }}</div>
+  {% endfor %}
+  </div>
+  {% if d.truncated %}<p class="muted">Diff truncated.</p>{% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+</section>
+
+{# ---------------------------------------------------------------- 11 #}
+<section>
+{{ heading(11) }}
+{% if r.validation is none %}
+{{ not_measured_box("No candidate change was applied and validated for this audit. Correctness validation runs the repository's tests against a patched copy inside the sandbox.") }}
+{% else %}
+<table class="data">
+  <thead><tr><th width="60%">Validation</th><th width="20%">Status</th><th width="20%">Provenance</th></tr></thead>
+  <tbody>
+  {% for o in r.validation.outcomes %}
+    <tr><td><span class="mono">{{ brk(o.validation_id) }}</span> · recommendation <span class="mono">{{ o.recommendation_id or "n/a" }}</span>{% if o.command %}<br><span class="mono loc">{{ brk(o.command|join(" ")) }}</span>{% endif %}</td><td><span class="badge status status-{{ o.status|lower }}">{{ o.status }}</span></td><td>{{ prov(o.provenance) }}</td></tr>
+    {% for chk in o.checks %}
+    <tr class="sub"><td>{{ chk.name }}{% if chk.detail %}: {{ chk.detail }}{% endif %}</td><td>{{ chk.status }}</td><td></td></tr>
+    {% endfor %}
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 12 #}
+<section>
+{{ heading(12) }}
+{% if r.benchmarks is none %}
+{{ not_measured_box("No A/B benchmark was run for this audit. Benchmarks compare the original and a validated candidate in paired, repeated runs.") }}
+{% else %}
+{% if benchmark_chart %}<div class="figure">{{ benchmark_chart }}<p class="caption">Figure 2. Median wall time per benchmark (MEASURED).</p></div>{% endif %}
+<table class="data">
+  <thead><tr><th width="22%">Benchmark</th><th width="11%" class="num">Baseline median</th><th width="11%" class="num">Candidate median</th><th width="9%" class="num">Speedup</th><th width="12%">CI</th><th width="13%">Result</th><th width="9%" class="num">Samples</th><th width="13%">Provenance</th></tr></thead>
+  <tbody>
+  {% for b in r.benchmarks.results %}
+    <tr><td>{{ b.name }}</td><td class="num">{{ b.baseline_median_ms|fixed(2) }} ms</td><td class="num">{{ b.candidate_median_ms|fixed(2) }} ms</td><td class="num">{{ b.speedup|fixed(2) }}×</td><td>{% if b.speedup_ci_low is not none and b.speedup_ci_high is not none %}{{ b.speedup_ci_low|fixed(2) }}–{{ b.speedup_ci_high|fixed(2) }}×{% if b.confidence_level %} ({{ (b.confidence_level * 100)|round|int }}%){% endif %}{% else %}n/a{% endif %}</td><td><span class="badge status status-{{ b.classification|lower }}">{{ b.classification }}</span></td><td class="num">{{ b.sample_count }} + {{ b.warmup_runs }} warmup</td><td>{{ prov(b.provenance) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% for b in r.benchmarks.results %}
+{% if b.baseline_peak_memory_mb is not none or b.environment or b.warnings %}
+<div class="card">
+  <p class="card-title">{{ prov(b.provenance) }} {{ b.name }}</p>
+  {% if b.baseline_peak_memory_mb is not none %}<p>Peak memory: baseline {{ b.baseline_peak_memory_mb|fixed(1) }} MB, candidate {{ b.candidate_peak_memory_mb|fixed(1) }} MB.</p>{% endif %}
+  {% if b.environment %}<p class="muted">Environment: {% for k, v in b.environment.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  {% for w in b.warnings %}<p class="warning">{{ w }}</p>{% endfor %}
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 13 #}
+<section>
+{{ heading(13) }}
+<p class="muted">{{ r.effort.note }}</p>
+<table class="data">
+  <thead><tr><th width="15%">Size</th><th width="65%">Meaning</th><th width="20%" class="num">Recommendations</th></tr></thead>
+  <tbody>{% for size, meaning in r.effort.scale.items() %}<tr><td>{{ effort(size) }}</td><td>{{ meaning }}</td><td class="num">{{ r.effort.totals[size] }}</td></tr>{% endfor %}</tbody>
+</table>
+{% if r.effort.entries %}
+<table class="data">
+  <thead><tr><th width="35%">Recommendation</th><th width="12%">Effort</th><th width="38%">Uncertainty</th><th width="15%">Provenance</th></tr></thead>
+  <tbody>{% for e in r.effort.entries %}<tr><td>{{ e.title }}</td><td>{{ effort(e.effort) }}</td><td>{{ e.uncertainty }}</td><td>{{ prov(e.provenance) }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<p class="muted">No recommendations to estimate.</p>
+{% endif %}
+</section>
+
+{# ---------------------------------------------------------------- 14 #}
+<section>
+{{ heading(14) }}
+<p>Grouping rules (deterministic):</p>
+<ul>{% for rule in r.roadmap.rules %}<li>{{ rule }}</li>{% endfor %}</ul>
+{% for phase in r.roadmap.phases %}
+<h3>{{ phase.name }} <span class="muted">({{ phase.items|length }})</span></h3>
+<p class="muted">{{ phase.description }}</p>
+{% if phase.items %}
+<table class="data">
+  <thead><tr><th width="7%">Rank</th><th width="33%">Recommendation</th><th width="11%">Effort</th><th width="13%">Highest severity</th><th width="22%">Why here</th><th width="14%">Provenance</th></tr></thead>
+  <tbody>{% for i in phase.items %}<tr><td>{{ i.priority_rank if i.priority_rank > 0 else "–" }}</td><td>{{ i.title }}</td><td>{{ effort(i.effort) }}</td><td>{% if i.highest_severity %}{{ sev(i.highest_severity) }}{% else %}n/a{% endif %}</td><td>{{ i.reason }}</td><td>{{ prov(i.provenance) }}</td></tr>{% endfor %}</tbody>
+</table>
+{% else %}
+<p class="muted">Nothing in this phase.</p>
+{% endif %}
+{% endfor %}
+</section>
+
+{# ---------------------------------------------------------------- 15 #}
+<section>
+{{ heading(15) }}
+<h3>Limitations</h3>
+<ul>{% for item in r.limitations.limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+{% set rp = r.limitations.reproducibility %}
+<h3>Reproducibility</h3>
+<table class="kv">
+  <tr><th>Commit SHA</th><td class="mono">{{ rp.commit_sha or "unknown" }}</td></tr>
+  <tr><th>Source</th><td class="mono">{{ brk(rp.source_display, 60) }}</td></tr>
+  <tr><th>Requested ref</th><td>{{ rp.requested_ref or "default branch" }}</td></tr>
+  <tr><th>PerfPilot version</th><td>{{ rp.perfpilot_version }}</td></tr>
+  {% for k, v in rp.configuration.items() %}<tr><th>{{ k }}</th><td class="mono">{{ brk(v, 60) }}</td></tr>{% endfor %}
+  {% for k, v in rp.environment.items() %}<tr><th>{{ k }}</th><td class="mono">{{ brk(v, 60) }}</td></tr>{% endfor %}
+</table>
+<p>Commands to reproduce this audit with PerfPilot:</p>
+<div class="commands">
+{% for cmd in rp.commands %}<div class="dl ctx">{{ cmd|code_line }}</div>
+{% endfor %}
+</div>
+</section>
+
+<footer class="report-footer">
+  <p>Generated by {{ r.metadata.generator }} on {{ r.metadata.generated_at|dt }} · audit <span class="mono">{{ r.metadata.audit_id }}</span> · schema {{ r.schema_version }}{% if r.metadata.pdf_engine %} · PDF engine: {{ r.metadata.pdf_engine }}{% endif %}{% if r.metadata.providers_applied %} · providers: {{ r.metadata.providers_applied|join(", ") }}{% endif %} · {{ r.metadata.redactions_applied }} secret-like values redacted.</p>
+</footer>
+</div>
+</body>
+</html>

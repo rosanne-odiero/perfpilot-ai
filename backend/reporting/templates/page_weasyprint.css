@@ -1,0 +1,11 @@
+/* Page setup for WeasyPrint (CSS Paged Media margin boxes). */
+@page {
+  size: A4 portrait;
+  margin: 15mm 14mm 18mm 14mm;
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 7pt;
+    color: #64748b;
+  }
+}
+.figure-img { width: 100%; }
