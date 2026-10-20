@@ -207,7 +207,10 @@ class CodeIndex(Contract):
 
 
 class MeasuredEvidence(Contract):
-    """Runtime evidence attached to a finding when a profiler confirms it."""
+    """Runtime evidence attached to a finding when a profiler confirms it.
+
+    The finding itself keeps its own provenance (e.g. ``STATIC`` for the static claim); this block
+    is always ``MEASURED`` because its numbers come from a real profiled run."""
 
     profile_id: str
     function_name: str
@@ -216,6 +219,16 @@ class MeasuredEvidence(Contract):
     call_count: int
     percentage_of_profiled_time: float
     note: str | None = None
+    provenance: Literal[Provenance.MEASURED] = Provenance.MEASURED
+    attributed_time_ms: float | None = Field(
+        default=None, description="Self time plus time in directly called non-repository code"
+    )
+    attributed_percentage: float | None = None
+    measured_factor: float | None = Field(
+        default=None, description="Multiplier applied to the static priority score"
+    )
+    hotspot_file_path: str | None = None
+    hotspot_line: int | None = None
 
 
 class Finding(Contract):

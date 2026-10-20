@@ -37,6 +37,8 @@ class AuditState:
     stage_seconds: dict[str, float] = field(default_factory=dict)
     current_stage: AuditStage = AuditStage.QUEUED
     position: tuple[int, int] = (0, 1)
+    # Results of optional stages (e.g. runtime command discovery), keyed by the stage's module.
+    stage_outputs: dict[str, object] = field(default_factory=dict)
 
     def report(self, fraction: float, message: str | None = None) -> None:
         """Progress within the current stage (0..1), mapped onto the whole pipeline."""

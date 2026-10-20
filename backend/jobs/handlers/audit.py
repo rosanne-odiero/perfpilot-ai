@@ -14,6 +14,7 @@ from backend.models.audit_schemas import RepositoryInventory
 from backend.models.database import session_scope
 from backend.models.enums import AuditMode, AuditStage, AuditStatus
 from backend.models.orm.audit import AuditRun
+from backend.runtime.discovery import RUNTIME_DISCOVERY_STAGE, finish_runtime_discovery
 from backend.services import audits as audit_service
 
 log = get_logger(__name__)
@@ -21,6 +22,8 @@ log = get_logger(__name__)
 # Ordered stages for a STATIC audit. Later phases extend this tuple (AI_ANALYSIS after
 # PRIORITIZING; runtime stages for RUNTIME mode) without changing the handler.
 AUDIT_STAGES: dict[AuditMode, tuple[PipelineStage, ...]] = {AuditMode.STATIC: STATIC_STAGES}
+# RUNTIME = the static stages plus static command discovery; execution waits for an approval.
+AUDIT_STAGES[AuditMode.RUNTIME] = (*AUDIT_STAGES[AuditMode.STATIC], RUNTIME_DISCOVERY_STAGE)
 
 
 def _update_audit(audit_id: str, **fields: Any) -> None:
@@ -94,6 +97,8 @@ def run_audit(ctx: JobContext) -> dict[str, Any]:
         )
         result = summarize(state, time.perf_counter() - started)
         status = _persist(audit_id, result, warnings)
+        if mode is AuditMode.RUNTIME:
+            finish_runtime_discovery(audit_id, state)
     except JobCancelledError:
         _update_audit(audit_id, status=AuditStatus.FAILED, error="cancelled by user")
         raise

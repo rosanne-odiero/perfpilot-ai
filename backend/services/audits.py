@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from backend.core.config import Settings
 from backend.core.exceptions import (
     ConflictError,
-    NotConfiguredError,
     NotFoundError,
     SecurityViolationError,
     ValidationFailedError,
@@ -35,10 +34,7 @@ from backend.models.orm.platform import Job
 
 AUDIT_JOB_TYPE = "audit.run"
 _FINDING_NAMESPACE = uuid.UUID("6f1e2c1a-3b7d-4c55-9a51-0f4f3d6f2a10")
-RUNTIME_NOT_CONFIGURED = (
-    "Runtime audits execute repository code and require the isolated sandbox backend, which is "
-    "not available in this build. Start a STATIC audit instead."
-)
+RUNTIME_NOT_CONFIGURED = "This audit mode has no stage pipeline in this build."
 LLM_UNAVAILABLE_WARNING = (
     "AI-assisted analysis was requested, but this build has no AI analysis stage; only "
     "deterministic static analysis ran and no code was sent to any model."
@@ -98,8 +94,6 @@ def create_audit(
     use_llm: bool,
     llm_consent: bool,
 ) -> tuple[AuditRun, Job]:
-    if mode is AuditMode.RUNTIME:
-        raise NotConfiguredError(RUNTIME_NOT_CONFIGURED, details={"mode": mode.value})
     if use_llm and not llm_consent:
         raise ValidationFailedError(
             "use_llm requires llm_consent=true because code snippets would leave this machine"
