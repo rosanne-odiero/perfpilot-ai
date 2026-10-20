@@ -81,6 +81,9 @@ if args[0] == "info":
     if MODE.get("info") == "down":
         print("Cannot connect to the Docker daemon at unix:///var/run/docker.sock", file=sys.stderr)
         sys.exit(1)
+    if MODE.get("info") == "server_errors":
+        print(json.dumps({"ServerVersion": "", "ServerErrors": ["Cannot connect to the daemon"]}))
+        sys.exit(0)
     if MODE.get("info") == "hang":
         time.sleep(60)
     info = {"ServerVersion": "test-double", "OperatingSystem": "fake", "CgroupVersion": "2"}

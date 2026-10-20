@@ -45,7 +45,7 @@ class RuntimeApproval(TimestampMixin, Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     audit_id: Mapped[str] = mapped_column(ForeignKey("audit_runs.id"), index=True)
     command_id: Mapped[str] = mapped_column(ForeignKey("runtime_commands.id"), index=True)
-    snapshot_id: Mapped[str] = mapped_column(String(36), index=True)
+    snapshot_id: Mapped[str] = mapped_column(ForeignKey("repository_snapshots.id"), index=True)
     argv: Mapped[list[Any]] = mapped_column(doc="Exact argv snapshot at approval time")
     workdir_rel: Mapped[str] = mapped_column(String(1024))
     image: Mapped[str] = mapped_column(String(512))

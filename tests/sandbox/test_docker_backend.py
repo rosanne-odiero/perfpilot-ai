@@ -354,6 +354,15 @@ def test_availability_daemon_down(backend: DockerSandboxBackend, fake_docker: Fa
     assert "daemon not reachable" in (status.reason or "")
 
 
+def test_availability_server_errors_with_zero_exit(
+    backend: DockerSandboxBackend, fake_docker: FakeDocker
+) -> None:
+    fake_docker.set_mode(info="server_errors")
+    status = backend.availability()
+    assert not status.available
+    assert status.reason == "docker daemon not reachable: Cannot connect to the daemon"
+
+
 def test_availability_image_missing(backend: DockerSandboxBackend, fake_docker: FakeDocker) -> None:
     fake_docker.set_mode(image_present=False)
     status = backend.availability()
@@ -540,3 +549,10 @@ def test_collect_output_files_rejects_symlinks_specials_and_oversize(tmp_path: P
     assert not (out / "passwd").is_symlink()
     assert not (out / "dirlink").exists()
     assert (tmp_path / "out").exists()
+
+
+def test_docker_skip_helper_matches_availability() -> None:
+    from conftest import docker_skip_reason
+
+    reason = docker_skip_reason()
+    assert reason is None or reason.startswith("Docker sandbox unavailable: ")

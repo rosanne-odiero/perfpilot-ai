@@ -231,6 +231,12 @@ class DockerSandboxBackend:
             data = json.loads(info.stdout)
         except json.JSONDecodeError:
             return unavailable("unexpected output from 'docker info'", **details)
+        if not isinstance(data, dict):
+            return unavailable("unexpected output from 'docker info'", **details)
+        server_errors = data.get("ServerErrors") or []
+        if server_errors or not data.get("ServerVersion"):
+            first = str(server_errors[0]) if server_errors else "no server version reported"
+            return unavailable(f"docker daemon not reachable: {_first_line(first)}", **details)
         details.update(
             server_version=data.get("ServerVersion"),
             operating_system=data.get("OperatingSystem"),
