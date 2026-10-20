@@ -272,3 +272,26 @@ def test_pdf_break_splits_long_tokens_safely() -> None:
     assert all(len(part) <= 30 for part in broken.split("<br/>"))
     assert str(pdf_break("<b>" + "x" * 60, 20)).count("&lt;b&gt;") == 1
     assert str(pdf_break("short words stay intact")) == "short words stay intact"
+
+
+def test_file_line_references_survive_redaction(make_audit: AuditFactory) -> None:
+    """``auth.py:1012-1040`` looks like ``auth: <value>`` to the generic secret matcher."""
+    base = build_findings()[0]
+    finding = base.model_copy(
+        update={
+            "location": CodeLocation(
+                file_path="app/core/auth_tokens.py", line_start=1012, line_end=1040
+            ),
+            "snippet": "dsn = 'postgresql://svc.user:12345678@db.internal:5432/app'\n",
+        }
+    )
+    report = _report(make_audit(findings=[finding], recommendations=[]))
+    for fmt in (ReportFormat.HTML, ReportFormat.MARKDOWN, ReportFormat.JSON):
+        text = render_report(report, fmt).primary.data.decode()
+        assert "app/core/auth_tokens.py:1012-1040" in text, fmt
+        assert "12345678@" not in text, fmt
+    from backend.reporting.redaction import redact_report_text
+
+    assert redact_report_text("x.py:10 token = 'Zx81kLm2Qp9vRt'").text == (
+        "x.py:10 token = '[REDACTED]'"
+    )

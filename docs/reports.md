@@ -113,6 +113,10 @@ The total number of redactions is stored in the artifact metadata (`redaction_co
 `redaction_kinds`). The number from the first pass is also printed in the report footer. The
 contents of sensitive files are never included, redacted or not.
 
+`file:line` references such as `app/auth.py:1012-1040` are masked before matching. Without this,
+the generic `name: value` secret rule would treat them as an assignment and redact the line range.
+References followed by `@` are not masked, so URL credentials are still redacted.
+
 ## Jobs and API
 
 The `report.generate` job (`backend/jobs/handlers/reports.py`) takes the payload

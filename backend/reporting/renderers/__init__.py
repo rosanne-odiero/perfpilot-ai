@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from backend.core.redaction import redact_text
 from backend.models.enums import ReportFormat
 from backend.reporting.model import AuditReport
-from backend.reporting.redaction import redact_html, redact_report
+from backend.reporting.redaction import redact_html, redact_report, redact_report_text
 from backend.reporting.renderers.common import RenderedFile, RenderResult, report_filename
 from backend.reporting.renderers.csv_export import (
     render_benchmark_samples_csv,
@@ -42,7 +41,7 @@ def render_report(
         else:
             engine = resolve_engine(pdf_engine)
             text = pdf_html(report, engine)
-        redacted = redact_text(text) if fmt == ReportFormat.MARKDOWN else redact_html(text)
+        redacted = redact_report_text(text) if fmt == ReportFormat.MARKDOWN else redact_html(text)
         count += redacted.count
         _merge(kinds, redacted.kinds)
         data = (

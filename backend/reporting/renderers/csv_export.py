@@ -10,8 +10,8 @@ import csv
 import io
 from collections.abc import Iterable
 
-from backend.core.redaction import redact_text
 from backend.reporting.model import AuditReport
+from backend.reporting.redaction import redact_report_text
 
 FINDING_COLUMNS = [
     "rank",
@@ -49,7 +49,7 @@ def _cell(value: object) -> tuple[object, int]:
     if value is None:
         return "", 0
     if isinstance(value, str):
-        result = redact_text(value)
+        result = redact_report_text(value)
         text = result.text
         if text.startswith(_FORMULA_PREFIXES):
             text = "'" + text

@@ -17,12 +17,33 @@ from backend.core.redaction import RedactionResult, redact_text
 from backend.reporting.model import AuditReport
 
 _TAG = re.compile(r"(<[^>]*>)")
+# ``path/to/file.ext:120-140`` references. The generic assignment rule would read
+# ``auth.py:1012-1040`` as ``auth...: <secret>``; a trailing ``@`` (URL credentials) is excluded.
+_LOCATION = re.compile(r"[\w./-]*\.[A-Za-z0-9]{1,10}:\d+(?:-\d+)?(?![\w@:])")
+_PLACEHOLDER = re.compile("\x00(\\d+)\x00")
+
+
+def redact_report_text(text: str) -> RedactionResult:
+    """``redact_text`` that leaves ``file:line`` references intact."""
+    if "\x00" in text:
+        return redact_text(text)
+    kept: list[str] = []
+
+    def _stash(match: re.Match[str]) -> str:
+        kept.append(match.group(0))
+        return f"\x00{len(kept) - 1}\x00"
+
+    result = redact_text(_LOCATION.sub(_stash, text))
+    if not kept:
+        return result
+    restored = _PLACEHOLDER.sub(lambda m: kept[int(m.group(1))], result.text)
+    return RedactionResult(text=restored, count=result.count, kinds=result.kinds)
 
 
 def redact_value(value: Any) -> tuple[Any, int]:
     """Recursively redact strings (dict keys included) in JSON-like data."""
     if isinstance(value, str):
-        result = redact_text(value)
+        result = redact_report_text(value)
         return result.text, result.count
     if isinstance(value, list):
         total = 0
@@ -57,7 +78,7 @@ def redact_html(document: str) -> RedactionResult:
         segment = parts[i]
         if not segment.strip():
             continue
-        result = redact_text(html.unescape(segment))
+        result = redact_report_text(html.unescape(segment))
         if result.count:
             parts[i] = html.escape(result.text, quote=False)
             for kind, count in result.kinds.items():
