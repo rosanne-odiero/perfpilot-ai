@@ -96,7 +96,9 @@ class PatchProposer(Protocol):
     def propose(self, request: PatchRequest) -> PatchProposal: ...
 
 
-def _qualnames(tree: ast.Module) -> list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
+def qualified_functions(
+    tree: ast.Module,
+) -> list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
     found: list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]] = []
 
     def visit(node: ast.AST, prefix: str) -> None:
@@ -117,7 +119,7 @@ def find_function(
 ) -> tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]:
     candidates = [
         (name, node)
-        for name, node in _qualnames(tree)
+        for name, node in qualified_functions(tree)
         if node.lineno <= line_start and (node.end_lineno or node.lineno) >= line_end
     ]
     if qualname:

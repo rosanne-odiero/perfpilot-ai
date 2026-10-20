@@ -29,7 +29,7 @@ from backend.infrastructure.artifact_store import ArtifactStore
 from backend.models.database import session_scope, utcnow
 from backend.models.orm.repo_optimization import RepoOptimizationCandidate, RepoValidationRun
 from backend.optimization.junit import JUnitReport, parse_junit_file
-from backend.optimization.patch_generator import find_function
+from backend.optimization.patch_generator import qualified_functions
 from backend.optimization.repo_candidates import (
     advance,
     candidate_facts,
@@ -101,10 +101,19 @@ def pytest_command(argv: list[str]) -> dict[str, Any]:
     return command
 
 
-def function_first_line(source: str, qualname: str | None, line_start: int, line_end: int) -> int:
-    """``co_firstlineno`` of the target function in ``source`` (first decorator line)."""
+def function_first_line(source: str, qualname: str | None, line_hint: int) -> int:
+    """``co_firstlineno`` (first decorator line) of ``qualname`` in the *patched* source. A patch
+    may move the function (e.g. by hoisting a constant above it), so the nearest match to the
+    original line wins."""
     tree = ast.parse(source)
-    _name, node = find_function(tree, qualname, line_start, line_end)
+    matches = [
+        node
+        for name, node in qualified_functions(tree)
+        if qualname and (name == qualname or name.rsplit(".", 1)[-1] == qualname)
+    ]
+    if not matches:
+        raise ValueError(f"function {qualname!r} not found in the patched file")
+    node = min(matches, key=lambda n: abs(n.lineno - line_hint))
     return min([node.lineno, *(d.lineno for d in node.decorator_list)])
 
 
@@ -240,11 +249,9 @@ class _Context(BaseModel):
     validation_id: str
     candidate_id: str
     snapshot_id: str
-    audit_id: str
     target_file: str
     target_function: str | None
     line_start: int
-    line_end: int
     original_tree: str
     patched_source: str
     scope: CommandScope
@@ -263,11 +270,9 @@ def _load(settings: Settings, validation_id: str) -> tuple[_Context, Path]:
             validation_id=run.id,
             candidate_id=candidate.id,
             snapshot_id=candidate.snapshot_id,
-            audit_id=candidate.audit_id,
             target_file=candidate.target_file,
             target_function=candidate.target_function,
             line_start=candidate.line_start,
-            line_end=candidate.line_end,
             original_tree=candidate.original_tree_sha256,
             patched_source=candidate.patched_source,
             scope=CommandScope(
@@ -497,9 +502,7 @@ def _coverage_check(ctx: _Context, run: ContainerRun, patched_root: Path) -> tup
             detail="the patched run produced no profile statistics",
         )
     try:
-        first_line = function_first_line(
-            ctx.patched_source, ctx.target_function, ctx.line_start, ctx.line_end
-        )
+        first_line = function_first_line(ctx.patched_source, ctx.target_function, ctx.line_start)
         calls = patched_function_calls(
             run.out_dir / STATS_FILE, patched_root, ctx.target_file, name, first_line
         )

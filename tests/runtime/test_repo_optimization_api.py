@@ -84,6 +84,21 @@ def custom_proposer() -> Iterator[Install]:
 
 
 @pytest.fixture
+def runtime_audit(
+    client: TestClient, settings: Settings, harness_backend: SubprocessHarnessBackend
+) -> str:
+    """A RUNTIME audit with nothing profiled yet (findings are static only)."""
+    return start_runtime_audit(client, settings, shopfast_snapshot(settings))
+
+
+@pytest.fixture
+def tested_audit(client: TestClient, settings: Settings, runtime_audit: str) -> str:
+    """Only the pytest command was approved (and profiled)."""
+    profile(client, settings, runtime_audit, PYTEST_ARGV)
+    return runtime_audit
+
+
+@pytest.fixture
 def measured_audit(
     client: TestClient, settings: Settings, harness_backend: SubprocessHarnessBackend
 ) -> str:
@@ -220,11 +235,11 @@ def test_measured_nested_loop_candidate_is_validated_benchmarked_and_reported(
 
 
 def test_wrong_candidate_fails_validation_and_cannot_be_benchmarked(
-    client: TestClient, settings: Settings, measured_audit: str, custom_proposer: Install
+    client: TestClient, settings: Settings, tested_audit: str, custom_proposer: Install
 ) -> None:
     custom_proposer(INVENTORY, reverse_reconcile)
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, tested_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, tested_audit, nested["id"])
     assert created["generated_by"] == "test-double-proposer"
     assert created["provenance"] == "AI_HYPOTHESIS"
     assert created["state"] == "AWAITING_APPROVAL"
@@ -300,16 +315,16 @@ def test_static_only_finding_is_allowed_but_labeled(
     assert harness_backend.runs == []
 
 
-def test_no_safe_patch_is_a_clear_outcome(client: TestClient, measured_audit: str) -> None:
-    n_plus_one = finding(client, measured_audit, "PP-DB-001", "shopfast/orders.py", 13)
-    created = create(client, measured_audit, n_plus_one["id"])
+def test_no_safe_patch_is_a_clear_outcome(client: TestClient, runtime_audit: str) -> None:
+    n_plus_one = finding(client, runtime_audit, "PP-DB-001", "shopfast/orders.py", 13)
+    created = create(client, runtime_audit, n_plus_one["id"])
     assert created["outcome"] == "no_safe_patch"
     assert created["state"] == "FAILED"
     assert "no safe deterministic patch" in created["error"]
     assert created["workspace_path"] is None
     assert client.get(f"/api/repo-optimizations/{created['id']}/diff").status_code == 404
     with session_scope() as session:
-        report = build_audit_report(session, measured_audit)
+        report = build_audit_report(session, runtime_audit)
     assert any("No patch candidate for finding" in item for item in report.limitations.limitations)
 
 
@@ -323,14 +338,14 @@ def test_no_safe_patch_is_a_clear_outcome(client: TestClient, measured_audit: st
 )
 def test_patch_validator_rejects_changes_outside_the_finding_file(
     client: TestClient,
-    measured_audit: str,
+    runtime_audit: str,
     custom_proposer: Install,
     path: str,
     codes: set[str],
 ) -> None:
     custom_proposer(path, lambda text: text + "\n# tampered\n")
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, runtime_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, runtime_audit, nested["id"])
     assert created["state"] == "REJECTED"
     assert created["outcome"] == "rejected_by_validator"
     assert created["approval"]["rejected_by"] == "patch-validator"
@@ -340,7 +355,7 @@ def test_patch_validator_rejects_changes_outside_the_finding_file(
 
 
 def test_benchmark_gaming_patch_is_rejected(
-    client: TestClient, measured_audit: str, custom_proposer: Install
+    client: TestClient, runtime_audit: str, custom_proposer: Install
 ) -> None:
     custom_proposer(
         INVENTORY,
@@ -348,17 +363,17 @@ def test_benchmark_gaming_patch_is_rejected(
             "def reconcile(", "import functools\n\n\n@functools.lru_cache\ndef reconcile(", 1
         ),
     )
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, runtime_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, runtime_audit, nested["id"])
     assert created["state"] == "REJECTED"
     assert "benchmark_tampering" in {r["code"] for r in created["rejection_reasons"]}
 
 
 def test_rejection_is_final_and_removes_the_workspace(
-    client: TestClient, measured_audit: str
+    client: TestClient, runtime_audit: str
 ) -> None:
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, runtime_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, runtime_audit, nested["id"])
     workspace = Path(created["workspace_path"])
     assert workspace.is_dir()
     rejected = client.post(
@@ -373,10 +388,10 @@ def test_rejection_is_final_and_removes_the_workspace(
     assert _error(response)["code"] == "invalid_state_transition"
 
 
-def test_changed_snapshot_is_detected(client: TestClient, measured_audit: str) -> None:
-    root = _snapshot_root(client, measured_audit)
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+def test_changed_snapshot_is_detected(client: TestClient, runtime_audit: str) -> None:
+    root = _snapshot_root(client, runtime_audit)
+    nested = finding(client, runtime_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, runtime_audit, nested["id"])
     (root / "shopfast/utils.py").write_text("# edited after the audit\n")
     response = client.post(f"/api/repo-optimizations/{created['id']}/approve", json={})
     assert _error(response)["code"] == "original_tree_changed"
@@ -384,17 +399,17 @@ def test_changed_snapshot_is_detected(client: TestClient, measured_audit: str) -
 
     (root / INVENTORY).write_text((root / INVENTORY).read_text() + "\n# edited\n")
     response = client.post(
-        f"/api/audits/{measured_audit}/optimizations", json={"finding_id": nested["id"]}
+        f"/api/audits/{runtime_audit}/optimizations", json={"finding_id": nested["id"]}
     )
     assert response.status_code == 409
     assert _error(response)["code"] == "source_changed"
 
 
 def test_unavailable_sandbox_refuses_validation(
-    client: TestClient, settings: Settings, measured_audit: str
+    client: TestClient, settings: Settings, tested_audit: str
 ) -> None:
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, tested_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, tested_audit, nested["id"])
     _approve(client, created["id"])
     with session_scope() as session:
         record_backend_status(
@@ -408,15 +423,15 @@ def test_unavailable_sandbox_refuses_validation(
     assert candidate(client, created["id"])["state"] == "AWAITING_APPROVAL"
 
 
-def test_unknown_ids_and_bad_requests(client: TestClient, measured_audit: str) -> None:
-    url = f"/api/audits/{measured_audit}/optimizations"
+def test_unknown_ids_and_bad_requests(client: TestClient, runtime_audit: str) -> None:
+    url = f"/api/audits/{runtime_audit}/optimizations"
     assert client.post(url, json={"finding_id": "nope"}).status_code == 404
     assert client.post(url, json={"finding_id": "../etc/passwd"}).status_code == 422
     assert client.post(url, json={"finding_id": "x", "extra": 1}).status_code == 422
     assert client.get("/api/repo-optimizations/unknown").status_code == 404
     assert client.get("/api/audits/unknown/optimizations").status_code == 404
-    nested = finding(client, measured_audit, "PP-LOOP-002", INVENTORY)
-    created = create(client, measured_audit, nested["id"])
+    nested = finding(client, runtime_audit, "PP-LOOP-002", INVENTORY)
+    created = create(client, runtime_audit, nested["id"])
     _approve(client, created["id"])
     bench = f"/api/repo-optimizations/{created['id']}/benchmark"
     assert client.post(bench, json={"runs": 1}).status_code == 422

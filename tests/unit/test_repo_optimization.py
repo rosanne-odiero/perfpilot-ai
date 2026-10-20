@@ -349,7 +349,11 @@ def test_function_first_line_includes_decorators() -> None:
     source = (
         "import functools\n\n\n@functools.wraps(print)\n@staticmethod\ndef f():\n    return 1\n"
     )
-    assert function_first_line(source, "f", 7, 7) == 4
+    assert function_first_line(source, "f", 7) == 4
+    moved = "PATTERN = 1\n\n\ndef g():\n    pass\n\n\ndef f():\n    return 1\n"
+    assert function_first_line(moved, "f", 5) == 8
+    with pytest.raises(ValueError, match="not found"):
+        function_first_line(moved, "h", 5)
 
 
 # ----------------------------------------------------------------------------- benchmark plan
