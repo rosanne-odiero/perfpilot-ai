@@ -66,8 +66,15 @@ def relevance(node: GraphNode) -> float:
 
 
 def select_nodes(nodes: list[GraphNode], max_nodes: int) -> list[GraphNode]:
+    """Entrypoints and cycle members first (at most half the slots), then by relevance."""
     ranked = sorted(nodes, key=lambda n: (-relevance(n), n.module_name))
-    return sorted(ranked[:max_nodes], key=lambda n: n.module_name)
+    special = [n for n in ranked if n.is_entrypoint or n.in_cycle][: max_nodes // 2]
+    chosen = {n.module_name: n for n in special}
+    for node in ranked:
+        if len(chosen) >= max_nodes:
+            break
+        chosen.setdefault(node.module_name, node)
+    return sorted(chosen.values(), key=lambda n: n.module_name)
 
 
 def _short_label(module_name: str, limit: int = 28) -> str:
