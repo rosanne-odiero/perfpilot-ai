@@ -225,9 +225,8 @@ def _profile_section(session: Session, profile: ProfileRun, relation: str) -> Pr
 
 
 def _hypothesis_label(rec: OptimizationRecommendation, part: str) -> Provenance:
-    """Deterministic rule templates are STATIC; anything a model wrote is AI_HYPOTHESIS."""
-    if rec.generated_by == DETERMINISTIC:
-        return Provenance.STATIC
+    """Use the recommendation's own per-field label (an expected effect is a prediction, so the
+    analysis records it as ``AI_HYPOTHESIS`` even for rule templates); default to a hypothesis."""
     try:
         recorded = Provenance(str((rec.provenance or {}).get(part)))
     except ValueError:

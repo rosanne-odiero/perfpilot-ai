@@ -285,7 +285,7 @@ def _run_deep_dive(client: TestClient, settings: Settings, slug: str) -> dict[st
     }
     assert len([s for s in bench["samples"] if s["kind"] == "timing"]) == len(timing)
     assert report_json["recommendation"]["profiler_evidence_provenance"] == "MEASURED"
-    assert report_json["recommendation"]["expected_effect"]["provenance"] == "STATIC"
+    assert report_json["recommendation"]["expected_effect"]["provenance"] == "AI_HYPOTHESIS"
     assert report_json["approval"]["approved_by"] == "e2e-tester"
     assert report_json["workload"]["input_sha256"] == benchmark["input_sha256"]
     assert report_json["environment"]["provenance"] == "MEASURED"
