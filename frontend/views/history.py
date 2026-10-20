@@ -1,15 +1,18 @@
-"""Reports & History: previous audits, their generated reports, profiles and benchmarks."""
+"""Reports & History: audits and their reports, workload experiments, profiles and benchmarks."""
 
 from __future__ import annotations
+
+from typing import Any
 
 import pandas as pd
 import streamlit as st
 
 from frontend import data, routes
-from frontend.api_client import ApiError
+from frontend.api_client import ApiError, Unsupported
 from frontend.components.notices import empty_state, show_api_error
+from frontend.components.provenance import provenance_html
+from frontend.components.report_export import render_report_list, report_row
 from frontend.formatting import SOURCE_LABELS, fmt_dt, fmt_ms, fmt_ratio
-from frontend.views import audit_export
 from frontend.views.catalog import AuditRow, audit_rows
 from frontend.views.run_history import runs
 
@@ -64,7 +67,84 @@ def _audit_section() -> None:
         return
     with st.container(border=True):
         for report in sorted(reports, key=lambda r: (r["format"], r["created_at"])):
-            audit_export.report_row(report)
+            report_row(report)
+
+
+def experiments_frame(experiments: list[dict[str, Any]]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "Workload": e.get("workload_name") or e.get("workload_slug") or e["workload_id"],
+                "Experiment": e["title"],
+                "Kind": "optimization" if e["kind"] == "optimization" else "reference benchmark",
+                "State": e["state"],
+                "Validation": e.get("validation_status") or "",
+                "Verdict": e.get("classification") or "",
+                "Speedup": fmt_ratio(e.get("speedup")),
+                "95% CI": f"{fmt_ratio(e['speedup_ci_low'])} to {fmt_ratio(e['speedup_ci_high'])}"
+                if e.get("speedup_ci_low") is not None
+                else "",
+                "Reports": e.get("report_count", 0),
+                "Created": fmt_dt(e["created_at"]),
+            }
+            for e in experiments
+        ],
+        columns=[
+            "Workload",
+            "Experiment",
+            "Kind",
+            "State",
+            "Validation",
+            "Verdict",
+            "Speedup",
+            "95% CI",
+            "Reports",
+            "Created",
+        ],
+    )
+
+
+def _experiments_section() -> None:
+    payload = data.experiments(100)
+    if isinstance(payload, Unsupported):
+        return
+    st.markdown("##### Workload experiments " + provenance_html("MEASURED"), unsafe_allow_html=True)
+    experiments = list(payload)
+    if not experiments:
+        st.caption(
+            "No experiments yet. Run an optimization deep dive or a reference benchmark in the "
+            "Workload Lab."
+        )
+        return
+    state = st.dataframe(
+        experiments_frame(experiments),
+        key="history_experiments",
+        hide_index=True,
+        width="stretch",
+        on_select="rerun",
+        selection_mode="single-row",
+        column_config={"Experiment": st.column_config.TextColumn(width="large")},
+    )
+    rows = state.selection.rows if state is not None else []
+    if not rows or rows[0] >= len(experiments):
+        st.caption("Select an experiment to open it or download its reports.")
+        return
+    chosen = experiments[rows[0]]
+    st.page_link(
+        routes.WORKLOAD_LAB,
+        label=f"Open {chosen.get('workload_name') or 'the workload'} in the Workload Lab",
+        icon="🧪",
+        query_params={routes.WORKLOAD_PARAM: chosen["workload_id"]},
+    )
+    base = "/optimizations" if chosen["subject_type"] == "optimization" else "/benchmarks"
+    reports = data.subject_reports(f"{base}/{chosen['id']}/reports")
+    if reports:
+        render_report_list(reports)
+    else:
+        st.caption(
+            "No reports for this experiment yet; generate them in the Workload Lab "
+            "(Optimize tab for candidates, Benchmark tab for reference benchmarks)."
+        )
 
 
 def _workload_names() -> dict[str, str]:
@@ -151,6 +231,8 @@ def render_page() -> None:
     try:
         _audit_section()
         _repositories()
+        st.divider()
+        _experiments_section()
         st.divider()
         _runs_section()
     except ApiError as exc:

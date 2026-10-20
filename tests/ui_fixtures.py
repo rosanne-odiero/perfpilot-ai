@@ -17,9 +17,25 @@ from frontend.api_client import ENDPOINT_MISSING, ApiError, Download
 FIXTURES = Path(__file__).parent / "frontend" / "fixtures"
 APP = str(Path(__file__).resolve().parents[1] / "frontend" / "app.py")
 
-# Routes served by API areas that are not part of this API version.
-MISSING_PREFIXES = ("/runtime/", "/ai/", "/optimizations", "/analyses")
-MISSING_SUFFIXES = ("/recommendations", "/insights", "/llm-usage", "/runtime/commands", "/runtime")
+# Routes of the AI, runtime and optimization API areas: absent when ``legacy`` simulates an API
+# version from before those areas existed.
+MISSING_PREFIXES = (
+    "/runtime/",
+    "/ai/",
+    "/optimizations",
+    "/analyses",
+    "/experiments",
+    "/repo-optimizations",
+)
+MISSING_SUFFIXES = (
+    "/recommendations",
+    "/insights",
+    "/llm-usage",
+    "/runtime/commands",
+    "/runtime",
+    "/runtime/approvals",
+    "/optimizations",
+)
 
 
 def load(name: str) -> Any:
@@ -27,7 +43,8 @@ def load(name: str) -> Any:
 
 
 class FakeApi:
-    def __init__(self) -> None:
+    def __init__(self, legacy: bool = False) -> None:
+        self.legacy = legacy
         manifest: dict[str, str] = load("manifest.json")
         self.routes = {key: load(name) for key, name in manifest.items()}
         self.posts: list[tuple[str, Any]] = []
@@ -35,13 +52,20 @@ class FakeApi:
         self.overrides: dict[str, Any] = {}
 
     def _missing(self, path: str) -> bool:
-        return path.startswith(MISSING_PREFIXES) or (
-            path.startswith("/audits/") and path.endswith(MISSING_SUFFIXES)
+        if not self.legacy:
+            return False
+        return (
+            path.startswith(MISSING_PREFIXES)
+            or (path.startswith(("/audits/", "/workloads/")) and path.endswith(MISSING_SUFFIXES))
+            or "/runtime/runs/" in path
+            or (path.startswith("/benchmarks/") and path.endswith("/reports"))
         )
 
     def _get(self, path: str, params: dict[str, Any]) -> Any:
         if path in self.overrides:
             return copy.deepcopy(self.overrides[path])
+        if self._missing(path):
+            raise ApiError(404, ENDPOINT_MISSING, f"GET /api{path} is not available")
         if path == "/jobs":
             jobs = self.routes["/jobs"]
             wanted = params.get("job_type")
@@ -55,8 +79,6 @@ class FakeApi:
             path = f"{path}?path={params['path']}"
         if path in self.routes:
             return copy.deepcopy(self.routes[path])
-        if self._missing(path):
-            raise ApiError(404, ENDPOINT_MISSING, f"GET /api{path} is not available")
         raise ApiError(404, "not_found", f"{path} not found")
 
     def request(self, method: str, path: str, **kwargs: Any) -> Any:

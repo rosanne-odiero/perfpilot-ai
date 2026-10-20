@@ -1,0 +1,231 @@
+{
+ "baseline_snapshot": {
+  "files": {
+   "README.md": "f22f620aadcf9247266d4100c2d99456087cc5959beda1c1c45dc415ba491de4",
+   "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "fixtures.py": "bbafbb221bd9108c32ff68b53ee1a19fc9fdd1d115198699c6195ffc9ab4c48b",
+   "reference/optimized.py": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7",
+   "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tests/test_workload.py": "6b683f12bc68e5daa2be5756d7cb85dddf2856ee79a51886127349d1a88d09a8",
+   "workload.json": "a1cec1b03b4394b504c61b298beb2c3de70db0fa376a349d5ea4dd7b14f23204",
+   "workload.py": "ef703763602064d88b57e5332462aa322b97210968587f9451c4a5aebe13ef83"
+  },
+  "id": "04bf9c78-aadb-4a89-bcf1-62f967c4c9fc",
+  "label": "benchmark 4555f5ff-8b20-41e7-8306-169dbe7831c9",
+  "role": "baseline",
+  "tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa"
+ },
+ "candidate": {
+  "candidate_id": null,
+  "kind": "reference",
+  "label": "reference implementation (bundled, for testing)",
+  "source_sha256": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7"
+ },
+ "candidate_snapshot": {
+  "files": {
+   "README.md": "f22f620aadcf9247266d4100c2d99456087cc5959beda1c1c45dc415ba491de4",
+   "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "fixtures.py": "bbafbb221bd9108c32ff68b53ee1a19fc9fdd1d115198699c6195ffc9ab4c48b",
+   "reference/optimized.py": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7",
+   "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tests/test_workload.py": "6b683f12bc68e5daa2be5756d7cb85dddf2856ee79a51886127349d1a88d09a8",
+   "workload.json": "a1cec1b03b4394b504c61b298beb2c3de70db0fa376a349d5ea4dd7b14f23204",
+   "workload.py": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7"
+  },
+  "id": "a36b4f90-285e-4c2d-ae5d-328a3e3bd7cd",
+  "label": "reference implementation (bundled, for testing)",
+  "role": "reference",
+  "tree_sha256": "65f3abb3f6634625604a77338f034200a8c8c958d9f58d65dae03d39de82ad33"
+ },
+ "classification": "IMPROVED",
+ "classification_reason": "speedup 62.226x >= 1.053x (5% threshold) and 95% CI [55.277x, 65.563x] excludes 1",
+ "correctness": {
+  "comparison": "exact",
+  "detail": "outputs are identical",
+  "equivalent": true
+ },
+ "created_at": "2026-10-20T20:50:36.588923",
+ "environment": {
+  "architecture": "arm64",
+  "baseline_tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa",
+  "candidate_source_sha256": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7",
+  "candidate_tree_sha256": "65f3abb3f6634625604a77338f034200a8c8c958d9f58d65dae03d39de82ad33",
+  "captured_at": "2026-10-20T20:50:40.884625+00:00",
+  "cpu_affinity": null,
+  "cpu_frequency": null,
+  "cpu_model": "Apple M4 Pro",
+  "load_average_1_5_15": [
+   3.53125,
+   8.1298828125,
+   8.49267578125
+  ],
+  "logical_cpus": 14,
+  "mode": "benchmark",
+  "notes": [
+   "thermal state unavailable (not exposed to unprivileged processes)",
+   "CPU frequency unavailable (not reported, or implausible value from the OS); frequency scaling was not controlled",
+   "CPU affinity unavailable on this OS; processes were not pinned to a core"
+  ],
+  "os": "Darwin",
+  "os_release": "25.6.0",
+  "os_version": "Darwin Kernel Version 25.6.0: Tue Aug 18 17:48:46 PDT 2026; root:xnu-12377.161.15.700.19~2/RELEASE_ARM64_T6041",
+  "packages": {
+   "fastapi": "0.143.0",
+   "numpy": "2.5.4",
+   "psutil": "7.2.2",
+   "pydantic": "2.14.1",
+   "scipy": "1.18.1",
+   "sqlalchemy": "2.1.4"
+  },
+  "perfpilot_version": "0.1.0",
+  "physical_cpus": 14,
+  "platform": "macOS-26.7.1-arm64-arm-64bit",
+  "python_executable": "/srv/perfpilot/.venv/bin/python",
+  "python_implementation": "CPython",
+  "python_version": "3.12.10",
+  "settings": {
+   "bootstrap_resamples": 10000,
+   "memory_runs": 2,
+   "order": "random",
+   "runs": 8,
+   "seed": 12345,
+   "threshold_percent": 5.0,
+   "timed_iterations_per_process": 1,
+   "warmups": 2
+  },
+  "size": {
+   "n_items": 500,
+   "seed": 2024
+  },
+  "size_name": "small",
+  "total_memory_bytes": 51539607552,
+  "uv_lock_sha256": "90f60dca8f693889940cba7a3319d493203f9788128d25b7d976af16b85dbfd9",
+  "workload": "duplicate_counter"
+ },
+ "error": null,
+ "error_details": null,
+ "finished_at": "2026-10-20T20:50:40.918186",
+ "id": "4555f5ff-8b20-41e7-8306-169dbe7831c9",
+ "input_sha256": "2079162d2fcc3377eb667681ca4b1ecb92a1ac116a8039c36077954465f05827",
+ "job_id": "cc649173-f41b-4187-8b8a-f1be0f0b19fe",
+ "latency_reduction_percent": 98.39295341131425,
+ "memory": {
+  "baseline": {
+   "rss_peak_bytes_median": 26722304.0,
+   "ru_maxrss_bytes_median": 26845184.0,
+   "runs": 2,
+   "tracemalloc_peak_bytes_median": 2520.0
+  },
+  "candidate": {
+   "rss_peak_bytes_median": 26656768.0,
+   "ru_maxrss_bytes_median": 27246592.0,
+   "runs": 2,
+   "tracemalloc_peak_bytes_median": 9425.0
+  },
+  "definitions": {
+   "rss_peak_bytes": "peak resident set size of the child process, sampled by the parent every 5 ms over the whole process lifetime (interpreter + input + call); short spikes between samples can be missed",
+   "ru_maxrss_bytes": "kernel-reported maximum RSS of the child process (getrusage)",
+   "tracemalloc_peak_bytes": "peak Python-traced allocations during the workload call only (input built before tracing); not process memory"
+  },
+  "tracemalloc_peak_ratio_candidate_to_baseline": 3.740079365079365,
+  "unavailable": []
+ },
+ "provenance": "MEASURED",
+ "results_artifact_id": "0c24def1-2124-4bf4-bcfe-9db349c63c22",
+ "settings": {
+  "bootstrap_resamples": 10000,
+  "memory_runs": 2,
+  "order": "random",
+  "runs": 8,
+  "seed": 12345,
+  "threshold_percent": 5.0,
+  "warmups": 2
+ },
+ "size": "small",
+ "speedup": 62.22594957983193,
+ "speedup_ci_high": 65.56266508789507,
+ "speedup_ci_low": 55.27704391288825,
+ "started_at": "2026-10-20T20:50:38.188711",
+ "status": "SUCCEEDED",
+ "summary": {
+  "baseline": {
+   "cpu_ms": {
+    "cv_percent": 2.025155656768086,
+    "max": 1.451,
+    "mean": 1.398625,
+    "median": 1.3855,
+    "min": 1.372,
+    "n": 8,
+    "p95": 1.44505,
+    "p95_warning": "p95 estimated from only n=8 samples is unstable (it depends on the 1 slowest run(s))",
+    "stdev": 0.02832433330447264
+   },
+   "throughput_calls_per_s": 720.2449697191009,
+   "wall_ms": {
+    "cv_percent": 2.3045607334982785,
+    "max": 1.469125,
+    "mean": 1.404223875,
+    "median": 1.3884165,
+    "min": 1.379292,
+    "n": 8,
+    "p95": 1.4587999999999999,
+    "p95_warning": "p95 estimated from only n=8 samples is unstable (it depends on the 1 slowest run(s))",
+    "stdev": 0.03236119203365795
+   }
+  },
+  "candidate": {
+   "cpu_ms": {
+    "cv_percent": 22.66230894930127,
+    "max": 0.035,
+    "mean": 0.0225,
+    "median": 0.021,
+    "min": 0.02,
+    "n": 8,
+    "p95": 0.030449999999999994,
+    "p95_warning": "p95 estimated from only n=8 samples is unstable (it depends on the 1 slowest run(s))",
+    "stdev": 0.005099019513592786
+   },
+   "throughput_calls_per_s": 44817.927170868345,
+   "wall_ms": {
+    "cv_percent": 20.38080660758975,
+    "max": 0.0365,
+    "mean": 0.024489624999999998,
+    "median": 0.0223125,
+    "min": 0.021875,
+    "n": 8,
+    "p95": 0.03254814999999999,
+    "p95_warning": "p95 estimated from only n=8 samples is unstable (it depends on the 1 slowest run(s))",
+    "stdev": 0.00499118311017395
+   }
+  },
+  "ci": {
+   "confidence": 0.95,
+   "high": 65.56266508789507,
+   "low": 55.27704391288825,
+   "method": "paired percentile bootstrap of the ratio of medians",
+   "resamples": 10000,
+   "seed": 12345
+  },
+  "cpu_speedup": 65.97619047619047,
+  "formulas": {
+   "latency_reduction_percent": "(median_baseline - median_candidate) / median_baseline * 100",
+   "speedup": "median_baseline / median_candidate (wall time)",
+   "throughput_speedup": "candidate_throughput / baseline_throughput"
+  },
+  "latency_reduction_percent": 98.39295341131425,
+  "provenance": "MEASURED",
+  "speedup": 62.22594957983193,
+  "thresholds": {
+   "improvement_speedup": 1.0526315789473684,
+   "regression_speedup": 0.9523809523809523,
+   "threshold_percent": 5.0
+  },
+  "throughput_speedup": 62.22594957983192,
+  "unit": "ms"
+ },
+ "warnings": [
+  "candidate wall time is noisy (CV 20.4%); consider more runs or a quieter machine",
+  "p95 estimated from only n=8 samples is unstable (it depends on the 1 slowest run(s))"
+ ],
+ "workload_id": "7d86df69-0a5d-4393-840e-b2ef507a89b6"
+}

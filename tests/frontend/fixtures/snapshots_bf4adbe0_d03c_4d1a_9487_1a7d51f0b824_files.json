@@ -1,0 +1,231 @@
+{
+ "files": [
+  {
+   "is_python": false,
+   "language": null,
+   "path": ".env",
+   "sha256": null,
+   "size_bytes": 38,
+   "skip_reason": "sensitive",
+   "skipped": true
+  },
+  {
+   "is_python": false,
+   "language": "JSON",
+   "path": "EXPECTED_FINDINGS.json",
+   "sha256": "b01e71b4fef67b4bec6164b2beba7fec8ee7d7173e238b2783f1b42bdd80e209",
+   "size_bytes": 2875,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": false,
+   "language": "Markdown",
+   "path": "README.md",
+   "sha256": "307e1f700977689e85808ff1a009ea1af698947d4ba934e3f6bce0f1e75d2c52",
+   "size_bytes": 447,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "benchmarks/run_workload.py",
+   "sha256": "7eca87f7361c24c0a1b3c1873f1b7d5f0f7c227ff028cc664945d299be45ad24",
+   "size_bytes": 3208,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": false,
+   "language": "TOML",
+   "path": "pyproject.toml",
+   "sha256": "1848819fb617d0a7141fd9e4aa616127a66d98c4e3850c2077bd17c7b2c00dc6",
+   "size_bytes": 339,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/__init__.py",
+   "sha256": "7e181c901e4f7653d0f1224f285e89262f14c067e36ff818bcca537c91302781",
+   "size_bytes": 58,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/__main__.py",
+   "sha256": "0a388d3ed7023aa2f4ac52a323189ddd02a3824f78c9c33269f307c3c2eb1a96",
+   "size_bytes": 56,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/api.py",
+   "sha256": "5fa56a7e905466520094fb2f30fbef7864bce787ba532432d161ce05d566709d",
+   "size_bytes": 1582,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/app.py",
+   "sha256": "a1d85fe051895f6f71e628472db09bb6c58ce3570e9dfbaeb958f2461f000d23",
+   "size_bytes": 1847,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/catalog.py",
+   "sha256": "a7b589f800c68a1af540195a821fa08954773dc0998bc570c1f6724d645ff45e",
+   "size_bytes": 1993,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/db.py",
+   "sha256": "59b309d5b00bad240583d372b30800c7eada8a408ed8d4d5864f31b890b401da",
+   "size_bytes": 960,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/inventory_sync.py",
+   "sha256": "98e2837cdfef77581157338c2d47b7fe99902f910340cef8930eb3b9f74ec84b",
+   "size_bytes": 1403,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/orders.py",
+   "sha256": "ecd1719be43e1c86b9afba5c74489e1b76952bb8ab69ffc4cd55ffb45718adc3",
+   "size_bytes": 1700,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/pricing.py",
+   "sha256": "ffe0a637778b094ff8a8144a9a51519de453520fea465ffd075d5a1a51d539a5",
+   "size_bytes": 2055,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": false,
+   "language": "Text",
+   "path": "shopfast/report_header.txt",
+   "sha256": "069c441727c8ebdee291f9f1152d416634d5fe064d5e9ff74bc8cb37a64840e9",
+   "size_bytes": 44,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/reporting.py",
+   "sha256": "e4d36308a10d90b3b7450c677dbad869c9545165a65b101641d5e829038cfa59",
+   "size_bytes": 1776,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "shopfast/utils.py",
+   "sha256": "fea93a8347d1632f38fd249cee1192277d5883bbafd62351ed440fde1ecbdcb5",
+   "size_bytes": 745,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/conftest.py",
+   "sha256": "f8f4f8d3e1cdba92c9ab7575e84bd5d2c15f41153b266393bb4db3c0e8f88c1c",
+   "size_bytes": 444,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_api.py",
+   "sha256": "baf13bfa7a48ec9d3c08c6807c2b3f0135774efe7e016e813c0eeea228799670",
+   "size_bytes": 1442,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_catalog.py",
+   "sha256": "8844c1d00fe2b408440d1dd397faf7cc43f86b0ecf4ac10ef46b4c44381d2d2c",
+   "size_bytes": 1244,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_inventory_sync.py",
+   "sha256": "0b6e5d8b22343ac14d132d5f80e1ef7cf1d379f6005ea02268a557f30afac534",
+   "size_bytes": 853,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_orders.py",
+   "sha256": "09ba0a3c06363b87951e5074d923e88b440d64078f46f730d536fc61222c3444",
+   "size_bytes": 758,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_pricing.py",
+   "sha256": "8f245da83c4f65fbdd343e3a158a8da34b842b45c51bb3b62efe23c1054bbec8",
+   "size_bytes": 1176,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_reporting.py",
+   "sha256": "d9353da4efa468df11962f79b59a298125435c61d7ae85e71569f1c0dd194c39",
+   "size_bytes": 1025,
+   "skip_reason": null,
+   "skipped": false
+  },
+  {
+   "is_python": true,
+   "language": "Python",
+   "path": "tests/test_utils.py",
+   "sha256": "a73516d63d847d686d1f7058368ea4d0f6e4950181b3e58d6fd2ef058066ec74",
+   "size_bytes": 398,
+   "skip_reason": null,
+   "skipped": false
+  }
+ ],
+ "snapshot_id": "bf4adbe0-d03c-4d1a-9487-1a7d51f0b824",
+ "total": 25
+}

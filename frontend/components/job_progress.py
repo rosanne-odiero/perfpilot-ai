@@ -196,7 +196,7 @@ def pipeline_steps(pipeline: AuditPipeline) -> list[tuple[str, str]]:
     return [(label, state(i)) for i, (_, label) in enumerate(stages)]
 
 
-def _stepper_html(steps: list[tuple[str, str]]) -> str:
+def stepper_html(steps: list[tuple[str, str]]) -> str:
     items = "".join(f'<span class="pp-step {state}">{esc(label)}</span>' for label, state in steps)
     return f'<div class="pp-stepper">{items}</div>'
 
@@ -222,7 +222,7 @@ def _poll_pipeline(state_key: str) -> None:
     if updated.finished:
         st.cache_data.clear()
         st.rerun()
-    st.markdown(_stepper_html(pipeline_steps(updated)), unsafe_allow_html=True)
+    st.markdown(stepper_html(pipeline_steps(updated)), unsafe_allow_html=True)
     if updated.current_job:
         job = JobState.parse(updated.current_job)
         what = "Importing repository" if updated.phase is Phase.IMPORTING else "Auditing"
@@ -238,7 +238,7 @@ def render_pipeline(state_key: str) -> AuditPipeline | None:
         return None
     pipeline = AuditPipeline.from_state(raw)
     if pipeline.finished:
-        st.markdown(_stepper_html(pipeline_steps(pipeline)), unsafe_allow_html=True)
+        st.markdown(stepper_html(pipeline_steps(pipeline)), unsafe_allow_html=True)
         return pipeline
     with st.container(border=True):
         st.markdown("**Audit in progress**")

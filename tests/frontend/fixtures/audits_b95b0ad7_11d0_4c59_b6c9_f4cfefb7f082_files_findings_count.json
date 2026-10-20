@@ -1,0 +1,63 @@
+[
+ {
+  "by_severity": {
+   "HIGH": 2,
+   "MEDIUM": 1
+  },
+  "file_path": "shopfast/api.py",
+  "max_priority": 40.25,
+  "total": 3
+ },
+ {
+  "by_severity": {
+   "MEDIUM": 3
+  },
+  "file_path": "shopfast/catalog.py",
+  "max_priority": 41.46,
+  "total": 3
+ },
+ {
+  "by_severity": {
+   "HIGH": 1,
+   "MEDIUM": 4
+  },
+  "file_path": "shopfast/inventory_sync.py",
+  "max_priority": 65.99,
+  "total": 5
+ },
+ {
+  "by_severity": {
+   "HIGH": 2,
+   "MEDIUM": 1
+  },
+  "file_path": "shopfast/orders.py",
+  "max_priority": 48.47,
+  "total": 3
+ },
+ {
+  "by_severity": {
+   "LOW": 2,
+   "MEDIUM": 2
+  },
+  "file_path": "shopfast/pricing.py",
+  "max_priority": 22.2,
+  "total": 4
+ },
+ {
+  "by_severity": {
+   "LOW": 4,
+   "MEDIUM": 1
+  },
+  "file_path": "shopfast/reporting.py",
+  "max_priority": 22.72,
+  "total": 5
+ },
+ {
+  "by_severity": {
+   "MEDIUM": 1
+  },
+  "file_path": "shopfast/utils.py",
+  "max_priority": 17.6,
+  "total": 1
+ }
+]

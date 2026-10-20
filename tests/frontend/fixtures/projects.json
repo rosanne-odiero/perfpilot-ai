@@ -1,8 +1,8 @@
 [
  {
-  "created_at": "2026-10-20T16:48:07.545738",
+  "created_at": "2026-10-20T20:44:07.313758",
   "description": "Trusted example workloads shipped with PerfPilot (examples/).",
-  "id": "532fd1fa-c0ea-4258-9d1a-1b6c78def203",
+  "id": "78d73783-3c5e-4818-8bc8-ffbdca5e7e35",
   "kind": "bundled_examples",
   "name": "Bundled examples",
   "workload_count": 5

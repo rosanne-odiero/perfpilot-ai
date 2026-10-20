@@ -1,0 +1,78 @@
+[
+ {
+  "artifact_id": "e276cf63-ca6f-4fee-970f-dff9c03337e5",
+  "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "created_at": "2026-10-20T20:50:41.840405",
+  "error": null,
+  "files": [
+   {
+    "artifact_id": "e276cf63-ca6f-4fee-970f-dff9c03337e5",
+    "filename": "perfpilot-shopfast-nosha-audit.md",
+    "media_type": "text/markdown",
+    "role": "primary",
+    "sha256": "08086643bffe34feecef239ae57152f07e72d66eb7b523806fd8efea4b2fb842",
+    "size_bytes": 97025
+   }
+  ],
+  "format": "md",
+  "id": "e3bf9168-095f-4081-b738-07d5be46fe9f",
+  "job_id": "3a6f2846-3f84-4a6c-aa3c-902eb45020ef",
+  "meta": {
+   "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+   "audit_status": "SUCCEEDED",
+   "format": "md",
+   "generated_at": "2026-10-20T20:50:44.634535+00:00",
+   "pdf_engine": null,
+   "providers_applied": [
+    "repo-optimization",
+    "runtime-audit"
+   ],
+   "redaction_count": 0,
+   "redaction_kinds": {},
+   "report_id": "e3bf9168-095f-4081-b738-07d5be46fe9f",
+   "schema_version": "1.0"
+  },
+  "status": "SUCCEEDED",
+  "subject_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "subject_type": "audit",
+  "updated_at": "2026-10-20T20:50:44.702113"
+ },
+ {
+  "artifact_id": "b2aa5768-1cb5-4cb1-8344-bfc7ef137ad5",
+  "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "created_at": "2026-10-20T20:50:41.839936",
+  "error": null,
+  "files": [
+   {
+    "artifact_id": "b2aa5768-1cb5-4cb1-8344-bfc7ef137ad5",
+    "filename": "perfpilot-shopfast-nosha-audit.html",
+    "media_type": "text/html",
+    "role": "primary",
+    "sha256": "727cfe4415ec4c20f80305e559095d9377164224a3e8402936575b6dbc91714d",
+    "size_bytes": 189555
+   }
+  ],
+  "format": "html",
+  "id": "4a0155a9-dbac-46f5-8d3f-c5999571794d",
+  "job_id": "e4041c32-7160-4d12-b56c-8adaf85fb762",
+  "meta": {
+   "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+   "audit_status": "SUCCEEDED",
+   "format": "html",
+   "generated_at": "2026-10-20T20:50:43.160168+00:00",
+   "pdf_engine": null,
+   "providers_applied": [
+    "repo-optimization",
+    "runtime-audit"
+   ],
+   "redaction_count": 0,
+   "redaction_kinds": {},
+   "report_id": "4a0155a9-dbac-46f5-8d3f-c5999571794d",
+   "schema_version": "1.0"
+  },
+  "status": "SUCCEEDED",
+  "subject_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "subject_type": "audit",
+  "updated_at": "2026-10-20T20:50:43.308553"
+ }
+]

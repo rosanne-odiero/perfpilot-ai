@@ -1,0 +1,610 @@
+[
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 19,
+    "line_start": 19,
+    "symbol": "get_product"
+   },
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 31,
+    "line_start": 31,
+    "symbol": "fetch_exchange_rate"
+   }
+  ],
+  "correctness_risks": "Offloaded code must be thread-safe; async libraries differ in timeouts, exceptions and session lifecycles. Thread offloading adds thread-pool overhead and requires the code to be thread-safe; async libraries have different APIs, timeouts and exceptions; very short blocking calls (small local files) may not be worth changing.",
+  "effort": "MEDIUM",
+  "expected_effect": "Other requests and timers keep making progress while the slow operation runs; the effect shows up as better tail latency under concurrent load.",
+  "finding_ids": [
+   "3a6884ee87bb58683f088133",
+   "a9ad1976044aecb02a4f50f9"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-a73dbb36641add78cdbf",
+  "kind": "unblock-event-loop",
+  "priority_rank": 1,
+  "proposed_strategy": "Use async equivalents or offload the blocking call with `asyncio.to_thread`; for synchronous database sessions, choose one async/sync boundary per endpoint.\n- Use the async equivalent (`await asyncio.sleep`, `httpx.AsyncClient`/`aiohttp`, `asyncio.create_subprocess_exec`, an async DB driver or `AsyncSession`, `aiofiles`), or move the call off the event loop with `await asyncio.to_thread(func, ...)`.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `time.sleep(RATE_LIMIT_SECONDS)` sleeps the whole thread inside `async def get_product`. `urllib.request.urlopen(EXCHANGE_URL.format(currency=currenc\u2026` performs a blocking HTTP request inside `async def fetch_exchange_rate`. The top location is a request handler.",
+  "suggested_diff": null,
+  "summary": "2 blocking call inside an async function locations in 2 functions in shopfast/api.py. `time.sleep(RATE_LIMIT_SECONDS)` sleeps the whole thread inside `async def get_product`.",
+  "title": "Stop blocking the event loop in async code in 2 functions of shopfast/api.py",
+  "uncertainty": "Derived from 2 static finding(s) (confidence: HIGH x2). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 49,
+    "line_start": 49,
+    "symbol": "unique_categories"
+   }
+  ],
+  "correctness_risks": "Elements must be hashable, and a set does not preserve order or duplicates. Set elements must be hashable; a set loses ordering and duplicates (keep the list if you need them); building it costs O(m) time and extra memory, so it only pays off when the test runs many times.",
+  "effort": "SMALL",
+  "expected_effect": "Each membership test no longer scans the whole list, so the loop scales with the number of iterations instead of iterations times list length; negligible for short lists.",
+  "finding_ids": [
+   "edab9a09628ae121c2232ad6"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-a072ee012227923a804f",
+  "kind": "set-membership",
+  "priority_rank": 2,
+  "proposed_strategy": "Replace repeated linear scans of a list with hash lookups.\n- Build a set (or dict) once before the loop, e.g. `allowed = set(items)`, and test `x in allowed`; when the list grows inside the loop, maintain a parallel set.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `product.category not in categories` runs inside a loop and scans `categories`, a list that also grows inside the loop. Complexity estimate: O(n\u00b7m) comparisons for n loop iterations over a list of m items; a set/dict makes each test O(1) on average. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.catalog:unique_categories.",
+  "suggested_diff": null,
+  "summary": "1 list membership test inside a loop location in `unique_categories` (shopfast/catalog.py). `product.category not in categories` runs inside a loop and scans `categories`, a list that also grows inside the loop.",
+  "title": "Use a set for repeated membership tests in unique_categories (shopfast/catalog.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 66,
+    "line_start": 66,
+    "symbol": "top_rated"
+   }
+  ],
+  "correctness_risks": "Sort stability and key functions must stay identical. `heapq` only guarantees the smallest item is first (not a fully sorted list); `bisect.insort` is O(n) per insert because of list shifting but avoids repeated O(n log n) sorts; sort stability and key functions must be preserved.",
+  "effort": "SMALL",
+  "expected_effect": "Avoids sorting the whole collection on every iteration.",
+  "finding_ids": [
+   "2c998d23032475003d99732b"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-2b5d8f50ead8d8ccc41d",
+  "kind": "incremental-ordering",
+  "priority_rank": 3,
+  "proposed_strategy": "Sort once after the loop, or keep the collection ordered incrementally.\n- Sort once after the loop, or keep the collection ordered incrementally with `bisect.insort` / a `heapq` priority queue when the order is needed during the loop.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `best` grows inside the loop at line 64 and is sorted again on every iteration. Complexity estimate: O(n\u00b2 log n) total for n iterations vs O(n log n) once. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.catalog:top_rated.",
+  "suggested_diff": null,
+  "summary": "1 re-sorting a growing collection inside a loop location in `top_rated` (shopfast/catalog.py). `best` grows inside the loop at line 64 and is sorted again on every iteration.",
+  "title": "Avoid re-sorting a growing collection in top_rated (shopfast/catalog.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 15,
+    "line_start": 13,
+    "symbol": "order_summaries"
+   },
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 21,
+    "line_start": 19,
+    "symbol": "order_summaries"
+   }
+  ],
+  "correctness_risks": "Large IN-lists may need chunking; eager loading can fetch more columns than needed; transaction boundaries and per-row error handling may change. One large query can return more data and use more memory; IN-lists have database limits (chunk them); batching writes changes transaction and error-reporting granularity; eager loading can over-fetch when only a few rows are used.",
+  "effort": "MEDIUM",
+  "expected_effect": "Replaces one database round trip per item with a constant number of round trips; the benefit grows with the number of items and with database latency. This code is a CLI command or script, so the practical benefit is probably limited to that workflow.",
+  "finding_ids": [
+   "cf7602f9ab833fb62bbed6cd",
+   "1da354509e0a36d96a4b7c34"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-609d187481ee4941de6d",
+  "kind": "batch-db-queries",
+  "priority_rank": 4,
+  "proposed_strategy": "Fetch everything the loop needs with one query (IN-list, eager loading, or a join) before the loop, index the rows in a dict, and batch writes.\n- Load what the loop needs with one query before it (`WHERE id IN (...)`, `select(...).where(Model.id.in_(ids))`, `selectinload`/`joinedload`, Django `select_related`/`prefetch_related`/`in_bulk`) and look rows up in a dict; batch writes with `executemany`, bulk inserts, or a single UPDATE.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): DB-API `execute()` (`cursor.execute('SELECT id, customer_id, total_cents FROM or\u2026`) runs once per iteration of the loop at line 12. DB-API `execute()` (`conn.execute('SELECT name, tier FROM customers WHERE id = ?\u2026`) runs once per iteration of the loop at line 12. Complexity estimate: N loop iterations issue N queries; a batched query needs 1-2 round-trips. The top location is a CLI command or script. Execution path: shopfast.app:main -> shopfast.orders:order_summaries.",
+  "suggested_diff": null,
+  "summary": "2 database query inside a loop (n+1) locations in `order_summaries` (shopfast/orders.py). DB-API `execute()` (`cursor.execute('SELECT id, customer_id, total_cents FROM or\u2026`) runs once per iteration of the loop at line 12.",
+  "title": "Batch database queries issued inside loops (N+1) in order_summaries (shopfast/orders.py)",
+  "uncertainty": "Derived from 2 static finding(s) (confidence: HIGH x2). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/inventory_sync.py",
+    "line_end": 12,
+    "line_start": 11,
+    "symbol": "reconcile"
+   }
+  ],
+  "correctness_risks": "Keys must be hashable; non-unique keys need a dict of lists, and first-match order must be preserved if the original loop stopped at the first match. Join keys must be hashable; duplicate keys need a dict of lists to keep every match; the index costs O(m) memory; result order can differ from the nested-loop order unless you preserve it explicitly.",
+  "effort": "MEDIUM",
+  "expected_effect": "Turns a quadratic pairwise comparison into a single pass plus lookups; the benefit grows with both collection sizes.",
+  "finding_ids": [
+   "641513bfe8cfaea119ecde22"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-f029d796c4308eaad0d8",
+  "kind": "index-join",
+  "priority_rank": 5,
+  "proposed_strategy": "Index the inner collection by the join key once, then look items up.\n- Index the inner collection once by the join key, e.g. `by_key = {b.key: b for b in B}` (a dict of lists for non-unique keys), then look up `by_key.get(a.key)` in a single loop.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): For every item of `warehouse_rows` (line 10) this code scans all of `catalog` looking for `row['sku'] == product.sku`. Complexity estimate: O(n\u00b7m) comparisons for n outer and m inner items; a dict index built once makes it O(n + m). The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 nested loops matching items by equality location in `reconcile` (shopfast/inventory_sync.py). For every item of `warehouse_rows` (line 10) this code scans all of `catalog` looking for `row['sku'] == product.sku`.",
+  "title": "Replace a nested-loop join with a dict index in reconcile (shopfast/inventory_sync.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 41,
+    "line_start": 41,
+    "symbol": "filter_discontinued"
+   }
+  ],
+  "correctness_risks": "Elements must be hashable, and a set does not preserve order or duplicates. Set elements must be hashable; a set loses ordering and duplicates (keep the list if you need them); building it costs O(m) time and extra memory, so it only pays off when the test runs many times.",
+  "effort": "SMALL",
+  "expected_effect": "Each membership test no longer scans the whole list, so the loop scales with the number of iterations instead of iterations times list length; negligible for short lists.",
+  "finding_ids": [
+   "7b2edb85bdd1bacc3b7894b1"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-f089d9cb2c9adc5953e6",
+  "kind": "set-membership",
+  "priority_rank": 6,
+  "proposed_strategy": "Replace repeated linear scans of a list with hash lookups.\n- Build a set (or dict) once before the loop, e.g. `allowed = set(items)`, and test `x in allowed`; when the list grows inside the loop, maintain a parallel set.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `product.sku not in discontinued_skus` runs inside a loop and scans `discontinued_skus`, which is a list. Complexity estimate: O(n\u00b7m) comparisons for n loop iterations over a list of m items; a set/dict makes each test O(1) on average. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.catalog:filter_discontinued.",
+  "suggested_diff": null,
+  "summary": "1 list membership test inside a loop location in `filter_discontinued` (shopfast/catalog.py). `product.sku not in discontinued_skus` runs inside a loop and scans `discontinued_skus`, which is a list.",
+  "title": "Use a set for repeated membership tests in filter_discontinued (shopfast/catalog.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 47,
+    "line_start": 47,
+    "symbol": "fetch_rates"
+   }
+  ],
+  "correctness_risks": "Respect remote rate limits; ordering and partial-failure handling change. Concurrency increases load on the remote service and can trigger rate limits; error handling, retries and result ordering get more complex; cached responses can be stale.",
+  "effort": "MEDIUM",
+  "expected_effect": "Network waits overlap instead of adding up one after another.",
+  "finding_ids": [
+   "56f7ec8c437357e097e16a90"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-835f9003eb4c64415cc1",
+  "kind": "concurrent-http",
+  "priority_rank": 7,
+  "proposed_strategy": "Use a batch endpoint, or issue requests concurrently with a bound and one client.\n- Use a batch endpoint if the API has one; otherwise issue the requests concurrently with a bound (`asyncio.gather` + `asyncio.Semaphore`, or a `ThreadPoolExecutor` for sync clients), reuse one client/session, and cache repeated responses.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `urllib.request.urlopen(EXCHANGE_URL.format(currency=currenc\u2026` issues an HTTP request on every iteration of the loop at line 46, one after another. Complexity estimate: N iterations \u2192 N sequential network round-trips. The top location is library code imported by request-handling modules.",
+  "suggested_diff": null,
+  "summary": "1 sequential http request inside a loop location in `fetch_rates` (shopfast/api.py). `urllib.request.urlopen(EXCHANGE_URL.format(currency=currenc\u2026` issues an HTTP request on every iteration of the loop at line 46, one after another.",
+  "title": "Avoid sequential HTTP requests in a loop in fetch_rates (shopfast/api.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/inventory_sync.py",
+    "line_end": 32,
+    "line_start": 32,
+    "symbol": "restock_order"
+   }
+  ],
+  "correctness_risks": "A deque does not support slicing; indexing in the middle stays linear. A deque does not support slicing and its indexing in the middle is O(n); code that relies on list-only methods (sort, slicing) must change; ordering semantics are the same.",
+  "effort": "SMALL",
+  "expected_effect": "Front operations stop moving every remaining element.",
+  "finding_ids": [
+   "893ed5bcc1ce0c358ff0b246"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-3122b2a9932161bbfc54",
+  "kind": "deque",
+  "priority_rank": 8,
+  "proposed_strategy": "Use a deque so removals and insertions at the front do not shift the list.\n- Use `collections.deque` and `popleft()` / `appendleft()`, which are O(1) at both ends.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `queue.pop(0)` removes/inserts at the front of a list inside a loop. Complexity estimate: O(n) per front operation, O(n\u00b2) over n iterations; deque makes it O(n). The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 list used as a queue (pop(0)/insert(0, \u2026)) in a loop location in `restock_order` (shopfast/inventory_sync.py). `queue.pop(0)` removes/inserts at the front of a list inside a loop.",
+  "title": "Use collections.deque for queue operations in restock_order (shopfast/inventory_sync.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/inventory_sync.py",
+    "line_end": 33,
+    "line_start": 33,
+    "symbol": "restock_order"
+   }
+  ],
+  "correctness_risks": "Elements must be hashable, and a set does not preserve order or duplicates. Set elements must be hashable; a set loses ordering and duplicates (keep the list if you need them); building it costs O(m) time and extra memory, so it only pays off when the test runs many times.",
+  "effort": "SMALL",
+  "expected_effect": "Each membership test no longer scans the whole list, so the loop scales with the number of iterations instead of iterations times list length; negligible for short lists.",
+  "finding_ids": [
+   "2214b14347f318452d778b03"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-75412357af8929088fbf",
+  "kind": "set-membership",
+  "priority_rank": 9,
+  "proposed_strategy": "Replace repeated linear scans of a list with hash lookups.\n- Build a set (or dict) once before the loop, e.g. `allowed = set(items)`, and test `x in allowed`; when the list grows inside the loop, maintain a parallel set.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `sku in processed` runs inside a loop and scans `processed`, a list that also grows inside the loop. Complexity estimate: O(n\u00b7m) comparisons for n loop iterations over a list of m items; a set/dict makes each test O(1) on average. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 list membership test inside a loop location in `restock_order` (shopfast/inventory_sync.py). `sku in processed` runs inside a loop and scans `processed`, a list that also grows inside the loop.",
+  "title": "Use a set for repeated membership tests in restock_order (shopfast/inventory_sync.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/inventory_sync.py",
+    "line_end": 42,
+    "line_start": 42,
+    "symbol": "duplicate_skus"
+   }
+  ],
+  "correctness_risks": "Elements must be hashable, and a set does not preserve order or duplicates. Set elements must be hashable; a set loses ordering and duplicates (keep the list if you need them); building it costs O(m) time and extra memory, so it only pays off when the test runs many times.",
+  "effort": "SMALL",
+  "expected_effect": "Each membership test no longer scans the whole list, so the loop scales with the number of iterations instead of iterations times list length; negligible for short lists.",
+  "finding_ids": [
+   "c8e10088cacf5f9d4461b84a"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-f44805a8dc821bc3cd4d",
+  "kind": "set-membership",
+  "priority_rank": 10,
+  "proposed_strategy": "Replace repeated linear scans of a list with hash lookups.\n- Build a set (or dict) once before the loop, e.g. `allowed = set(items)`, and test `x in allowed`; when the list grows inside the loop, maintain a parallel set.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `sku not in duplicates` runs inside a loop and scans `duplicates`, a list that also grows inside the loop. Complexity estimate: O(n\u00b7m) comparisons for n loop iterations over a list of m items; a set/dict makes each test O(1) on average. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 list membership test inside a loop location in `duplicate_skus` (shopfast/inventory_sync.py). `sku not in duplicates` runs inside a loop and scans `duplicates`, a list that also grows inside the loop.",
+  "title": "Use a set for repeated membership tests in duplicate_skus (shopfast/inventory_sync.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 52,
+    "line_start": 52,
+    "symbol": "history_snapshots"
+   }
+  ],
+  "correctness_risks": "Shallow copies share nested objects; mutations may leak between iterations. Shallow copies share nested objects, so mutating nested data would affect the original; only safe after checking which parts are modified.",
+  "effort": "MEDIUM",
+  "expected_effect": "Avoids walking and duplicating the whole object graph every iteration.",
+  "finding_ids": [
+   "03906abd8a56280851fd674d"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-4261d92ee76465a90c0f",
+  "kind": "avoid-deepcopy",
+  "priority_rank": 11,
+  "proposed_strategy": "Copy only what is mutated, or copy once outside the loop.\n- Copy only what is mutated (a shallow `dict(x)`/`list(x)`/`copy.copy`, `dataclasses.replace`), build new objects instead of mutating copies, or copy once outside the loop if the source does not change.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `copy.deepcopy(state)` deep-copies the same outer object on every iteration of the loop at line 50. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.app -> shopfast.orders:history_snapshots.",
+  "suggested_diff": null,
+  "summary": "1 copy.deepcopy inside a loop location in `history_snapshots` (shopfast/orders.py). `copy.deepcopy(state)` deep-copies the same outer object on every iteration of the loop at line 50.",
+  "title": "Avoid deep-copying the same object in a loop in history_snapshots (shopfast/orders.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 44,
+    "line_start": 44,
+    "symbol": "redact_emails"
+   }
+  ],
+  "correctness_risks": "The module-level constant is created at import time. Module-level compilation runs at import time and keeps the compiled pattern alive for the life of the process; matching behavior is identical.",
+  "effort": "SMALL",
+  "expected_effect": "Removes per-iteration compilation and cache lookups; the `re` module caches recent patterns, so the effect is usually small.",
+  "finding_ids": [
+   "455adbfd83ebd6bcdd2de6dd"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-01408d5d7708c8137a5d",
+  "kind": "precompile-regex",
+  "priority_rank": 12,
+  "proposed_strategy": "Move constant `re.compile` calls to module level and reuse the compiled pattern.\n- Compile the pattern once at module level (`PATTERN = re.compile(...)`) and call `PATTERN.search(...)` (or `.sub`, `.findall`, \u2026) inside the loop.\nA mechanical diff is attached for 1 of 1 location; review it like any other change and run the tests.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `re.compile` is called with a constant pattern on every iteration of the loop at line 43. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.app -> shopfast.reporting:redact_emails.",
+  "suggested_diff": "--- a/shopfast/reporting.py\n+++ b/shopfast/reporting.py\n@@ -4,6 +4,8 @@\n \n import re\n from pathlib import Path\n+\n+_REDACT_EMAILS_PATTERN = re.compile(r\"[\\w.+-]+@[\\w-]+\\.[\\w.]+\")\n \n with open(Path(__file__).with_name(\"report_header.txt\"), encoding=\"utf-8\") as _header_file:\n     HEADER = _header_file.read()\n@@ -41,7 +43,7 @@\n def redact_emails(lines: list[str]) -> list[str]:\n     cleaned = []\n     for line in lines:\n-        email = re.compile(r\"[\\w.+-]+@[\\w-]+\\.[\\w.]+\")\n+        email = _REDACT_EMAILS_PATTERN\n         cleaned.append(email.sub(\"<email>\", line))\n     return cleaned\n \n",
+  "summary": "1 constant regex pattern processed inside a loop location in `redact_emails` (shopfast/reporting.py). `re.compile` is called with a constant pattern on every iteration of the loop at line 43.",
+  "title": "Compile constant regular expressions once in redact_emails (shopfast/reporting.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 17,
+    "line_start": 17,
+    "symbol": "render_sales_report"
+   }
+  ],
+  "correctness_risks": "If the loop can raise and the partially built string is used afterwards (for example in an exception handler), that partial value is no longer available. All pieces stay in memory until the join (similar peak to the final string); output is identical for str; for very few iterations the difference is negligible.",
+  "effort": "SMALL",
+  "expected_effect": "Avoids repeatedly copying the growing string; CPython sometimes resizes in place, so the benefit varies and should be measured. This code is a CLI command or script, so the practical benefit is probably limited to that workflow.",
+  "finding_ids": [
+   "07b56b5f1dd68a4c7d4f3d0a"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-3d66b3045706cb4b77f0",
+  "kind": "string-join",
+  "priority_rank": 13,
+  "proposed_strategy": "Collect the pieces in a list and join them once after the loop.\n- Collect the pieces in a list and call `''.join(parts)` once after the loop, or write them to an `io.StringIO`.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `report` is extended with `+` on every iteration of the loop at line 16. Complexity estimate: up to O(n\u00b2) characters copied for n appended pieces when the string is not resized in place; ''.join is O(total length). The top location is a CLI command or script. Execution path: shopfast.app:main -> shopfast.reporting:render_sales_report.",
+  "suggested_diff": null,
+  "summary": "1 string built by repeated concatenation in a loop location in `render_sales_report` (shopfast/reporting.py). `report` is extended with `+` on every iteration of the loop at line 16.",
+  "title": "Build strings with a list and join in render_sales_report (shopfast/reporting.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/inventory_sync.py",
+    "line_end": 42,
+    "line_start": 42,
+    "symbol": "duplicate_skus"
+   }
+  ],
+  "correctness_risks": "The auxiliary structure must be kept in sync with every list mutation. Values must be hashable; the Counter is a snapshot and must be updated if the list changes; it uses extra memory proportional to the number of distinct values.",
+  "effort": "SMALL",
+  "expected_effect": "Each lookup stops scanning the list from the start.",
+  "finding_ids": [
+   "70dde61ff1f369db5a73263d"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-08694717290d443442cf",
+  "kind": "index-lookup",
+  "priority_rank": 14,
+  "proposed_strategy": "Maintain a dict (value -> position/count) or a set alongside the list.\n- Count all values once with `collections.Counter(items)` and read counts from it.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `skus.count(sku)` runs inside a loop on a list; `list.count` scans the whole list on every call, so the cost of each call grows with the list length and the loop can become quadratic. Complexity estimate: O(n\u00b7m) for n iterations over a list of m items; a dict/Counter/set lookup is O(1) on average. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 linear list search/removal inside a loop location in `duplicate_skus` (shopfast/inventory_sync.py). `skus.count(sku)` runs inside a loop on a list; `list.count` scans the whole list on every call, so the cost of each call grows with the list length and the loop can become quadratic.",
+  "title": "Replace list.index/count/remove in a loop with a lookup structure in duplicate_skus (shopfast/inventory_sync.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/pricing.py",
+    "line_end": 42,
+    "line_start": 42,
+    "symbol": "apply_discounts"
+   }
+  ],
+  "correctness_risks": "Only valid while every input stays unchanged during the loop; aliasing through other functions or I/O can make an invariant-looking value change. Only valid if the inputs really do not change during the loop (including through aliases, other threads, or the file system); hoisting evaluates the expression even when the loop body never runs and moves where exceptions are raised.",
+  "effort": "SMALL",
+  "expected_effect": "The repeated work runs once instead of once per iteration.",
+  "finding_ids": [
+   "c77c0b68bc83581fd4fcb7f9"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-dd0f364618606d91d13e",
+  "kind": "hoist-invariant",
+  "priority_rank": 15,
+  "proposed_strategy": "Compute the value once before the loop and reuse it.\n- Compute the value once before the loop and reuse it inside the loop.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `sorted(rules, key=lambda r: r.priority)` (copy/sort of a collection) is evaluated on every iteration of the loop at line 41, but none of its inputs change inside that loop, so every iteration after the first repeats identical work. Complexity estimate: the call's cost is paid once per iteration instead of once in total. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 loop-invariant computation repeated every iteration location in `apply_discounts` (shopfast/pricing.py). `sorted(rules, key=lambda r: r.priority)` (copy/sort of a collection) is evaluated on every iteration of the loop at line 41, but none of its inputs change inside that loop, so every iteration after the first repeats identical work.",
+  "title": "Hoist loop-invariant work out of the loop in apply_discounts (shopfast/pricing.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/utils.py",
+    "line_end": 8,
+    "line_start": 8,
+    "symbol": "bundle_combinations"
+   }
+  ],
+  "correctness_risks": "Arguments must be hashable; an unbounded cache keeps every result alive for the process lifetime; the function must stay pure. All arguments must be hashable; the cache keeps every distinct argument tuple and result alive (bound it with maxsize); memoization is only correct for pure functions (same inputs, same output, no side effects); the recursion depth limit still applies.",
+  "effort": "SMALL",
+  "expected_effect": "Repeated sub-problems are computed once, which can change the growth rate of the recursion.",
+  "finding_ids": [
+   "46435a551a4ef9bf9865a3fc"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-fe585d0b48ce8cac3bde",
+  "kind": "memoize-recursion",
+  "priority_rank": 16,
+  "proposed_strategy": "Cache results of the pure recursive function, or rewrite it iteratively.\n- Memoize with `@functools.cache` / `@functools.lru_cache(maxsize=...)`, or rewrite the recursion bottom-up/iteratively.\nA mechanical diff is attached for 1 of 1 location; review it like any other change and run the tests.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `bundle_combinations` calls itself 2 times per invocation with arguments derived arithmetically from its parameters, and it has no cache. Complexity estimate: without memoization the call count can grow exponentially with the input (e.g. O(2^n)); with it, proportional to the number of distinct arguments. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": "--- a/shopfast/utils.py\n+++ b/shopfast/utils.py\n@@ -5,6 +5,7 @@\n from functools import lru_cache\n \n \n+@lru_cache(maxsize=None)\n def bundle_combinations(slots: int) -> int:\n     \"\"\"Ways to fill ``slots`` shelf positions with 1- or 2-slot bundles.\"\"\"\n     if slots <= 1:\n",
+  "summary": "1 overlapping recursion without memoization location in `bundle_combinations` (shopfast/utils.py). `bundle_combinations` calls itself 2 times per invocation with arguments derived arithmetically from its parameters, and it has no cache.",
+  "title": "Memoize overlapping recursion in bundle_combinations (shopfast/utils.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 61,
+    "line_start": 52,
+    "symbol": "classify_lines"
+   }
+  ],
+  "correctness_risks": "A shared mutable constant must never be modified. A shared constant must not be mutated by the loop body; if it is, keep the per-iteration copy (or copy the constant explicitly).",
+  "effort": "SMALL",
+  "expected_effect": "The literal is built once instead of once per iteration.",
+  "finding_ids": [
+   "b5afc02fe55ce3c47a5c81fc"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-6a5089bd550aa4bbe153",
+  "kind": "hoist-constant",
+  "priority_rank": 17,
+  "proposed_strategy": "Move the literal to a module-level constant (tuple/frozenset if read-only).\n- Define the literal once outside the loop (a module-level constant; use a tuple or frozenset if it is never modified).",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): A 8-element constant dict literal is rebuilt on every iteration of the loop at line 51; Python allocates and fills a new container each time even though the contents never change. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.app -> shopfast.reporting:classify_lines.",
+  "suggested_diff": null,
+  "summary": "1 large constant literal rebuilt inside a loop location in `classify_lines` (shopfast/reporting.py). A 8-element constant dict literal is rebuilt on every iteration of the loop at line 51; Python allocates and fills a new container each time even though the contents never change.",
+  "title": "Define large constant literals once in classify_lines (shopfast/reporting.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/pricing.py",
+    "line_end": 61,
+    "line_start": 61,
+    "symbol": "region_summary"
+   }
+  ],
+  "correctness_risks": "Iterating a dict view while mutating the dict raises; keep copies where needed. Copying `d.keys()` is required when the dict is modified while iterating; consuming an iterator to count it still exhausts it.",
+  "effort": "SMALL",
+  "expected_effect": "Avoids allocating and copying a temporary list on every iteration.",
+  "finding_ids": [
+   "e18d06565bafe2f08b4b874a"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-a08b65ff1068a145b65a",
+  "kind": "avoid-materialization",
+  "priority_rank": 18,
+  "proposed_strategy": "Use views and iterators directly instead of building throwaway lists.\n- Use the view or iterator directly: `for k in d`, `k in d`, `len(d)`, or `sum(1 for _ in it)` to count an iterator.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `list(prices_by_region[region].keys())` copies the dict's keys into a new list on every iteration of the loop at line 60; the temporary list is allocated and discarded each time. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 needless list materialization inside a loop location in `region_summary` (shopfast/pricing.py). `list(prices_by_region[region].keys())` copies the dict's keys into a new list on every iteration of the loop at line 60; the temporary list is allocated and discarded each time.",
+  "title": "Avoid materializing temporary lists in a loop in region_summary (shopfast/pricing.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: HIGH x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/pricing.py",
+    "line_end": 13,
+    "line_start": 13,
+    "symbol": null
+   }
+  ],
+  "correctness_risks": "Evicted entries are recomputed; TTLs change freshness guarantees. Eviction causes recomputation on misses; TTL caches can serve stale values until they expire; caches shared between threads need locking or atomic operations.",
+  "effort": "SMALL",
+  "expected_effect": "Memory stops growing with every distinct key seen by the process.",
+  "finding_ids": [
+   "ae9aeed6eab406ffbce960cf"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-207bc337047c24471a1c",
+  "kind": "bounded-cache",
+  "priority_rank": 19,
+  "proposed_strategy": "Use an LRU/TTL cache or explicit eviction.\n- Bound the cache: `functools.lru_cache(maxsize=...)`, an LRU/TTL cache (for example `cachetools.TTLCache`), or explicit eviction when it exceeds a size.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `_price_cache` is a module-level dict that functions add entries to, but nothing in this module removes entries or checks its size. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 unbounded module-level cache location in module-level code of shopfast/pricing.py. `_price_cache` is a module-level dict that functions add entries to, but nothing in this module removes entries or checks its size.",
+  "title": "Bound module-level caches in shopfast/pricing.py",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 8,
+    "line_start": 8,
+    "symbol": null
+   }
+  ],
+  "correctness_risks": "Errors surface later (first use instead of import); initialization order changes. Lazy initialization moves the cost and any errors to first use (the first request may be slower); concurrent lazy init needs a lock; some frameworks expect module-level objects.",
+  "effort": "MEDIUM",
+  "expected_effect": "Imports (and therefore startup and test collection) stop paying for it.",
+  "finding_ids": [
+   "dfe8ab6beacaa3d1c85e0d8d"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-12095bbe33ca28907189",
+  "kind": "defer-import-time-work",
+  "priority_rank": 20,
+  "proposed_strategy": "Defer the work to a function, a startup hook, or a lazily initialized value.\n- Defer the work until it is needed: move it into a function (optionally cached with `functools.cache`), an application startup hook/lifespan, or a lazily initialized attribute.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `open(Path(__file__).with_name('report_header.txt'), encodin\u2026` opens a file while the module is being imported. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.app -> shopfast.reporting.",
+  "suggested_diff": null,
+  "summary": "1 heavy work at import time location in module-level code of shopfast/reporting.py. `open(Path(__file__).with_name('report_header.txt'), encodin\u2026` opens a file while the module is being imported.",
+  "title": "Move heavy work out of import time in shopfast/reporting.py",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 31,
+    "line_start": 31,
+    "symbol": "extract_skus"
+   }
+  ],
+  "correctness_risks": "The module-level constant is created at import time. Module-level compilation runs at import time and keeps the compiled pattern alive for the life of the process; matching behavior is identical.",
+  "effort": "SMALL",
+  "expected_effect": "Removes per-iteration compilation and cache lookups; the `re` module caches recent patterns, so the effect is usually small.",
+  "finding_ids": [
+   "63a7b05652385cd10f47f014"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-937813c956eddca0e143",
+  "kind": "precompile-regex",
+  "priority_rank": 21,
+  "proposed_strategy": "Move constant `re.compile` calls to module level and reuse the compiled pattern.\n- Compile the pattern once at module level (`PATTERN = re.compile(...)`) and call `PATTERN.search(...)` (or `.sub`, `.findall`, \u2026) inside the loop.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `re.search` receives a constant pattern on every iteration of the loop at line 30. The top location is library code imported by request-handling modules. Execution path: shopfast.api -> shopfast.app -> shopfast.reporting:extract_skus.",
+  "suggested_diff": null,
+  "summary": "1 constant regex pattern processed inside a loop location in `extract_skus` (shopfast/reporting.py). `re.search` receives a constant pattern on every iteration of the loop at line 30.",
+  "title": "Compile constant regular expressions once in extract_skus (shopfast/reporting.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: LOW x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/pricing.py",
+    "line_end": 68,
+    "line_start": 68,
+    "symbol": "currency_table"
+   }
+  ],
+  "correctness_risks": "Cached results can go stale if the underlying source changes. Reusing the result assumes the underlying file, data, or remote resource does not change between the calls; a module-level cache can serve stale data and holds memory.",
+  "effort": "SMALL",
+  "expected_effect": "Identical expensive work runs once.",
+  "finding_ids": [
+   "8ce6cb5487a6ad3f45c8c404"
+  ],
+  "generated_by": "deterministic",
+  "id": "rec-dfc0493cc3d88638d541",
+  "kind": "reuse-repeated-call",
+  "priority_rank": 22,
+  "proposed_strategy": "Call it once and reuse the result, or cache it when it is stable.\n- Call it once and reuse the result within the function; if the result is stable across calls, compute it once at module level or cache it with `functools.cache`.",
+  "provenance": "STATIC",
+  "rationale": "Static evidence (not measured): `json.loads(RATES_JSON)` is evaluated again with the same constant arguments as on line 67 in `currency_table`; both calls do the same work. The top location is internal code with no known path from an entry point.",
+  "suggested_diff": null,
+  "summary": "1 same expensive call repeated with identical constant arguments location in `currency_table` (shopfast/pricing.py). `json.loads(RATES_JSON)` is evaluated again with the same constant arguments as on line 67 in `currency_table`; both calls do the same work.",
+  "title": "Reuse the result of an expensive call repeated with the same arguments in currency_table (shopfast/pricing.py)",
+  "uncertainty": "Derived from 1 static finding(s) (confidence: MEDIUM x1). Static analysis cannot see input sizes, call frequency or the database/network latency, so the real impact is unknown until the code is profiled before and after the change."
+ }
+]

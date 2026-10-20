@@ -111,6 +111,7 @@ _CSS = """
     border-bottom:1px solid rgba(148,163,184,0.15); background:rgba(148,163,184,0.06);}
   .pp-diff-add td {background:rgba(34,197,94,0.14);}
   .pp-diff-del td {background:rgba(244,63,94,0.14);}
+  .pp-diff-hunk td {background:rgba(99,102,241,0.12); color:#a5b4fc;}
   .pp-diff-empty td {background:rgba(148,163,184,0.05);}
   .pp-diff-head-before {color:#fda4af;}
   .pp-diff-head-after {color:#86efac;}

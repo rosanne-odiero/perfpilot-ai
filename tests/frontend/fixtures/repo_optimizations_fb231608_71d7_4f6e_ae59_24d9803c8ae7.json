@@ -1,0 +1,614 @@
+{
+ "approval": {
+  "approved_at": "2026-10-20T20:44:58.905275",
+  "approved_by": "explorer",
+  "rejected_at": null,
+  "rejected_by": null,
+  "status": "APPROVED"
+ },
+ "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+ "benchmark": {
+  "approval_id": "f3c2aa81-1d23-41aa-8b7d-465f9304afea",
+  "argv": [
+   "python",
+   "benchmarks/run_workload.py"
+  ],
+  "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "candidate_id": "fb231608-71d7-4f6e-ae59-24d9803c8ae7",
+  "classification": "IMPROVED",
+  "classification_reason": "speedup 2.283x >= 1.053x (5% threshold) and 95% CI [2.237x, 2.305x] excludes 1",
+  "created_at": "2026-10-20T20:45:10.472471",
+  "environment": {
+   "backend": "docker",
+   "backend_server_version": "29.9.1",
+   "dependencies": "image only",
+   "image": "perfpilot-sandbox:latest",
+   "image_digest": "sha256:344f19264de844b5bf76b33f9aecb93846a9e0ef0ec5bdd13ea55a520cc545b8",
+   "limits": {
+    "cpus": 2.0,
+    "memory_mb": 2048,
+    "output_max_bytes": 16777216,
+    "pids": 256,
+    "timeout_seconds": 600,
+    "tmpfs_mb": 256
+   },
+   "network": "none",
+   "platform": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.41",
+   "profiler": "none",
+   "python_implementation": "CPython",
+   "python_version": "3.12.15",
+   "pythonhashseed": "0",
+   "timed": "wall time (time.perf_counter_ns) and CPU time (time.process_time_ns) of the approved command only, measured inside the container by the harness without any profiler; container start-up, interpreter start-up and harness imports are excluded",
+   "workdir": "/workspace"
+  },
+  "error": null,
+  "finished_at": "2026-10-20T20:45:29.469741",
+  "id": "29e0f8f9-abd1-4d99-b634-f620de753843",
+  "image": "perfpilot-sandbox:latest",
+  "inputs": {
+   "baseline": {
+    "argv": [
+     "python",
+     "benchmarks/run_workload.py"
+    ],
+    "deps_tree_sha256": null,
+    "image": "perfpilot-sandbox:latest",
+    "limits": {
+     "cpus": 2.0,
+     "memory_mb": 2048,
+     "output_max_bytes": 16777216,
+     "pids": 256,
+     "timeout_seconds": 600,
+     "tmpfs_mb": 256
+    },
+    "workdir": ".",
+    "workspace_tree_sha256": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3"
+   },
+   "candidate": {
+    "argv": [
+     "python",
+     "benchmarks/run_workload.py"
+    ],
+    "deps_tree_sha256": null,
+    "image": "perfpilot-sandbox:latest",
+    "limits": {
+     "cpus": 2.0,
+     "memory_mb": 2048,
+     "output_max_bytes": 16777216,
+     "pids": 256,
+     "timeout_seconds": 600,
+     "tmpfs_mb": 256
+    },
+    "workdir": ".",
+    "workspace_tree_sha256": "5dd6cc749a93c1346e9de2ae1c2bb7b66aa887afe7520599dd8f8966940b1d01"
+   },
+   "differing_files": [
+    "shopfast/inventory_sync.py"
+   ],
+   "patched_file": "shopfast/inventory_sync.py"
+  },
+  "job_id": "0cc67ed0-082c-495e-89de-a01a9aa914f2",
+  "latency_reduction_percent": 56.202867316786566,
+  "limits": {
+   "cpus": 2.0,
+   "memory_mb": 2048,
+   "output_max_bytes": 16777216,
+   "pids": 256,
+   "timeout_seconds": 600,
+   "tmpfs_mb": 256
+  },
+  "provenance": "MEASURED",
+  "runs": 5,
+  "samples": [
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.992092,
+    "container_exit_code": 0,
+    "cpu_ns": 551895004,
+    "failure": null,
+    "ok": true,
+    "pair_index": 0,
+    "peak_rss_bytes": 42643456,
+    "sequence": 0,
+    "variant": "candidate",
+    "wall_ns": 607761625,
+    "warmup": true
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.733425,
+    "container_exit_code": 0,
+    "cpu_ns": 1304944784,
+    "failure": null,
+    "ok": true,
+    "pair_index": 0,
+    "peak_rss_bytes": 42643456,
+    "sequence": 1,
+    "variant": "baseline",
+    "wall_ns": 1359372667,
+    "warmup": true
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.96039,
+    "container_exit_code": 0,
+    "cpu_ns": 541136709,
+    "failure": null,
+    "ok": true,
+    "pair_index": 0,
+    "peak_rss_bytes": 42627072,
+    "sequence": 2,
+    "variant": "candidate",
+    "wall_ns": 596322209,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.698913,
+    "container_exit_code": 0,
+    "cpu_ns": 1305300245,
+    "failure": null,
+    "ok": true,
+    "pair_index": 0,
+    "peak_rss_bytes": 42643456,
+    "sequence": 3,
+    "variant": "baseline",
+    "wall_ns": 1361533168,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.73347,
+    "container_exit_code": 0,
+    "cpu_ns": 1322715370,
+    "failure": null,
+    "ok": true,
+    "pair_index": 1,
+    "peak_rss_bytes": 42639360,
+    "sequence": 4,
+    "variant": "baseline",
+    "wall_ns": 1376907917,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.977027,
+    "container_exit_code": 0,
+    "cpu_ns": 541239586,
+    "failure": null,
+    "ok": true,
+    "pair_index": 1,
+    "peak_rss_bytes": 42639360,
+    "sequence": 5,
+    "variant": "candidate",
+    "wall_ns": 597334459,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.776877,
+    "container_exit_code": 0,
+    "cpu_ns": 1320784618,
+    "failure": null,
+    "ok": true,
+    "pair_index": 2,
+    "peak_rss_bytes": 42635264,
+    "sequence": 6,
+    "variant": "baseline",
+    "wall_ns": 1375421376,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.992175,
+    "container_exit_code": 0,
+    "cpu_ns": 558819706,
+    "failure": null,
+    "ok": true,
+    "pair_index": 2,
+    "peak_rss_bytes": 42618880,
+    "sequence": 7,
+    "variant": "candidate",
+    "wall_ns": 614740292,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.987749,
+    "container_exit_code": 0,
+    "cpu_ns": 550780327,
+    "failure": null,
+    "ok": true,
+    "pair_index": 3,
+    "peak_rss_bytes": 42815488,
+    "sequence": 8,
+    "variant": "candidate",
+    "wall_ns": 606193833,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.724469,
+    "container_exit_code": 0,
+    "cpu_ns": 1310880326,
+    "failure": null,
+    "ok": true,
+    "pair_index": 3,
+    "peak_rss_bytes": 42643456,
+    "sequence": 9,
+    "variant": "baseline",
+    "wall_ns": 1365562751,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 1.735329,
+    "container_exit_code": 0,
+    "cpu_ns": 1320604245,
+    "failure": null,
+    "ok": true,
+    "pair_index": 4,
+    "peak_rss_bytes": 42643456,
+    "sequence": 10,
+    "variant": "baseline",
+    "wall_ns": 1376533209,
+    "warmup": false
+   },
+   {
+    "command_exit_code": 0,
+    "container_duration_s": 0.965427,
+    "container_exit_code": 0,
+    "cpu_ns": 546777379,
+    "failure": null,
+    "ok": true,
+    "pair_index": 4,
+    "peak_rss_bytes": 42708992,
+    "sequence": 11,
+    "variant": "candidate",
+    "wall_ns": 602395125,
+    "warmup": false
+   }
+  ],
+  "seed": 0,
+  "speedup": 2.283254493468884,
+  "speedup_ci": [
+   2.237402353317684,
+   2.305087035000604
+  ],
+  "started_at": "2026-10-20T20:45:12.119753",
+  "status": "SUCCEEDED",
+  "summary": {
+   "baseline": {
+    "container_duration_s_median (not timed; includes container start/stop)": 1.73347,
+    "cpu_ms": {
+     "cv_percent": 0.5760153272137846,
+     "max": 1322.71537,
+     "mean": 1316.0569608,
+     "median": 1320.604245,
+     "min": 1305.300245,
+     "n": 5,
+     "p95": 1322.3292196,
+     "p95_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))",
+     "stdev": 7.5806898090719095
+    },
+    "peak_rss_bytes": {
+     "max": 42643456,
+     "median": 42643456
+    },
+    "wall_ms": {
+     "cv_percent": 0.5209076000521576,
+     "max": 1376.907917,
+     "mean": 1371.1916841999998,
+     "median": 1375.421376,
+     "min": 1361.533168,
+     "n": 5,
+     "p95": 1376.8329754,
+     "p95_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))",
+     "stdev": 7.1426416942809805
+    }
+   },
+   "candidate": {
+    "container_duration_s_median (not timed; includes container start/stop)": 0.977027,
+    "cpu_ms": {
+     "cv_percent": 1.3502032420459396,
+     "max": 558.819706,
+     "mean": 547.7507413999999,
+     "median": 546.777379,
+     "min": 541.136709,
+     "n": 5,
+     "p95": 557.2118302,
+     "p95_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))",
+     "stdev": 7.3957482687134695
+    },
+    "peak_rss_bytes": {
+     "max": 42815488,
+     "median": 42639360
+    },
+    "wall_ms": {
+     "cv_percent": 1.2410367079631175,
+     "max": 614.740292,
+     "mean": 603.3971836000001,
+     "median": 602.395125,
+     "min": 596.322209,
+     "n": 5,
+     "p95": 613.0310002,
+     "p95_warning": "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))",
+     "stdev": 7.488380543291608
+    }
+   },
+   "ci": {
+    "confidence": 0.95,
+    "high": 2.305087035000604,
+    "low": 2.237402353317684,
+    "method": "paired percentile bootstrap of the ratio of medians",
+    "resamples": 10000,
+    "seed": 0
+   },
+   "classifier": {
+    "improvement_speedup_threshold": 1.0526315789473684,
+    "regression_speedup_threshold": 0.9523809523809523,
+    "threshold_percent": 5.0
+   },
+   "pairs": 5,
+   "request_sha256": [
+    "cbe0dec3ffae4e16a8145abc795dd6a423889d3c0f13125cdf3a8752f0ed48e1"
+   ],
+   "timed": "wall time (time.perf_counter_ns) and CPU time (time.process_time_ns) of the approved command only, measured inside the container by the harness without any profiler; container start-up, interpreter start-up and harness imports are excluded"
+  },
+  "threshold_percent": 5.0,
+  "timed": "wall time (time.perf_counter_ns) and CPU time (time.process_time_ns) of the approved command only, measured inside the container by the harness without any profiler; container start-up, interpreter start-up and harness imports are excluded",
+  "warmups": 1,
+  "warnings": [
+   "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))",
+   "p95 estimated from only n=5 samples is unstable (it depends on the 1 slowest run(s))"
+  ],
+  "workdir_rel": "."
+ },
+ "created_at": "2026-10-20T20:44:53.354795",
+ "error": null,
+ "evidence": "MEASURED",
+ "finding_id": "641513bfe8cfaea119ecde22",
+ "finding_title": "Nested loops matching items by equality",
+ "generated_by": "deterministic",
+ "id": "fb231608-71d7-4f6e-ae59-24d9803c8ae7",
+ "line_end": 12,
+ "line_start": 11,
+ "llm_usage": null,
+ "measured_evidence": {
+  "attributed_percentage": 23.914540113913173,
+  "attributed_time_ms": 825.8169590000001,
+  "call_count": 1,
+  "cumulative_time_ms": 825.8169590000001,
+  "function_name": "reconcile",
+  "hotspot_file_path": "shopfast/inventory_sync.py",
+  "hotspot_line": 8,
+  "internal_time_ms": 822.1233990000001,
+  "measured_factor": 1.4783,
+  "note": "23.9% of profiled time attributed to this function (self time plus direct library calls).",
+  "percentage_of_profiled_time": 23.80757962125133,
+  "profile_id": "e25237f1-6616-4ea6-9902-5effd8a5852d",
+  "provenance": "MEASURED"
+ },
+ "notes": [
+  "Join keys must be hashable and their __hash__ must agree with __eq__.",
+  "`catalog` is now read even when the outer loop has no items, and the outer key is evaluated once per outer item even when there are no inner items, so malformed records can raise where the original returned early.",
+  "Matching items are visited in their original relative order, so per-key accumulation (including float sums) happens in the same sequence.",
+  "Extra memory: the index holds references to every inner item.",
+  "Isolated workspace: 24 file(s) hard-linked to the snapshot, 0 copied; the patched file is a separate copy."
+ ],
+ "original_file_sha256": "98e2837cdfef77581157338c2d47b7fe99902f910340cef8930eb3b9f74ec84b",
+ "original_tree_sha256": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3",
+ "outcome": "proposed",
+ "patch_validation": {
+  "changed_lines": 8,
+  "checks": {
+   "applies_cleanly": "passed",
+   "benchmark_integrity": "passed",
+   "compiles": "passed",
+   "parse": "passed",
+   "paths": "passed",
+   "protected_files": "passed",
+   "public_signatures": "passed",
+   "structure": "passed"
+  },
+  "files": [
+   "shopfast/inventory_sync.py"
+  ],
+  "valid": true,
+  "violations": []
+ },
+ "patched_file_sha256": "e30e18096afc1ad7017176b7a992659aa4b29615d45812ab5eb2f89586a45c6d",
+ "patched_tree_sha256": "5dd6cc749a93c1346e9de2ae1c2bb7b66aa887afe7520599dd8f8966940b1d01",
+ "proposer_attempts": [],
+ "provenance": "MEASURED",
+ "rejection_reasons": [],
+ "rule_id": "PP-LOOP-002",
+ "snapshot_id": "bf4adbe0-d03c-4d1a-9487-1a7d51f0b824",
+ "state": "COMPLETED",
+ "state_history": [
+  {
+   "at": "2026-10-20T20:44:53.355032Z",
+   "from_state": "RECOMMENDED",
+   "reason": "diff proposed by deterministic",
+   "to_state": "PATCH_PROPOSED"
+  },
+  {
+   "at": "2026-10-20T20:44:53.359031Z",
+   "from_state": "PATCH_PROPOSED",
+   "reason": "diff passed the patch validator",
+   "to_state": "AWAITING_APPROVAL"
+  },
+  {
+   "at": "2026-10-20T20:44:58.905275+00:00",
+   "from_state": "AWAITING_APPROVAL",
+   "reason": "approved by explorer",
+   "to_state": "AWAITING_APPROVAL"
+  },
+  {
+   "at": "2026-10-20T20:44:58.930317Z",
+   "from_state": "AWAITING_APPROVAL",
+   "reason": "validation requested",
+   "to_state": "VALIDATING"
+  },
+  {
+   "at": "2026-10-20T20:45:02.844533Z",
+   "from_state": "VALIDATING",
+   "reason": "validation passed: files that differ from the snapshot: shopfast/inventory_sync.py; the patched file compiled and passed the patch validator before approval; 24 passed, 0 failed, 0 error, 0 skipped; all 24 test(s) that pass on the original also pass; `reconcile` was called 1 time(s) by the tests (cProfile)",
+   "to_state": "VALIDATED"
+  },
+  {
+   "at": "2026-10-20T20:45:10.471434Z",
+   "from_state": "VALIDATED",
+   "reason": "benchmark requested",
+   "to_state": "BENCHMARKING"
+  },
+  {
+   "at": "2026-10-20T20:45:29.469804Z",
+   "from_state": "BENCHMARKING",
+   "reason": "benchmark IMPROVED: speedup 2.283x >= 1.053x (5% threshold) and 95% CI [2.237x, 2.305x] excludes 1",
+   "to_state": "COMPLETED"
+  }
+ ],
+ "summary": "Group `catalog` by `product.sku` once into `catalog_by_sku` before the outer loop at line 10, then visit only the matching items for each outer item: O(n + m) instead of O(n * m). Matching items keep their original order.",
+ "target_file": "shopfast/inventory_sync.py",
+ "target_function": "reconcile",
+ "transform": "nested_loop_join_to_index",
+ "updated_at": "2026-10-20T20:45:29.471243",
+ "validation": {
+  "approval_id": "2887fe22-1012-4728-8803-a24a6416d9bc",
+  "argv": [
+   "python",
+   "-m",
+   "pytest",
+   "-q"
+  ],
+  "audit_id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+  "candidate_id": "fb231608-71d7-4f6e-ae59-24d9803c8ae7",
+  "checks": [
+   {
+    "detail": "files that differ from the snapshot: shopfast/inventory_sync.py",
+    "name": "isolation",
+    "required": true,
+    "status": "PASSED"
+   },
+   {
+    "detail": "the patched file compiled and passed the patch validator before approval",
+    "name": "compile",
+    "required": true,
+    "status": "PASSED"
+   },
+   {
+    "detail": "24 passed, 0 failed, 0 error, 0 skipped",
+    "name": "original_suite",
+    "required": true,
+    "status": "PASSED"
+   },
+   {
+    "detail": "all 24 test(s) that pass on the original also pass",
+    "name": "patched_suite",
+    "required": true,
+    "status": "PASSED"
+   },
+   {
+    "detail": "`reconcile` was called 1 time(s) by the tests (cProfile)",
+    "name": "patched_code_exercised",
+    "required": true,
+    "status": "PASSED"
+   }
+  ],
+  "created_at": "2026-10-20T20:44:58.931293",
+  "duration_seconds": 2.313824,
+  "environment": {
+   "backend": "docker",
+   "backend_server_version": "29.9.1",
+   "dependencies": "image only",
+   "identical_requests": true,
+   "image": "perfpilot-sandbox:latest",
+   "image_digest": "sha256:344f19264de844b5bf76b33f9aecb93846a9e0ef0ec5bdd13ea55a520cc545b8",
+   "limits": {
+    "cpus": 2.0,
+    "memory_mb": 2048,
+    "output_max_bytes": 16777216,
+    "pids": 256,
+    "timeout_seconds": 600,
+    "tmpfs_mb": 256
+   },
+   "network": "none",
+   "platform": "Linux-7.0.14-linuxkit-aarch64-with-glibc2.41",
+   "python_implementation": "CPython",
+   "python_version": "3.12.15",
+   "pythonhashseed": "0",
+   "request_sha256": "45dc4122ef48d9ffe57ba3a1babaf6540962d5f7e5e889ba36fd87e246bc0f73",
+   "workdir": "/workspace"
+  },
+  "error": null,
+  "finished_at": "2026-10-20T20:45:02.843030",
+  "id": "8f585b5f-a00f-45ba-8455-744e56c48a91",
+  "image": "perfpilot-sandbox:latest",
+  "job_id": "a0bb07ed-fed1-4efa-ad9b-dc07b98d57af",
+  "limits": {
+   "cpus": 2.0,
+   "memory_mb": 2048,
+   "output_max_bytes": 16777216,
+   "pids": 256,
+   "timeout_seconds": 600,
+   "tmpfs_mb": 256
+  },
+  "logs_artifact_id": "361412c0-1541-4331-8d9a-8292bc131dc1",
+  "original_tree_sha256": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3",
+  "patched_function_executed": true,
+  "patched_tree_sha256": "5dd6cc749a93c1346e9de2ae1c2bb7b66aa887afe7520599dd8f8966940b1d01",
+  "provenance": "MEASURED",
+  "started_at": "2026-10-20T20:45:00.529206",
+  "status": "PASSED",
+  "summary": "validation passed: files that differ from the snapshot: shopfast/inventory_sync.py; the patched file compiled and passed the patch validator before approval; 24 passed, 0 failed, 0 error, 0 skipped; all 24 test(s) that pass on the original also pass; `reconcile` was called 1 time(s) by the tests (cProfile)",
+  "test_comparison": {
+   "newly_passing": [],
+   "original_passed": 24,
+   "patched_passed": 24,
+   "regression_count": 0,
+   "regressions": []
+  },
+  "variants": {
+   "original": {
+    "command_exit_code": 0,
+    "counts": {
+     "error": 0,
+     "failed": 0,
+     "passed": 24,
+     "skipped": 0,
+     "total": 24
+    },
+    "duration_s": 0.964302,
+    "exit_code": 0,
+    "failure": null,
+    "junit_artifact_id": "124408de-c9d8-4b3b-9207-8e9e458e1705",
+    "junit_error": null,
+    "oom_killed": false,
+    "timed_out": false,
+    "variant": "original"
+   },
+   "patched": {
+    "command_exit_code": 0,
+    "counts": {
+     "error": 0,
+     "failed": 0,
+     "passed": 24,
+     "skipped": 0,
+     "total": 24
+    },
+    "duration_s": 0.961077,
+    "exit_code": 0,
+    "failure": null,
+    "junit_artifact_id": "182e384b-d4d1-4fa3-87fa-abda2fc21f85",
+    "junit_error": null,
+    "oom_killed": false,
+    "timed_out": false,
+    "variant": "patched"
+   }
+  },
+  "workdir_rel": "."
+ },
+ "validation_status": "PASSED",
+ "workspace_path": "/srv/perfpilot/data/fe-dev2/workspaces/repo-optimizations/fb231608-71d7-4f6e-ae59-24d9803c8ae7/src"
+}

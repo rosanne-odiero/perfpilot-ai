@@ -23,7 +23,7 @@ SECTIONS = {
     "Benchmark": workload_benchmark.render,
     "Optimize": workload_optimize.render,
 }
-TAB_KEY = "lab_tab"
+TAB_KEY = routes.LAB_TAB_KEY
 
 
 def _header(detail: dict[str, Any]) -> None:

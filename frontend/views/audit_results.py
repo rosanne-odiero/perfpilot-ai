@@ -18,6 +18,7 @@ from frontend.views import (
     audit_files,
     audit_findings,
     audit_graph,
+    audit_optimize,
     audit_overview,
     audit_runtime,
 )
@@ -32,6 +33,7 @@ SECTIONS = {
     "Dependency graph": audit_graph.render,
     "AI insights": audit_ai.render,
     "Runtime": audit_runtime.render,
+    audit_optimize.TAB_NAME: audit_optimize.render,
     "Export": audit_export.render,
 }
 

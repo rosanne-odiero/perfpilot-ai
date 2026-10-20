@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
 import streamlit as st
 
 from frontend import data
 from frontend.api_client import ApiError
-from frontend.components.code_view import render_code
+from frontend.components.code_view import context_window, render_code
 from frontend.components.file_explorer import (
     SENSITIVE,
     FileFilters,
@@ -21,7 +22,7 @@ from frontend.components.findings_table import location_label, sort_findings
 from frontend.components.notices import show_api_error
 from frontend.formatting import human_bytes
 from frontend.theme import esc, severity_badge, severity_cell_style
-from frontend.views.audit_context import AuditContext
+from frontend.views.audit_context import FILE_FOCUS_KEY, FILES_TABLE_KEY, AuditContext
 
 WITHHELD = "Content withheld: this file matches a sensitive-file pattern and is never served."
 
@@ -42,7 +43,12 @@ def _filters(frame_languages: list[str], all_folders: list[str]) -> FileFilters:
     )
 
 
-def _source(context: AuditContext, row: dict[Any, Any], findings: list[dict[str, Any]]) -> None:
+def _source(
+    context: AuditContext,
+    row: dict[Any, Any],
+    findings: list[dict[str, Any]],
+    cited: tuple[int, int] | None = None,
+) -> None:
     path = str(row["Path"])
     status = str(row["Status"])
     if status.startswith("skipped"):
@@ -64,13 +70,21 @@ def _source(context: AuditContext, row: dict[Any, Any], findings: list[dict[str,
     note = (
         f"{len(in_file)} finding(s) highlighted" if in_file else human_bytes(content["size_bytes"])
     )
+    highlight = finding_lines(findings, path)
+    window = None
+    if cited is not None:
+        highlight |= set(range(cited[0], cited[1] + 1))
+        total = content["content"].count("\n") + 1
+        window = context_window(cited[0], cited[1], total, context=15)
+        note = f"cited lines {cited[0]}-{cited[1]} highlighted"
     if content.get("redactions"):
         st.caption(f"🔐 {content['redactions']} secret-like value(s) replaced with [REDACTED].")
     render_code(
         content["content"],
         language=content.get("language"),
         filename=path,
-        highlight=finding_lines(findings, path),
+        highlight=highlight,
+        window=window,
         title=path,
         note=note,
     )
@@ -84,6 +98,29 @@ def _source(context: AuditContext, row: dict[Any, Any], findings: list[dict[str,
         st.markdown(f'<div class="pp-card">{items}</div>', unsafe_allow_html=True)
 
 
+def _close_focus() -> None:
+    st.session_state.pop(FILE_FOCUS_KEY, None)
+
+
+def _focused(context: AuditContext, frame: pd.DataFrame, findings: list[dict[str, Any]]) -> None:
+    """The file opened from a citation, shown above the explorer until closed."""
+    focus = st.session_state.get(FILE_FOCUS_KEY)
+    if not focus:
+        return
+    with st.container(border=True):
+        left, right = st.columns([4, 1])
+        left.markdown(f"**Opened from a citation:** `{focus['path']}`")
+        right.button("Close", key="files_focus_close", icon="✖️", on_click=_close_focus)
+        match = frame[frame["Path"] == focus["path"]]
+        if match.empty:
+            st.warning(f"`{focus['path']}` is not in this snapshot's inventory.")
+            return
+        cited = None
+        if focus.get("line_start"):
+            cited = (int(focus["line_start"]), int(focus.get("line_end") or focus["line_start"]))
+        _source(context, match.iloc[0].to_dict(), findings, cited)
+
+
 def render(context: AuditContext) -> None:
     files = data.snapshot_files(context.row.snapshot_id)
     counts = data.file_finding_counts(context.id)
@@ -92,6 +129,7 @@ def render(context: AuditContext) -> None:
     if frame.empty:
         st.info("The inventory of this snapshot is empty.")
         return
+    _focused(context, frame, findings)
     filters = _filters(sorted(set(frame["Language"]) - {""}), folders(frame["Path"].tolist()))
     shown = filter_files(frame, filters)
     st.caption(
@@ -101,7 +139,7 @@ def render(context: AuditContext) -> None:
     max_findings = max(1, int(frame["Findings"].max()))
     state = st.dataframe(
         shown.drop(columns=["Folder"]).style.map(severity_cell_style, subset=["Max severity"]),
-        key="files_table",
+        key=FILES_TABLE_KEY,
         hide_index=True,
         width="stretch",
         height=360,

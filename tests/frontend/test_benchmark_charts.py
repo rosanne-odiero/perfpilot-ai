@@ -98,7 +98,7 @@ def test_figures_show_every_raw_sample(
     assert [t.type for t in dist.data] == ["box", "box"]
     assert all(t.boxpoints == "all" for t in dist.data)
     assert sum(len(t.y) for t in dist.data) == len(frame)
-    assert dist.data[1].name == "reference implementation (bundled, for testing)"
+    assert dist.data[1].name == run["candidate"]["label"]
     assert dist.layout.yaxis.type == "log"
     ratio = ratio_figure(
         paired_ratios(frame),

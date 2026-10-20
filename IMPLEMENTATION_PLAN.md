@@ -181,7 +181,7 @@ every merge leaves `main` runnable.
 - [x] Token budget manager: per-stage and per-audit caps; deterministic truncation; budget-exhaustion reported, not hidden
 - [x] Structured output via Pydantic (`OptimizationRecommendation` per base spec + `ArchitectureInsight`); malformed output → bounded retry → fall back to deterministic
 - [x] **Citation guard:** every file/line/symbol the model cites must exist in the index; invalid citations are dropped and counted; the model may not emit numeric runtime metrics (schema forbids; validator rejects)
-- [ ] Redaction applied before sending; UI banner + explicit opt-in before any snippet leaves the machine
+- [x] Redaction applied before sending; UI banner + explicit opt-in before any snippet leaves the machine
 - [x] Prompt files in `backend/ai/prompts/`, versioned
 - [x] Evals: 20–30 scenarios in `evals/` (mocked LLM in CI, real model optional)
 - **Exit:** a full audit completes with no API key; with a mocked LLM, recommendations pass the citation guard.
@@ -193,7 +193,7 @@ every merge leaves `main` runnable.
 - [x] cProfile → pstats → normalized `Hotspot` rows (exclusive% vs cumulative% documented and never summed)
 - [x] tracemalloc peak vs psutil RSS, labeled separately; unsupported → `unavailable`
 - [ ] Optional py-spy (flamegraph/speedscope) with graceful degradation
-- [ ] Profiling UI pages (workload explorer, hotspots, memory)
+- [x] Profiling UI pages (workload explorer, hotspots, memory)
 - **Exit:** profiling a bundled workload from the UI and from the CLI gives persisted, non-hardcoded metrics.
 
 ### Phase 6 — Patch and correctness validation · `feature/patch-validation`
@@ -202,7 +202,7 @@ every merge leaves `main` runnable.
 - [x] Patch validator: unified-diff parse, allowed-file list, deny secrets/CI/security config/benchmark harness/tests, path containment
 - [x] Explicit approval endpoint; patched copy in an isolated workspace; original tree hash verified unchanged
 - [x] Validation engine: unit tests, acceptance fixtures, output comparison with tolerances, exception parity, input-mutation detection; `PASSED/FAILED/INCONCLUSIVE/NOT_RUN`
-- [ ] Diff UI (side-by-side + unified), approve/reject, rejection reasons
+- [x] Diff UI (side-by-side + unified), approve/reject, rejection reasons
 - **Exit:** three workloads produce reviewable patches; invalid patches are rejected; a failed validation blocks benchmarking.
 
 ### Phase 7 — Benchmark engine · `feature/benchmarking`
@@ -211,7 +211,7 @@ every merge leaves `main` runnable.
 - [x] Formulas from base spec §12.3 with unit tests (including the 200 ms → 125 ms = 1.6× / 37.5% example)
 - [x] Regression classifier: `IMPROVED/REGRESSED/NO_CLEAR_DIFFERENCE/INCONCLUSIVE/INVALID` with a configurable practical threshold
 - [x] Environment fingerprint (OS, arch, CPU, Python, lock hash, source hash, settings)
-- [ ] Benchmark UI: distributions (box/strip), speedup with CI, memory comparison, warnings
+- [x] Benchmark UI: distributions (box/strip), speedup with CI, memory comparison, warnings
 - [x] At least one workload demonstrably shows *no benefit or regression*
 - **Exit:** real A/B runs are persisted, and the formulas are verified by tests.
 
@@ -244,10 +244,10 @@ every merge leaves `main` runnable.
 - [x] Repository summary (metadata, languages, frameworks, dependencies, limits hit) and file explorer with per-file finding counts
 - [x] Findings table with severity/rule/provenance/module filters; source viewer with highlighted lines; GitHub permalink at the exact commit SHA
 - [x] Module dependency graph (Plotly + networkx layout; hot modules highlighted; cycles marked)
-- [ ] AI recommendations panel (clearly labeled hypotheses), external-AI consent toggle
-- [ ] Runtime audit panel: discovered commands → approve → results
+- [x] AI recommendations panel (clearly labeled hypotheses), external-AI consent toggle
+- [x] Runtime audit panel: discovered commands → approve → results
 - [x] Export buttons (HTML, MD, JSON, PDF)
-- [ ] Deep-dive pages from Phases 5–7 linked from a hotspot ("Optimize this")
+- [x] Deep-dive pages from Phases 5–7 linked from a hotspot ("Optimize this")
 - **Exit:** a user can audit a public repo end to end in the UI without an LLM key.
 
 ### Phase 11 — Hardening · `chore/hardening`

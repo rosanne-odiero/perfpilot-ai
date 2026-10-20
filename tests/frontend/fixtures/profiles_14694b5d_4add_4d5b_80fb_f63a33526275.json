@@ -1,0 +1,146 @@
+{
+ "artifacts": {
+  "hotspots_json": "f4205ebb-aa24-47d8-af2b-ce38e58692be",
+  "prof": "8e5d8255-5990-4184-9f5b-93766e7c3c3d",
+  "sampling": null
+ },
+ "created_at": "2026-10-20T20:50:33.420281",
+ "enable_sampling": false,
+ "environment": {
+  "architecture": "arm64",
+  "captured_at": "2026-10-20T20:50:35.836364+00:00",
+  "cpu_affinity": null,
+  "cpu_frequency": null,
+  "cpu_model": "Apple M4 Pro",
+  "fixture_kwargs": {
+   "n_items": 4000,
+   "seed": 2024
+  },
+  "load_average_1_5_15": [
+   3.751953125,
+   8.25048828125,
+   8.537109375
+  ],
+  "logical_cpus": 14,
+  "mode": "profile",
+  "notes": [
+   "thermal state unavailable (not exposed to unprivileged processes)",
+   "CPU frequency unavailable (not reported, or implausible value from the OS); frequency scaling was not controlled",
+   "CPU affinity unavailable on this OS; processes were not pinned to a core"
+  ],
+  "os": "Darwin",
+  "os_release": "25.6.0",
+  "os_version": "Darwin Kernel Version 25.6.0: Tue Aug 18 17:48:46 PDT 2026; root:xnu-12377.161.15.700.19~2/RELEASE_ARM64_T6041",
+  "packages": {
+   "fastapi": "0.143.0",
+   "numpy": "2.5.4",
+   "psutil": "7.2.2",
+   "pydantic": "2.14.1",
+   "scipy": "1.18.1",
+   "sqlalchemy": "2.1.4"
+  },
+  "perfpilot_version": "0.1.0",
+  "physical_cpus": 14,
+  "platform": "macOS-26.7.1-arm64-arm-64bit",
+  "python_executable": "/srv/perfpilot/.venv/bin/python",
+  "python_implementation": "CPython",
+  "python_version": "3.12.10",
+  "size": "medium",
+  "source_tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa",
+  "total_memory_bytes": 51539607552,
+  "uv_lock_sha256": "90f60dca8f693889940cba7a3319d493203f9788128d25b7d976af16b85dbfd9",
+  "workload": "duplicate_counter"
+ },
+ "error": null,
+ "error_details": null,
+ "finished_at": "2026-10-20T20:50:35.868269",
+ "id": "14694b5d-4add-4d5b-80fb-f63a33526275",
+ "input_sha256": "f19793195965b094d32c72c6213c6fddb3622e5934564321fd057ad89d7b8ee6",
+ "job_id": "e2e9184b-711c-4c6e-a6d9-949ddd6bf3bf",
+ "memory": {
+  "definitions": {
+   "rss_peak_bytes": "peak resident set size of the child process tree sampled by the parent over the whole run (interpreter + input + profiled and traced calls)",
+   "ru_maxrss_bytes": "kernel-reported maximum RSS of the child process (getrusage)",
+   "tracemalloc_peak_bytes": "peak Python-traced allocations during one workload call (separate call, input built before tracing). Not process memory."
+  },
+  "provenance": "MEASURED",
+  "rss_peak_bytes": 26574848,
+  "rss_sample_interval_ms": 10.0,
+  "rss_samples": 13,
+  "ru_maxrss_bytes": 27607040,
+  "tracemalloc_peak_bytes": 19792,
+  "tracemalloc_retained_bytes": 184,
+  "unavailable": []
+ },
+ "metrics": {
+  "child_process_wall_seconds": 0.33173508298932575,
+  "cpu_time_under_profiler_ms": 98.044,
+  "function_count": 4,
+  "limits": {
+   "applied": {
+    "RLIMIT_CPU": 125,
+    "RLIMIT_FSIZE": 536870912,
+    "RLIMIT_NOFILE": 256
+   },
+   "enforced_by_parent": [
+    "wall_clock_timeout",
+    "rss_ceiling (sampled)"
+   ],
+   "unsupported": {
+    "RLIMIT_AS": "macOS does not enforce RLIMIT_AS/RLIMIT_DATA; memory is bounded by the parent's sampled-RSS ceiling instead"
+   }
+  },
+  "output_preview": "{'ftmswdfkbj': 176, 'gadjoluvyo': 20, 'giwdoc': 20, 'mxrehysh': 2, 'fkdirudcf': 23, 'jczzcmj': 3, 'vmkszisnt': 295, 'ipdcs': 11, 'mhzfgypfr': 5, 'wrmfntgqi': 13, 'epfsttn': 508, 'unsliyflct': 11, 'bapsbwdnp': 8, 'wddiz': 4, 'alnbtex': 15, 'zmeswifrc': 78, 'dkzvct': 15, 'wilzn': 2, 'rkvhhot': 54, 'jf...[truncated]",
+  "output_sha256": "6cae540d892a6c1dd30953c5f7540085aedeeb02ed4068537f65ea1079034b67",
+  "provenance": "MEASURED",
+  "total_profiled_time_ms": 98.285624,
+  "user_function_count": 1,
+  "wall_time_under_profiler_ms": 98.310958
+ },
+ "provenance": "MEASURED",
+ "sampling": {
+  "requested": false
+ },
+ "size": "medium",
+ "source_snapshot": {
+  "files": {
+   "README.md": "f22f620aadcf9247266d4100c2d99456087cc5959beda1c1c45dc415ba491de4",
+   "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "fixtures.py": "bbafbb221bd9108c32ff68b53ee1a19fc9fdd1d115198699c6195ffc9ab4c48b",
+   "reference/optimized.py": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7",
+   "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tests/test_workload.py": "6b683f12bc68e5daa2be5756d7cb85dddf2856ee79a51886127349d1a88d09a8",
+   "workload.json": "a1cec1b03b4394b504c61b298beb2c3de70db0fa376a349d5ea4dd7b14f23204",
+   "workload.py": "ef703763602064d88b57e5332462aa322b97210968587f9451c4a5aebe13ef83"
+  },
+  "id": "a4c5764a-4496-4c6e-aceb-d73f8b3fa6fe",
+  "role": "baseline",
+  "tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa"
+ },
+ "started_at": "2026-10-20T20:50:35.489117",
+ "status": "SUCCEEDED",
+ "top_user_hotspots": [
+  {
+   "cumulative_percentage": 99.98308603097439,
+   "cumulative_time_ms": 98.269,
+   "file_path": "workload.py",
+   "function_name": "count_duplicates",
+   "internal_time_ms": 0.644309,
+   "is_user_code": true,
+   "line_number": 10,
+   "location_kind": "workspace",
+   "percentage_of_profiled_time": 0.655547549863447,
+   "primitive_calls": 1,
+   "rank": 2,
+   "source_available": true,
+   "total_calls": 1
+  }
+ ],
+ "total_profiled_time_ms": 98.285624,
+ "wall_time_ms": 98.310958,
+ "warnings": [
+  "cProfile adds per-call overhead: absolute times are inflated, and functions with many small calls are over-represented. Use the benchmark for real timings.",
+  "resource limit RLIMIT_AS not applied: macOS does not enforce RLIMIT_AS/RLIMIT_DATA; memory is bounded by the parent's sampled-RSS ceiling instead"
+ ],
+ "workload_id": "7d86df69-0a5d-4393-840e-b2ef507a89b6"
+}

@@ -1,0 +1,119 @@
+{
+ "created_at": "2026-10-20T20:44:27.566151",
+ "error": null,
+ "id": "b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082",
+ "job_id": "65b188ec-1485-4e70-97b1-9a499182cd33",
+ "job_message": "completed",
+ "job_progress": 1.0,
+ "job_status": "SUCCEEDED",
+ "llm_consent": false,
+ "mode": "RUNTIME",
+ "snapshot_id": "bf4adbe0-d03c-4d1a-9487-1a7d51f0b824",
+ "stage": "COMPLETED",
+ "status": "SUCCEEDED",
+ "summary": {
+  "advisor": {
+   "insights": 4,
+   "mode": "deterministic",
+   "recommendations": 22,
+   "recommendations_by_provenance": {
+    "STATIC": 22
+   },
+   "suggested_diffs": 2
+  },
+  "by_category": {
+   "ALGORITHMIC": 5,
+   "ALLOCATIONS": 3,
+   "ARCHITECTURE": 2,
+   "ASYNC_BLOCKING": 2,
+   "CACHING": 2,
+   "COLLECTIONS": 2,
+   "DATABASE": 2,
+   "NESTED_LOOPS": 1,
+   "NETWORK": 1,
+   "REGEX": 2,
+   "REPEATED_PROCESSING": 1,
+   "STRINGS": 1
+  },
+  "by_confidence": {
+   "HIGH": 13,
+   "LOW": 1,
+   "MEDIUM": 10
+  },
+  "by_rule": {
+   "PP-ALLOC-001": 1,
+   "PP-ALLOC-002": 1,
+   "PP-ARCH-001": 1,
+   "PP-ARCH-002": 1,
+   "PP-ASYNC-001": 2,
+   "PP-CACHE-001": 1,
+   "PP-CACHE-002": 1,
+   "PP-COLL-001": 1,
+   "PP-COLL-002": 1,
+   "PP-COLL-003": 1,
+   "PP-DB-001": 2,
+   "PP-LOOP-001": 4,
+   "PP-LOOP-002": 1,
+   "PP-LOOP-003": 1,
+   "PP-LOOP-004": 1,
+   "PP-NET-001": 1,
+   "PP-REGEX-001": 2,
+   "PP-STR-001": 1
+  },
+  "by_severity": {
+   "HIGH": 5,
+   "LOW": 6,
+   "MEDIUM": 13
+  },
+  "call_graph_edges": 66,
+  "cycles": 1,
+  "duration_seconds": 0.247,
+  "entrypoint_modules": 4,
+  "entrypoint_symbols": 5,
+  "files_analyzed": 20,
+  "files_skipped": 0,
+  "findings_total": 24,
+  "graph_edges": 29,
+  "graph_nodes": 20,
+  "import_roots": [
+   ""
+  ],
+  "limits_hit": [],
+  "modules": 20,
+  "parse_errors": 0,
+  "partial": false,
+  "partial_reasons": [],
+  "provenance": "STATIC",
+  "python_files_in_inventory": 20,
+  "rule_errors": 0,
+  "runtime": {
+   "backend": "docker",
+   "commands_discovered": 3,
+   "correlated_findings": 18,
+   "discovery_error": null,
+   "discovery_limits_hit": [],
+   "files_scanned": 24,
+   "measured_run_id": "e25237f1-6616-4ea6-9902-5effd8a5852d",
+   "provenance": "STATIC",
+   "runnable_commands": 3,
+   "runtime_available": true,
+   "runtime_only_hotspots": 3,
+   "state": "measured",
+   "unavailable_reason": null
+  },
+  "skipped_reasons": {},
+  "stage_seconds": {
+   "AI_ANALYSIS": 0.0078,
+   "GRAPHING": 0.0084,
+   "INDEXING": 0.0352,
+   "PRIORITIZING": 0.0012,
+   "RUNTIME_DISCOVERY": 0.1573,
+   "STATIC_RULES": 0.0297
+  },
+  "suppressed_findings": 0,
+  "symbols": 79
+ },
+ "updated_at": "2026-10-20T20:44:42.130469",
+ "use_llm": false,
+ "warnings": []
+}

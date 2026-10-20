@@ -24,9 +24,18 @@ def _capability(payload: Any) -> tuple[str, str | None]:
     return label, str(reason) if reason else None
 
 
+def _ai_capability(payload: Any) -> tuple[str, str | None]:
+    if isinstance(payload, Unsupported):
+        return "not in this API version", NOT_AVAILABLE
+    if payload.get("configured"):
+        host = payload.get("base_url_host") or "configured endpoint"
+        return f"LLM {payload.get('model')}", f"{host} · consent required per audit"
+    return "deterministic advisor", f"no LLM configured · prompts {payload.get('prompt_version')}"
+
+
 def _health_cards(health: dict[str, Any]) -> None:
     runtime, runtime_note = _capability(data.runtime_status())
-    ai, ai_note = _capability(data.ai_status())
+    ai, ai_note = _ai_capability(data.ai_status())
     render_cards(
         [
             Card(

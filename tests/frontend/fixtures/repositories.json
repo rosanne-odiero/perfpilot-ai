@@ -1,8 +1,8 @@
 [
  {
-  "created_at": "2026-10-20T16:48:18.672065",
-  "id": "3de676ef-4ca4-4683-8717-68cf7d07d574",
-  "latest_snapshot_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced",
+  "created_at": "2026-10-20T20:44:23.304135",
+  "id": "317a869b-c9ad-428c-a261-e0aa1bcd75a5",
+  "latest_snapshot_id": "bf4adbe0-d03c-4d1a-9487-1a7d51f0b824",
   "latest_snapshot_status": "READY",
   "name": "shopfast",
   "requested_ref": null,
