@@ -263,7 +263,8 @@ every merge leaves `main` runnable.
 - [x] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
   import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data *(`tests/e2e/test_acceptance.py`: ZIP import of ShopFast, persistent worker with per-job child processes; steps 9–11 verified against the real Docker sandbox)*
 - [ ] Optional network-marked variant against a real small public repo
-- [ ] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence
+- [x] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence *(`tests/e2e/test_workload_deep_dive.py`: `duplicate_counter` + `nested_loop` via the HTTP API and the isolated worker — profile → hotspots → analysis → patch → approve → validate → benchmark → experiment reports — then engine disposal + fresh app on the same data dir; plus a wrong candidate that fails validation and a validator-rejected patch, both reported without benchmark numbers)*
+- [x] Experiment report export (base spec: final engineering report for an issue/PR): `ExperimentReport` for a candidate or a reference benchmark in Markdown, JSON, HTML (inline SVG box/strip plot), CSV (raw samples + validation checks) and PDF; `POST/GET /api/optimizations/{id}/reports`, `POST/GET /api/benchmarks/{id}/reports`, `GET /api/experiments` *(see `docs/reports.md`)*
 - [ ] Real screenshots, real benchmark table, evaluation report from measured results
 - [ ] README polish
 
