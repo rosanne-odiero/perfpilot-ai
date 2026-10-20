@@ -1,0 +1,25 @@
+{
+  "name": "List lookup",
+  "description": "Return the query ids that appear in a list of known ids (membership test in a loop).",
+  "entrypoint": "workload:find_known",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "known_ids: n_known unique ints from [0, 4*n_known); queries: n_queries ints, about hit_ratio of them present in known_ids.",
+  "invocation_mode": "keyword",
+  "expected_output": {
+    "type": "list[int]",
+    "comparison": "exact",
+    "description": "Query ids found in known_ids, in query order, repeats preserved."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "permitted_env_vars": [],
+  "default_size": "medium",
+  "sizes": {
+    "small": {"n_known": 300, "n_queries": 300},
+    "medium": {"n_known": 5000, "n_queries": 5000},
+    "large": {"n_known": 12000, "n_queries": 12000}
+  },
+  "seed": 1729,
+  "reference_candidate": "reference/optimized.py",
+  "suspected_bottleneck": "`query in known_ids` scans a list for every query: O(n*m)."
+}

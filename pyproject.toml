@@ -80,7 +80,7 @@ module = ["networkx.*", "scipy.*", "plotly.*", "weasyprint.*", "streamlit.*", "p
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "examples"]
 addopts = "-ra --strict-markers"
 markers = [
     "docker: requires a working Docker daemon (sandbox)",

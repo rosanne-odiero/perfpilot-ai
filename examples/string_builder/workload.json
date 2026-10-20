@@ -1,0 +1,25 @@
+{
+  "name": "String builder",
+  "description": "Render a fixed-width text report by concatenating lines with += in a loop.",
+  "entrypoint": "workload:render_report",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "rows: n_rows (name, quantity, price) tuples; names are 1..max_name_length ASCII letters, quantities 0..9999, prices 0..10000 rounded to 4 decimals.",
+  "invocation_mode": "single",
+  "expected_output": {
+    "type": "str",
+    "comparison": "exact",
+    "description": "One line per row: name left-aligned in 12 columns, quantity right-aligned in 6, price with 2 decimals right-aligned in 12."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "permitted_env_vars": [],
+  "default_size": "medium",
+  "sizes": {
+    "small": {"n_rows": 2000},
+    "medium": {"n_rows": 100000},
+    "large": {"n_rows": 500000}
+  },
+  "seed": 31337,
+  "reference_candidate": "reference/optimized.py",
+  "suspected_bottleneck": "`report += line` in a loop may copy the growing string (O(n^2)) unless CPython resizes it in place."
+}
