@@ -126,6 +126,8 @@ class ListMembershipInLoop(BaseRule):
                 if len(value.elts) < SMALL_LITERAL:
                     return None
                 return f"scans the constant list `{container.id}`", Severity.LOW, Confidence.HIGH
+            if _small_fixed_local_list(container.id, scope):
+                return None
             loop = scope.innermost_loop
             if loop and any(grows_in_loop(container.id, frame) for frame in scope.loops):
                 return (
@@ -136,6 +138,37 @@ class ListMembershipInLoop(BaseRule):
             confidence = Confidence.MEDIUM if scope.is_param(container.id) else Confidence.HIGH
             return f"scans `{container.id}`, which is a list", Severity.MEDIUM, confidence
         return f"scans `{short(container)}`, which is a list", Severity.MEDIUM, Confidence.MEDIUM
+
+
+def _small_fixed_local_list(name: str, scope: ScopeTracker) -> bool:
+    """A local bound once to a short list display and never grown (e.g. ``ids = [a, b]``)."""
+    function = scope.function
+    if function is None or not isinstance(function.node, ast.FunctionDef | ast.AsyncFunctionDef):
+        return False
+    values: list[ast.expr] = []
+    for node in iter_own_nodes(list(function.node.body)):
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == name for t in node.targets
+        ):
+            values.append(node.value)
+        elif (
+            isinstance(node, ast.AugAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == name
+        ) or (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in GROW_METHODS
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == name
+        ):
+            return False
+    return (
+        len(values) == 1
+        and isinstance(values[0], ast.List)
+        and len(values[0].elts) < SMALL_LITERAL
+        and not any(isinstance(e, ast.Starred) for e in values[0].elts)
+    )
 
 
 def _unwrap_iter(node: ast.expr) -> ast.expr:

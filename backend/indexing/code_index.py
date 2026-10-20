@@ -12,6 +12,7 @@ import tomllib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 import networkx as nx
 
@@ -190,15 +191,14 @@ def _console_scripts(root: Path, naming: ModuleNaming) -> dict[str, EntrypointIn
         data = tomllib.loads(pyproject.read_text(encoding="utf-8", errors="replace"))
     except tomllib.TOMLDecodeError:
         return {}
-    tables: list[object] = [
-        data.get("project", {}).get("scripts"),
-        data.get("project", {}).get("gui-scripts"),
-        data.get("tool", {}).get("poetry", {}).get("scripts"),
+    project = _table(data, "project")
+    tables = [
+        _table(project, "scripts"),
+        _table(project, "gui-scripts"),
+        _table(_table(_table(data, "tool"), "poetry"), "scripts"),
     ]
     found: dict[str, EntrypointInfo] = {}
     for table in tables:
-        if not isinstance(table, dict):
-            continue
         for script, target in table.items():
             if not isinstance(target, str) or ":" not in target:
                 continue
@@ -212,6 +212,11 @@ def _console_scripts(root: Path, naming: ModuleNaming) -> dict[str, EntrypointIn
             if func.isidentifier():
                 info.add_symbol(func, f"console script '{script}'")
     return found
+
+
+def _table(data: dict[str, Any], key: str) -> dict[str, Any]:
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
 
 
 def link_repository(build: IndexBuild) -> CodeIndex:
