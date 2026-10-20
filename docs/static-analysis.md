@@ -15,9 +15,10 @@ code with `ast`**: repository code is never imported or executed, and `setup.py`
 | `GRAPHING` | `graph_stage` | resolve imports, build the import graph (networkx) and the call graph |
 | `STATIC_RULES` | `rules_stage` | run all rules in one scope-aware traversal per module |
 | `PRIORITIZING` | `prioritize_stage` | score and sort findings, set per-module `finding_count` |
+| `AI_ANALYSIS` | `ai_stage.ai_analysis_stage` | deterministic advisor (always) and the optional LLM pipeline; see [ai-design.md](ai-design.md) |
 
 `run_static_audit(root, inventory, settings, progress=None)` (`backend/audit/static_audit.py`) runs
-`STATIC_STAGES` and returns a `StaticAuditResult` (code index, sorted findings, stats, warnings,
+the four static stages (`STATIC_STAGES`; the job appends `AI_STAGE`) and returns a `StaticAuditResult` (code index, sorted findings, stats, warnings,
 limits). It has no database access. Later stages (AI analysis, runtime discovery and profiling,
 correlation) are added by extending the stage tuple per mode in `backend/jobs/handlers/audit.py`
 (`AUDIT_STAGES`). Nothing else has to change.
@@ -28,8 +29,8 @@ correlation) are added by extending the stage tuple per mode in `backend/jobs/ha
 `audit.run` (HTTP 202 with `JobAccepted`, `subject_type="audit"`). These requests are rejected:
 `mode=RUNTIME` returns 501 `not_configured` until the sandbox exists, `use_llm` without
 `llm_consent` returns 422, an unknown snapshot returns 404, and a snapshot that is not `READY`
-returns 409. This build has no AI stage, so `use_llm=true` with consent adds a warning and no code
-leaves the machine.
+returns 409. With `use_llm=true` and consent, the `AI_ANALYSIS` stage also runs the LLM pipeline if
+an endpoint is configured; otherwise it adds a warning and no code leaves the machine.
 
 The job loads the snapshot and checks that its `workspace_path` resolves inside
 `settings.workspaces_dir`. It persists `AuditRun.stage` at each stage boundary and then stores:
@@ -39,6 +40,8 @@ The job loads the snapshot and checks that its `workspace_path` resolves inside
 * any warnings;
 * one `FindingRecord` per finding, with promoted filter columns and the full `Finding` JSON in
   `data`.
+* one `RecommendationRecord` per recommendation, plus `insights`, `llm_usage`, and
+  `summary.advisor` (see [ai-design.md](ai-design.md)).
 
 The row ID is `uuid5(audit_id, finding.id)`, so re-running a job replaces its rows. The final
 status is `SUCCEEDED`, `PARTIAL` (file limits hit, parse errors, or rules skipped), or `FAILED`.
@@ -54,6 +57,7 @@ Read endpoints:
 | `GET /api/audits/{id}/graph` | The `DependencyGraph` |
 | `GET /api/audits/{id}/modules?path=` | Modules without symbols/imports, plus counts and graph metrics |
 | `GET /api/audits/{id}/files/findings-count` | Per-file totals and severity breakdowns |
+| `GET /api/audits/{id}/recommendations`, `/insights`, `/llm-usage` | Advisor output (see [ai-design.md](ai-design.md)) |
 
 ## Indexing (`backend/indexing/`)
 

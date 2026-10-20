@@ -174,16 +174,16 @@ every merge leaves `main` runnable.
 - **Exit:** the audit on the fixture repo yields the expected finding set, and every `file:line` resolves to real source.
 
 ### Phase 4 — AI-assisted architecture analysis · `feature/ai-advisor`
-- [ ] `DeterministicAdvisor`: maps findings → recommendations with no LLM (the default path)
-- [ ] OpenAI-compatible `LLMClient` (httpx), env-configured base URL/model/key, timeouts, bounded retries, token/cost accounting, optional local-model adapter (e.g. Ollama via its OpenAI-compatible endpoint)
-- [ ] Hierarchical pipeline: (1) function/module summaries for *relevant* units only → (2) dependency context → (3) candidate hot paths → (4) cross-module correlation → (5) prioritized recommendations
-- [ ] Selective retrieval: snippets chosen by finding location + graph neighborhood, never the whole repo
-- [ ] Token budget manager: per-stage and per-audit caps; deterministic truncation; budget-exhaustion reported, not hidden
-- [ ] Structured output via Pydantic (`OptimizationRecommendation` per base spec + `ArchitectureInsight`); malformed output → bounded retry → fall back to deterministic
-- [ ] **Citation guard:** every file/line/symbol the model cites must exist in the index; invalid citations are dropped and counted; the model may not emit numeric runtime metrics (schema forbids; validator rejects)
+- [x] `DeterministicAdvisor`: maps findings → recommendations with no LLM (the default path)
+- [x] OpenAI-compatible `LLMClient` (httpx), env-configured base URL/model/key, timeouts, bounded retries, token/cost accounting, optional local-model adapter (e.g. Ollama via its OpenAI-compatible endpoint)
+- [x] Hierarchical pipeline: (1) function/module summaries for *relevant* units only → (2) dependency context → (3) candidate hot paths → (4) cross-module correlation → (5) prioritized recommendations
+- [x] Selective retrieval: snippets chosen by finding location + graph neighborhood, never the whole repo
+- [x] Token budget manager: per-stage and per-audit caps; deterministic truncation; budget-exhaustion reported, not hidden
+- [x] Structured output via Pydantic (`OptimizationRecommendation` per base spec + `ArchitectureInsight`); malformed output → bounded retry → fall back to deterministic
+- [x] **Citation guard:** every file/line/symbol the model cites must exist in the index; invalid citations are dropped and counted; the model may not emit numeric runtime metrics (schema forbids; validator rejects)
 - [ ] Redaction applied before sending; UI banner + explicit opt-in before any snippet leaves the machine
-- [ ] Prompt files in `backend/ai/prompts/`, versioned
-- [ ] Evals: 20–30 scenarios in `evals/` (mocked LLM in CI, real model optional)
+- [x] Prompt files in `backend/ai/prompts/`, versioned
+- [x] Evals: 20–30 scenarios in `evals/` (mocked LLM in CI, real model optional)
 - **Exit:** a full audit completes with no API key; with a mocked LLM, recommendations pass the citation guard.
 
 ### Phase 5 — Workload profiling engine · `feature/profiling`

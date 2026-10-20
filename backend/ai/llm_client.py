@@ -34,7 +34,7 @@ log = get_logger(__name__)
 
 MAX_BACKOFF_SECONDS = 30.0
 BASE_BACKOFF_SECONDS = 0.5
-_RETRYABLE_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
+_RETRYABLE_STATUS = frozenset({408, 425, 429})
 _AZURE_HOST_SUFFIXES = (".openai.azure.com", ".cognitiveservices.azure.com", ".azure-api.net")
 
 
@@ -167,7 +167,7 @@ class LLMClient:
                 if response.is_success:
                     return self._parse(response, safe)
                 failure = f"HTTP {response.status_code}"
-                if response.status_code not in _RETRYABLE_STATUS:
+                if response.status_code < 500 and response.status_code not in _RETRYABLE_STATUS:
                     raise LLMError(f"model endpoint rejected the request ({failure})")
             log.warning(
                 "llm call failed",
