@@ -21,5 +21,23 @@
   },
   "seed": 2024,
   "reference_candidate": "reference/optimized.py",
-  "suspected_bottleneck": "`items.count(item)` rescans the whole list for every element: O(n^2)."
+  "suspected_bottleneck": "`items.count(item)` rescans the whole list for every element: O(n^2).",
+  "validation": {
+    "tests": ["tests"],
+    "min_tests": 10,
+    "sizes": ["small", "medium"],
+    "seeds": [2024, 7, 11],
+    "edge_cases": [
+      {"name": "empty", "input": []},
+      {"name": "single", "input": ["a"]},
+      {"name": "no_duplicates", "input": ["a", "b", "c"]},
+      {"name": "all_same", "input": ["x", "x", "x", "x"]},
+      {"name": "empty_strings_and_case", "input": ["", "", "A", "a", "A"]}
+    ],
+    "error_cases": [
+      {"name": "none_input", "input": null, "expected_exception": "TypeError"},
+      {"name": "unhashable_repeated_item", "input": [["a"], ["a"]], "expected_exception": "TypeError"}
+    ],
+    "allow_input_mutation": false
+  }
 }

@@ -215,7 +215,7 @@ class _Engine:
         # 1. Preflight: one call per variant to verify identical inputs and equivalent outputs.
         self.progress("preflight", 0.0, "checking inputs and outputs match")
         preflight: dict[VariantName, dict[str, Any]] = {}
-        include_value = plan.output_contract.comparison == OutputComparison.FLOAT_TOLERANCE
+        include_value = plan.output_contract.comparison != OutputComparison.EXACT
         for position, variant in enumerate(VARIANTS):
             run = self._run(
                 variant,

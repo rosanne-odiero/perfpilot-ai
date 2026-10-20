@@ -21,5 +21,22 @@
   },
   "seed": 1729,
   "reference_candidate": "reference/optimized.py",
-  "suspected_bottleneck": "`query in known_ids` scans a list for every query: O(n*m)."
+  "suspected_bottleneck": "`query in known_ids` scans a list for every query: O(n*m).",
+  "validation": {
+    "tests": ["tests"],
+    "min_tests": 10,
+    "sizes": ["small", "medium"],
+    "seeds": [1729, 3, 5],
+    "edge_cases": [
+      {"name": "no_known_ids", "input": {"known_ids": [], "queries": [1, 2, 3]}},
+      {"name": "no_queries", "input": {"known_ids": [1, 2], "queries": []}},
+      {"name": "repeated_queries", "input": {"known_ids": [1], "queries": [1, 1, 2, 1]}},
+      {"name": "numeric_equality", "input": {"known_ids": [1, 2.0, true], "queries": [1, 2, 1.0, true, 0, 3]}}
+    ],
+    "error_cases": [
+      {"name": "known_ids_none", "input": {"known_ids": null, "queries": [1]}, "expected_exception": "TypeError"},
+      {"name": "queries_none", "input": {"known_ids": [1], "queries": null}, "expected_exception": "TypeError"}
+    ],
+    "allow_input_mutation": false
+  }
 }

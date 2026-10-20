@@ -110,6 +110,7 @@ def build_spec(workload: Workload) -> WorkloadSpec:
         seed=manifest.seed,
         reference_candidate=manifest.reference_candidate,
         suspected_bottleneck=manifest.suspected_bottleneck,
+        validation=manifest.validation,
     )
 
 
