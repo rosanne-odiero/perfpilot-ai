@@ -119,6 +119,9 @@ class _Detector:
         return any(isinstance(t, ast.Name) and t.id == name for t in targets)
 
     def _collect_app_objects(self) -> None:
+        frameworks = {name.split(".", 1)[0] for name in APP_CONSTRUCTORS} | {"argparse"}
+        if not any(self.aliases.imports_module(name) for name in frameworks):
+            return  # app objects, factories and registrations all need one of these imports
         for node in ast.walk(self.tree):
             if isinstance(node, ast.Call):
                 qualified = self.aliases.qualify(node.func)

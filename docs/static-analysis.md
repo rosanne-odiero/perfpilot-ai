@@ -214,3 +214,8 @@ and rule.
 * Static findings cannot know data sizes. A rule may flag a pattern whose input is always tiny, and
   severity reflects the pattern rather than measured impact. Runtime profiling (Phase 8) is what
   upgrades findings to `MEASURED`.
+* Module names are relative to the snapshot root. If the root directory is itself a package (it has
+  `__init__.py`), the package's own absolute self-imports (`import pkg.x` inside `pkg/`) are counted
+  as external.
+* Throughput, measured on this machine: a 148-file FastAPI backend takes about 1.1 s; a very large
+  codebase (pandas, 1,421 files) takes about 40 s.
