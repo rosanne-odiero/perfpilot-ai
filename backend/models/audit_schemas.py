@@ -107,6 +107,11 @@ class AcquiredSource(Contract):
     source_type: RepositorySourceType
     display_name: str
     git: GitMetadata = Field(default_factory=GitMetadata)
+    skipped: list[SourceFileInfo] = Field(
+        default_factory=list,
+        description="Entries filtered out while acquiring (never written to the workspace)",
+    )
+    limits_hit: list[str] = Field(default_factory=list)
 
 
 # --------------------------------------------------------------------------------------
