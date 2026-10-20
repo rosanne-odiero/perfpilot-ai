@@ -13,7 +13,7 @@
 
 # Base images are literal (not ARGs) so Dependabot can keep them current.
 FROM ghcr.io/astral-sh/uv:0.13.3 AS uv
-FROM docker:28-cli AS docker-cli
+FROM docker:29-cli AS docker-cli
 
 # --------------------------------------------------------------------------- dependencies
 FROM python:3.12-slim AS builder
