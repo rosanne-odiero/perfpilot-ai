@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
-from ui_fixtures import APP, FakeApi
+from ui_fixtures import APP, FakeApi, load
 
 from frontend import api_client
 from frontend.api_client import UNREACHABLE, ApiError
@@ -68,14 +68,58 @@ def test_local_directory_hidden_when_server_disables_it(fake_api: FakeApi) -> No
     assert "Local directory import is disabled" in text(at)
 
 
-def test_runtime_mode_explains_approval_and_unavailability(fake_api: FakeApi) -> None:
+def test_runtime_mode_shows_real_sandbox_availability(fake_api: FakeApi) -> None:
+    at = app()
+    at.radio(key="audit_mode").set_value("Runtime Audit").run()
+    assert_clean(at)
+    body = text(at)
+    assert "approve one exact command line" in body
+    assert "SANDBOX AVAILABLE" in body
+    assert "perfpilot-sandbox:latest" in body
+    start = next(b for b in at.button if b.label == "Start audit")
+    assert not start.disabled
+
+
+def test_runtime_mode_with_unavailable_sandbox_still_allows_static_stages(
+    fake_api: FakeApi,
+) -> None:
+    status = dict(fake_api.routes["/runtime/status"], available=False, reason="docker not found")
+    fake_api.overrides["/runtime/status"] = status
     at = app()
     at.radio(key="audit_mode").set_value("Runtime Audit").run()
     body = text(at)
-    assert "approve one exact command line" in body
-    assert "not available in this API version" in body
-    start = next(b for b in at.button if b.label == "Start audit")
-    assert start.disabled
+    assert "SANDBOX UNAVAILABLE" in body
+    assert "docker not found" in body
+    assert "runs cannot be approved" in body
+
+
+def test_runtime_mode_on_an_older_api(legacy_api: FakeApi) -> None:
+    at = app()
+    at.radio(key="audit_mode").set_value("Runtime Audit").run()
+    assert "not available in this API version" in text(at)
+    assert next(b for b in at.button if b.label == "Start audit").disabled
+
+
+def test_ai_toggle_discloses_what_is_sent_and_requires_consent(fake_api: FakeApi) -> None:
+    configured = dict(
+        fake_api.routes["/ai/status"],
+        configured=True,
+        model="gpt-test",
+        base_url_host="llm.example.com",
+        api_key_set=True,
+    )
+    fake_api.overrides["/ai/status"] = configured
+    at = app()
+    toggle = at.toggle(key="use_llm")
+    assert not toggle.disabled
+    toggle.set_value(True).run()
+    body = text(at)
+    assert "What is sent to gpt-test at llm.example.com" in body
+    assert "redacted for secrets before sending" in body
+    assert "60,000 tokens per audit" in body
+    assert next(b for b in at.button if b.label == "Start audit").disabled
+    at.checkbox(key="llm_consent").check().run()
+    assert not next(b for b in at.button if b.label == "Start audit").disabled
 
 
 def _start_local_import(at: AppTest, path: str) -> AppTest:
@@ -173,11 +217,14 @@ def test_audit_results_every_tab(fake_api: FakeApi, audit_id: str) -> None:
     assert "5 of 24 findings" in text(at)
 
 
-def test_pending_ai_and_runtime_areas_show_not_available(fake_api: FakeApi, audit_id: str) -> None:
+def test_older_api_shows_not_available_for_ai_and_runtime(
+    legacy_api: FakeApi, audit_id: str
+) -> None:
     at = app("app_pages/audit_results.py", audit=audit_id)
     for tab in ("AI insights", "Runtime"):
         at.session_state["audit_tab"] = tab
         at.run()
+        assert_clean(at)
         assert "This capability is not available in this API version" in text(at)
 
 
@@ -212,11 +259,19 @@ def test_ai_recommendations_are_labeled_as_hypotheses(fake_api: FakeApi, audit_i
     body = text(at)
     assert "Hypothesis — not measured" in body
     assert "Derived deterministically from the static findings" in body
-    assert "`shopfast/orders.py:13-15`" in body
+    assert "model deterministic" not in body
+    citations = [b for b in at.button if b.label.startswith("shopfast/orders.py:13-15")]
+    assert len(citations) == 2
+
+
+def _workload_id(slug: str) -> str:
+    manifest = load("manifest.json")
+    key = next(k for k in manifest if k.startswith("/projects/") and k.endswith("/workloads"))
+    return next(w["id"] for w in load(manifest[key]) if w["slug"] == slug)
 
 
 def test_workload_lab_sections(fake_api: FakeApi) -> None:
-    at = app("app_pages/workload_lab.py")
+    at = app("app_pages/workload_lab.py", workload=_workload_id("duplicate_counter"))
     assert_clean(at)
     assert [t.label for t in at.tabs] == ["Explorer", "Profile", "Benchmark", "Optimize"]
     assert "Baseline vs bundled reference implementation" in text(at)
@@ -225,14 +280,18 @@ def test_workload_lab_sections(fake_api: FakeApi) -> None:
     assert_clean(at)
     assert "Exclusive" in text(at)
     assert at.dataframe  # hotspot table
+    assert any(b.label == "Optimize this hotspot" for b in at.button)
     at.session_state["lab_tab"] = "Benchmark"
     at.run()
     assert_clean(at)
-    body = text(at)
-    assert "IMPROVED" in body
-    assert "reference implementation (bundled, for testing)" in body
+    assert "IMPROVED" in text(at)
+
+
+def test_workload_lab_optimize_on_an_older_api(legacy_api: FakeApi) -> None:
+    at = app("app_pages/workload_lab.py", workload=_workload_id("duplicate_counter"))
     at.session_state["lab_tab"] = "Optimize"
     at.run()
+    assert_clean(at)
     assert "Optimization workflow" in text(at)
     assert "not available in this API version" in text(at)
 

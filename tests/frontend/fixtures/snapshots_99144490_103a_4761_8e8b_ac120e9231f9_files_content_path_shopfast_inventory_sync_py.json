@@ -1,0 +1,10 @@
+{
+ "content": "\"\"\"Synchronizes warehouse stock exports with the catalog.\"\"\"\n\nfrom __future__ import annotations\n\nfrom shopfast.catalog import Product\n\n\ndef reconcile(warehouse_rows: list[dict[str, object]], catalog: list[Product]) -> list[tuple[str, int]]:\n    matched = []\n    for row in warehouse_rows:\n        for product in catalog:\n            if row[\"sku\"] == product.sku:\n                matched.append((product.sku, int(str(row[\"quantity\"]))))\n    return matched\n\n\ndef reconcile_indexed(\n    warehouse_rows: list[dict[str, object]], catalog: list[Product]\n) -> list[tuple[str, int]]:\n    by_sku = {product.sku: product for product in catalog}\n    return [\n        (by_sku[str(row[\"sku\"])].sku, int(str(row[\"quantity\"])))\n        for row in warehouse_rows\n        if str(row[\"sku\"]) in by_sku\n    ]\n\n\ndef restock_order(events: list[str]) -> list[str]:\n    queue = list(events)\n    processed: list[str] = []\n    while queue:\n        sku = queue.pop(0)\n        if sku in processed:\n            continue\n        processed.append(sku)\n    return processed\n\n\ndef duplicate_skus(skus: list[str]) -> list[str]:\n    duplicates = []\n    for sku in skus:\n        if skus.count(sku) > 1 and sku not in duplicates:\n            duplicates.append(sku)\n    return duplicates\n\n\ndef low_stock(stock: dict[str, int], threshold: int) -> list[str]:\n    return sorted(sku for sku, quantity in stock.items() if quantity < threshold)\n",
+ "language": "Python",
+ "path": "shopfast/inventory_sync.py",
+ "redaction_kinds": {},
+ "redactions": 0,
+ "sha256": "98e2837cdfef77581157338c2d47b7fe99902f910340cef8930eb3b9f74ec84b",
+ "size_bytes": 1403,
+ "snapshot_id": "99144490-103a-4761-8e8b-ac120e9231f9"
+}

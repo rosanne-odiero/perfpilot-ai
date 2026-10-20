@@ -1,0 +1,85 @@
+{
+ "branch": null,
+ "commit_sha": null,
+ "content_hash": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3",
+ "counts": {
+  "bytes_seen": 28466,
+  "directories_pruned": 0,
+  "files_analyzed": 24,
+  "files_seen": 25,
+  "files_skipped": 1,
+  "python_files": 20,
+  "skipped_by_reason": {
+   "sensitive": 1
+  }
+ },
+ "created_at": "2026-10-20T19:42:17.145228",
+ "dependencies": [
+  {
+   "group": "optional:test",
+   "name": "pytest",
+   "source_file": "pyproject.toml",
+   "version_spec": ">=8"
+  }
+ ],
+ "error": null,
+ "git": {
+  "branch": null,
+  "commit_date": null,
+  "commit_sha": null,
+  "is_dirty": null,
+  "remote_url": null
+ },
+ "id": "99144490-103a-4761-8e8b-ac120e9231f9",
+ "job_id": "fdc78232-6d51-43df-812b-071685d8d26e",
+ "languages": {
+  "JSON": 1,
+  "Markdown": 1,
+  "Python": 20,
+  "TOML": 1,
+  "Text": 1
+ },
+ "limits_hit": [],
+ "lock_files": [],
+ "repository_id": "0d349037-fafb-4769-939e-4fa60644613a",
+ "root_name": "shopfast",
+ "status": "READY",
+ "technologies": [
+  {
+   "evidence": [
+    "20 Python files"
+   ],
+   "kind": "language",
+   "name": "Python"
+  },
+  {
+   "evidence": [
+    "imports asyncio in benchmarks/run_workload.py:10",
+    "imports asyncio in shopfast/api.py:5",
+    "imports asyncio in shopfast/app.py:6",
+    "imports asyncio in tests/test_api.py:3"
+   ],
+   "kind": "library",
+   "name": "asyncio"
+  },
+  {
+   "evidence": [
+    "imports sqlite3 in shopfast/db.py:5",
+    "imports sqlite3 in shopfast/orders.py:6"
+   ],
+   "kind": "database",
+   "name": "SQLite"
+  },
+  {
+   "evidence": [
+    "imports pytest in tests/conftest.py:3",
+    "imports pytest in tests/test_api.py:7",
+    "tests/conftest.py",
+    "declared dependency pytest in pyproject.toml"
+   ],
+   "kind": "tool",
+   "name": "pytest"
+  }
+ ],
+ "updated_at": "2026-10-20T19:42:18.988152"
+}

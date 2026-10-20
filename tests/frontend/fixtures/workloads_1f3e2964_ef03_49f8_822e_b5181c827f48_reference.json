@@ -1,0 +1,14 @@
+{
+ "baseline": {
+  "content": "\"\"\"Duplicate counter workload (deliberately inefficient, but correct).\n\n``count_duplicates`` maps every item that occurs more than once to its number of occurrences.\nIt calls ``list.count`` for every element, which rescans the whole list each time: O(n^2).\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef count_duplicates(items: list[str]) -> dict[str, int]:\n    duplicates: dict[str, int] = {}\n    for item in items:\n        occurrences = items.count(item)\n        if occurrences > 1:\n            duplicates[item] = occurrences\n    return duplicates\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "label": "reference implementation (bundled, for testing)",
+ "reference": {
+  "content": "\"\"\"REFERENCE IMPLEMENTATION (bundled, for tests).\n\nHand-written by the PerfPilot maintainers to exercise the benchmark engine. It was NOT produced\nby the platform's optimizer. The benchmark labels any run against this file as\n\"reference implementation (bundled, for testing)\".\n\nChange: count every item in one pass with ``collections.Counter`` (O(n)) instead of calling\n``list.count`` per element (O(n^2)). Key insertion order (first occurrence) is preserved.\nTrade-off: items must be hashable.\n\"\"\"\n\nfrom __future__ import annotations\n\nfrom collections import Counter\n\n\ndef count_duplicates(items: list[str]) -> dict[str, int]:\n    return {item: count for item, count in Counter(items).items() if count > 1}\n",
+  "path": "reference/optimized.py",
+  "truncated": false
+ },
+ "workload_id": "1f3e2964-ef03-49f8-822e-b5181c827f48"
+}

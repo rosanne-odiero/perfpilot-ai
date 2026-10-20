@@ -1,7 +1,7 @@
 """Capture real API responses as JSON fixtures for the frontend tests.
 
-Run against a live API that has at least one finished audit (with reports), one profile and one
-benchmark of the same workload::
+Run against a live API that has a finished RUNTIME audit with a measured run (and reports), a
+profile, a benchmark and an optimization deep dive (analysis + candidate) of a workload::
 
     .venv/bin/python scripts/capture_ui_fixtures.py --base-url http://127.0.0.1:8000
 
@@ -55,26 +55,42 @@ class Capture:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
-    parser.add_argument("--audit-id", help="Defaults to the newest succeeded audit")
+    parser.add_argument(
+        "--audit-id",
+        help="Defaults to the newest runtime audit with a measured run, else the newest succeeded",
+    )
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.glob("*.json"):
         old.unlink()
     cap = Capture(args.base_url)
 
-    cap.get("/health")
-    cap.get("/import/options")
-    cap.get("/repositories")
+    for route in ("/health", "/import/options", "/repositories", "/ai/status", "/runtime/status"):
+        cap.get(route)
     audits = cap.get("/audits")
     succeeded = [a for a in audits if a["status"] == "SUCCEEDED"]
+    measured = [a for a in succeeded if a["mode"] == "RUNTIME" and a["stage"] == "COMPLETED"]
     audit = (
-        next(a for a in succeeded if a["id"] == args.audit_id) if args.audit_id else succeeded[0]
+        next(a for a in succeeded if a["id"] == args.audit_id)
+        if args.audit_id
+        else (measured or succeeded)[0]
     )
     audit_id, snapshot_id = audit["id"], audit["snapshot_id"]
     cap.get(f"/audits/{audit_id}")
     findings = cap.get(f"/audits/{audit_id}/findings", limit=500, offset=0)
-    for suffix in ("graph", "modules", "files/findings-count", "reports"):
+    for suffix in (
+        "graph",
+        "modules",
+        "files/findings-count",
+        "reports",
+        "recommendations",
+        "insights",
+        "llm-usage",
+        "runtime/commands",
+    ):
         cap.get(f"/audits/{audit_id}/{suffix}")
+    for run in cap.get(f"/audits/{audit_id}/runtime")["runs"]:
+        cap.get(f"/audits/{audit_id}/runtime/runs/{run['id']}")
     cap.get(f"/snapshots/{snapshot_id}")
     cap.get(f"/snapshots/{snapshot_id}/files")
     for path in sorted({f["location"]["file_path"] for f in findings["items"]}):
@@ -101,10 +117,18 @@ def main() -> None:
     for profile_id in profiled:
         cap.get(f"/profiles/{profile_id}")
         cap.get(f"/profiles/{profile_id}/hotspots", limit=50, sort="exclusive", scope="all")
+    for job in jobs:
+        if job["job_type"] == "optimization.analyze" and job["status"] == "SUCCEEDED":
+            cap.get(f"/analyses/{job['subject_id']}")
+            cap.get(f"/analyses/{job['subject_id']}/recommendations")
     for workload in workloads:
         cap.get(f"/workloads/{workload['id']}")
         if workload["has_reference_candidate"]:
             cap.get(f"/workloads/{workload['id']}/reference")
+        for candidate in cap.get(f"/workloads/{workload['id']}/optimizations"):
+            cap.get(f"/optimizations/{candidate['id']}")
+            if candidate["patch_validation"].get("valid"):
+                cap.get(f"/optimizations/{candidate['id']}/diff")
     (OUT / "manifest.json").write_text(json.dumps(cap.manifest, indent=1, sort_keys=True) + "\n")
     print(f"captured {len(cap.manifest)} responses into {OUT.relative_to(ROOT)}")
 

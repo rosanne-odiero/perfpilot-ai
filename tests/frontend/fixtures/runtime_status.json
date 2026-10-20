@@ -1,0 +1,26 @@
+{
+ "approval_ttl_seconds": 86400,
+ "available": true,
+ "backend": "docker",
+ "checked_at": "2026-10-20T19:42:29.118898Z",
+ "default_limits": {
+  "cpus": 2.0,
+  "memory_mb": 2048,
+  "network": "none",
+  "output_max_bytes": 16777216,
+  "pids": 256,
+  "timeout_seconds": 600,
+  "tmpfs_mb": 256
+ },
+ "dependency_install_timeout_seconds": 900,
+ "details": {
+  "cgroup_version": "2",
+  "image": "perfpilot-sandbox:latest",
+  "image_id": "sha256:f4931a11bf7dfb2339234b3ce56f06709f1fe9202acaacfc865e40787b27f839",
+  "operating_system": "Docker Desktop",
+  "server_version": "29.9.1"
+ },
+ "image": "perfpilot-sandbox:latest",
+ "observed_by": "worker",
+ "reason": null
+}

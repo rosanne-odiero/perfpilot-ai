@@ -1,0 +1,123 @@
+[
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 49,
+    "line_start": 49,
+    "symbol": "unique_categories"
+   },
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 66,
+    "line_start": 66,
+    "symbol": "top_rated"
+   },
+   {
+    "file_path": "shopfast/catalog.py",
+    "line_end": 41,
+    "line_start": 41,
+    "symbol": "filter_discontinued"
+   }
+  ],
+  "description": "`shopfast.catalog` is imported by 8 modules and has 3 findings. Changes here affect many callers, so fixes have broad reach, but they also need the broadest regression testing; consider giving it focused benchmarks.",
+  "generated_by": "deterministic",
+  "id": "ins-bbabc49b0e5f871fca1e",
+  "modules": [
+   "shopfast.catalog"
+  ],
+  "provenance": "STATIC",
+  "title": "High fan-in module with findings: shopfast.catalog"
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 19,
+    "line_start": 19,
+    "symbol": "get_product"
+   },
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 31,
+    "line_start": 31,
+    "symbol": "fetch_exchange_rate"
+   },
+   {
+    "file_path": "shopfast/api.py",
+    "line_end": 47,
+    "line_start": 47,
+    "symbol": "fetch_rates"
+   }
+  ],
+  "description": "`shopfast.api` is imported by 3 modules and has 3 findings. Changes here affect many callers, so fixes have broad reach, but they also need the broadest regression testing; consider giving it focused benchmarks.",
+  "generated_by": "deterministic",
+  "id": "ins-b7f46f216452780d3ce5",
+  "modules": [
+   "shopfast.api"
+  ],
+  "provenance": "STATIC",
+  "title": "High fan-in module with findings: shopfast.api"
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 15,
+    "line_start": 13,
+    "symbol": "order_summaries"
+   },
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 21,
+    "line_start": 19,
+    "symbol": "order_summaries"
+   },
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 52,
+    "line_start": 52,
+    "symbol": "history_snapshots"
+   }
+  ],
+  "description": "`shopfast.orders` is imported by 3 modules and has 3 findings. Changes here affect many callers, so fixes have broad reach, but they also need the broadest regression testing; consider giving it focused benchmarks.",
+  "generated_by": "deterministic",
+  "id": "ins-ee3713718766c3b7017c",
+  "modules": [
+   "shopfast.orders"
+  ],
+  "provenance": "STATIC",
+  "title": "High fan-in module with findings: shopfast.orders"
+ },
+ {
+  "citations": [
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 15,
+    "line_start": 13,
+    "symbol": "order_summaries"
+   },
+   {
+    "file_path": "shopfast/orders.py",
+    "line_end": 21,
+    "line_start": 19,
+    "symbol": "order_summaries"
+   },
+   {
+    "file_path": "shopfast/reporting.py",
+    "line_end": 17,
+    "line_start": 17,
+    "symbol": "render_sales_report"
+   }
+  ],
+  "description": "3 of 24 findings are in code that does not serve requests (CLI_SCRIPT x3). Their priority is scaled down by the path-role factor; review them only if those workflows are slow in practice.",
+  "generated_by": "deterministic",
+  "id": "ins-c44ab2b7eeac8fe6d5de",
+  "modules": [
+   "shopfast.orders",
+   "shopfast.reporting"
+  ],
+  "provenance": "STATIC",
+  "title": "Findings outside request paths were deprioritized"
+ }
+]

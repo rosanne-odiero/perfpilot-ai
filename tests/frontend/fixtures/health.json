@@ -2,8 +2,12 @@
  "database": "ok",
  "job_types": [
   "audit.run",
+  "optimization.analyze",
+  "optimization.validate",
   "report.generate",
   "repository.ingest",
+  "runtime.check_backend",
+  "runtime.profile",
   "system.echo",
   "workload.benchmark",
   "workload.profile"

@@ -1,0 +1,92 @@
+[
+ {
+  "default_size": "medium",
+  "description": "Count how often each repeated item occurs (list.count called for every element).",
+  "entrypoint": "workload:count_duplicates",
+  "fixture_id": "fixtures:make_input",
+  "has_reference_candidate": true,
+  "id": "1f3e2964-ef03-49f8-822e-b5181c827f48",
+  "invocation_mode": "single",
+  "name": "Duplicate counter",
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "sizes": [
+   "large",
+   "medium",
+   "small"
+  ],
+  "slug": "duplicate_counter",
+  "tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa"
+ },
+ {
+  "default_size": "medium",
+  "description": "Return the query ids that appear in a list of known ids (membership test in a loop).",
+  "entrypoint": "workload:find_known",
+  "fixture_id": "fixtures:make_input",
+  "has_reference_candidate": true,
+  "id": "564e4ab8-110c-4ca3-a91d-671fc1e22d01",
+  "invocation_mode": "keyword",
+  "name": "List lookup",
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "sizes": [
+   "large",
+   "medium",
+   "small"
+  ],
+  "slug": "list_lookup",
+  "tree_sha256": "3a15485fcf5797f2980fb5d8a0a5357bd0c22f6cf670642e870f33640ceedb83"
+ },
+ {
+  "default_size": "medium",
+  "description": "Sum order amounts per customer by scanning every order for every customer.",
+  "entrypoint": "workload:customer_totals",
+  "fixture_id": "fixtures:make_input",
+  "has_reference_candidate": true,
+  "id": "7af74f85-b4a9-49bf-9eaa-3f8ed16f9f1b",
+  "invocation_mode": "keyword",
+  "name": "Nested loop join",
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "sizes": [
+   "large",
+   "medium",
+   "small"
+  ],
+  "slug": "nested_loop",
+  "tree_sha256": "671054eee0ec3efea77ec06f569cf5d7d451c5c39fb4394ab4c1258b5e54351f"
+ },
+ {
+  "default_size": "medium",
+  "description": "Extract ERR-dddd codes from log lines, passing the pattern string to re.findall on every line.",
+  "entrypoint": "workload:extract_error_codes",
+  "fixture_id": "fixtures:make_input",
+  "has_reference_candidate": true,
+  "id": "78e2b0d0-58d9-4c46-9d52-312fc3ac0f3d",
+  "invocation_mode": "single",
+  "name": "Regex matching",
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "sizes": [
+   "large",
+   "medium",
+   "small"
+  ],
+  "slug": "regex_matching",
+  "tree_sha256": "57528e56104b46659da549e787e539f6e82c0c325af1c0d4c485f72b1c191fde"
+ },
+ {
+  "default_size": "medium",
+  "description": "Render a fixed-width text report by concatenating lines with += in a loop.",
+  "entrypoint": "workload:render_report",
+  "fixture_id": "fixtures:make_input",
+  "has_reference_candidate": true,
+  "id": "cc4ebc30-702a-4a91-ac85-0488f8884059",
+  "invocation_mode": "single",
+  "name": "String builder",
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "sizes": [
+   "large",
+   "medium",
+   "small"
+  ],
+  "slug": "string_builder",
+  "tree_sha256": "2d7d56702e30b041cfab2489f6727e14335137b331a626ede39f0c80bdcbfd2d"
+ }
+]

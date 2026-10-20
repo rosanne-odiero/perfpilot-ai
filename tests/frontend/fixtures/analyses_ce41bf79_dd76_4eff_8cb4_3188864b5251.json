@@ -1,0 +1,97 @@
+{
+ "created_at": "2026-10-20T20:02:46.235593",
+ "error": null,
+ "error_details": null,
+ "findings": [
+  {
+   "category": "COLLECTIONS",
+   "code_role": null,
+   "complexity_note": "estimate: O(n\u00b7m) for n iterations over a list of m items; a dict/Counter/set lookup is O(1) on average.",
+   "confidence": "MEDIUM",
+   "description": "`items.count(item)` runs inside a loop on a list; `list.count` scans the whole list on every call, so the cost of each call grows with the list length and the loop can become quadratic.",
+   "execution_path": [],
+   "id": "b0ce864066ac920433c0359d",
+   "location": {
+    "file_path": "workload.py",
+    "line_end": 13,
+    "line_start": 13,
+    "symbol": "count_duplicates"
+   },
+   "measured": null,
+   "priority_factors": {},
+   "priority_score": 0.0,
+   "provenance": "STATIC",
+   "rule_id": "PP-COLL-001",
+   "severity": "MEDIUM",
+   "snippet": "    duplicates: dict[str, int] = {}\n    for item in items:\n        occurrences = items.count(item)",
+   "suggestion": "Count all values once with `collections.Counter(items)` and read counts from it.",
+   "title": "Linear list search/removal inside a loop",
+   "tradeoffs": "Values must be hashable; the Counter is a snapshot and must be updated if the list changes; it uses extra memory proportional to the number of distinct values."
+  }
+ ],
+ "finished_at": "2026-10-20T20:02:48.524158",
+ "id": "ce41bf79-dd76-4eff-8cb4-3188864b5251",
+ "job_id": "5f187fe7-9e5f-4298-a9ef-ce2f93fe8aea",
+ "profile_requested": true,
+ "profile_run_id": "7d90571f-999d-458c-8ff3-ddb138c54fea",
+ "profile_size": "medium",
+ "recommendation_ids": [
+  "b10639dd-3320-4fe1-a7fe-0c728453fa82"
+ ],
+ "source_snapshot": {
+  "files": {
+   "README.md": "f22f620aadcf9247266d4100c2d99456087cc5959beda1c1c45dc415ba491de4",
+   "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "fixtures.py": "bbafbb221bd9108c32ff68b53ee1a19fc9fdd1d115198699c6195ffc9ab4c48b",
+   "reference/optimized.py": "3db2ffc926bdd2f9542cc52acab027596f0dd81200f924d80532cf7683541eb7",
+   "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tests/test_workload.py": "6b683f12bc68e5daa2be5756d7cb85dddf2856ee79a51886127349d1a88d09a8",
+   "workload.json": "a1cec1b03b4394b504c61b298beb2c3de70db0fa376a349d5ea4dd7b14f23204",
+   "workload.py": "ef703763602064d88b57e5332462aa322b97210968587f9451c4a5aebe13ef83"
+  },
+  "id": "e1fbacde-9d6c-4216-ba36-10688140ff00",
+  "tree_sha256": "ebc38e0a5ea566a0274ff388e478d31347acbc1c8d5e61d6d66e25a543162ffa"
+ },
+ "started_at": "2026-10-20T20:02:48.096643",
+ "state": "RECOMMENDED",
+ "state_history": [
+  {
+   "at": "2026-10-20T20:02:48.096673Z",
+   "from_state": "CREATED",
+   "reason": "profiling the workload",
+   "to_state": "PROFILING"
+  },
+  {
+   "at": "2026-10-20T20:02:48.512126Z",
+   "from_state": "PROFILING",
+   "reason": "profile 7d90571f-999d-458c-8ff3-ddb138c54fea succeeded",
+   "to_state": "PROFILED"
+  },
+  {
+   "at": "2026-10-20T20:02:48.513064Z",
+   "from_state": "PROFILED",
+   "reason": "",
+   "to_state": "ANALYZING"
+  },
+  {
+   "at": "2026-10-20T20:02:48.524140Z",
+   "from_state": "ANALYZING",
+   "reason": "1 recommendation(s)",
+   "to_state": "RECOMMENDED"
+  }
+ ],
+ "summary": {
+  "files_analyzed": 2,
+  "hotspots_without_rule": [],
+  "profile_id": "7d90571f-999d-458c-8ff3-ddb138c54fea",
+  "profile_size": "medium",
+  "provenance": {
+   "findings": "STATIC",
+   "profiler_evidence": "MEASURED"
+  },
+  "recommendations": 1,
+  "static_findings": 1
+ },
+ "warnings": [],
+ "workload_id": "1f3e2964-ef03-49f8-822e-b5181c827f48"
+}

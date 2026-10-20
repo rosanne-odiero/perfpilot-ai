@@ -1,18 +1,27 @@
 [
  {
-  "created_at": "2026-10-20T17:18:21.167575",
+  "created_at": "2026-10-20T19:42:19.242717",
   "error": null,
-  "id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
-  "job_id": "2f7a3597-c2ff-4b9c-a336-2d4f7842036a",
+  "id": "ab64e007-8631-457d-a5e3-640225ca08ca",
+  "job_id": "aa63b23d-9bb9-4cf3-8ccc-feedb0f66687",
   "job_message": "completed",
   "job_progress": 1.0,
   "job_status": "SUCCEEDED",
   "llm_consent": false,
-  "mode": "STATIC",
-  "snapshot_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced",
+  "mode": "RUNTIME",
+  "snapshot_id": "99144490-103a-4761-8e8b-ac120e9231f9",
   "stage": "COMPLETED",
   "status": "SUCCEEDED",
   "summary": {
+   "advisor": {
+    "insights": 4,
+    "mode": "deterministic",
+    "recommendations": 22,
+    "recommendations_by_provenance": {
+     "STATIC": 22
+    },
+    "suggested_diffs": 2
+   },
    "by_category": {
     "ALGORITHMIC": 5,
     "ALLOCATIONS": 3,
@@ -59,7 +68,7 @@
    },
    "call_graph_edges": 66,
    "cycles": 1,
-   "duration_seconds": 0.0783,
+   "duration_seconds": 0.278,
    "entrypoint_modules": 4,
    "entrypoint_symbols": 5,
    "files_analyzed": 20,
@@ -78,34 +87,60 @@
    "provenance": "STATIC",
    "python_files_in_inventory": 20,
    "rule_errors": 0,
+   "runtime": {
+    "backend": "docker",
+    "commands_discovered": 3,
+    "correlated_findings": 18,
+    "discovery_error": null,
+    "discovery_limits_hit": [],
+    "files_scanned": 24,
+    "measured_run_id": "9bbb269a-7911-43ca-93d8-e712b35c3c3b",
+    "provenance": "STATIC",
+    "runnable_commands": 3,
+    "runtime_available": true,
+    "runtime_only_hotspots": 3,
+    "state": "measured",
+    "unavailable_reason": null
+   },
    "skipped_reasons": {},
    "stage_seconds": {
-    "GRAPHING": 0.0085,
-    "INDEXING": 0.033,
-    "PRIORITIZING": 0.0006,
-    "STATIC_RULES": 0.0302
+    "AI_ANALYSIS": 0.0082,
+    "GRAPHING": 0.0084,
+    "INDEXING": 0.0353,
+    "PRIORITIZING": 0.0011,
+    "RUNTIME_DISCOVERY": 0.1873,
+    "STATIC_RULES": 0.03
    },
    "suppressed_findings": 0,
    "symbols": 79
   },
-  "updated_at": "2026-10-20T17:18:22.894122",
+  "updated_at": "2026-10-20T19:42:33.327361",
   "use_llm": false,
   "warnings": []
  },
  {
-  "created_at": "2026-10-20T16:48:28.979980",
+  "created_at": "2026-10-20T19:41:25.840043",
   "error": null,
-  "id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
-  "job_id": "d1b4cba1-48ce-41aa-b174-aa45cb74c752",
+  "id": "e59008b8-936f-4257-91bd-8b3925ec08c5",
+  "job_id": "75d75cd8-d101-4f09-b4d2-f0fa09671a1f",
   "job_message": "completed",
   "job_progress": 1.0,
   "job_status": "SUCCEEDED",
   "llm_consent": false,
   "mode": "STATIC",
-  "snapshot_id": "391eedf4-d9e0-4a1f-9ed1-b914133bd555",
+  "snapshot_id": "7ccdfcbb-0d05-4353-b8af-d1b3bcf03ab6",
   "stage": "COMPLETED",
   "status": "SUCCEEDED",
   "summary": {
+   "advisor": {
+    "insights": 4,
+    "mode": "deterministic",
+    "recommendations": 22,
+    "recommendations_by_provenance": {
+     "STATIC": 22
+    },
+    "suggested_diffs": 2
+   },
    "by_category": {
     "ALGORITHMIC": 5,
     "ALLOCATIONS": 3,
@@ -152,7 +187,7 @@
    },
    "call_graph_edges": 66,
    "cycles": 1,
-   "duration_seconds": 0.076,
+   "duration_seconds": 0.087,
    "entrypoint_modules": 4,
    "entrypoint_symbols": 5,
    "files_analyzed": 20,
@@ -173,15 +208,135 @@
    "rule_errors": 0,
    "skipped_reasons": {},
    "stage_seconds": {
-    "GRAPHING": 0.008,
-    "INDEXING": 0.0336,
-    "PRIORITIZING": 0.0006,
-    "STATIC_RULES": 0.0296
+    "AI_ANALYSIS": 0.008,
+    "GRAPHING": 0.0081,
+    "INDEXING": 0.0326,
+    "PRIORITIZING": 0.001,
+    "STATIC_RULES": 0.0303
    },
    "suppressed_findings": 0,
    "symbols": 79
   },
-  "updated_at": "2026-10-20T16:48:30.531758",
+  "updated_at": "2026-10-20T19:41:27.310803",
+  "use_llm": false,
+  "warnings": []
+ },
+ {
+  "created_at": "2026-10-20T18:40:49.379357",
+  "error": null,
+  "id": "32541fef-d397-4e67-8fa6-53a07a57473b",
+  "job_id": "47335989-af6b-493d-8f14-e441acb51cef",
+  "job_message": "completed",
+  "job_progress": 1.0,
+  "job_status": "SUCCEEDED",
+  "llm_consent": false,
+  "mode": "RUNTIME",
+  "snapshot_id": "290bd252-5848-4da3-b867-9939e8947c3d",
+  "stage": "COMPLETED",
+  "status": "SUCCEEDED",
+  "summary": {
+   "advisor": {
+    "insights": 4,
+    "mode": "deterministic",
+    "recommendations": 22,
+    "recommendations_by_provenance": {
+     "STATIC": 22
+    },
+    "suggested_diffs": 2
+   },
+   "by_category": {
+    "ALGORITHMIC": 5,
+    "ALLOCATIONS": 3,
+    "ARCHITECTURE": 2,
+    "ASYNC_BLOCKING": 2,
+    "CACHING": 2,
+    "COLLECTIONS": 2,
+    "DATABASE": 2,
+    "NESTED_LOOPS": 1,
+    "NETWORK": 1,
+    "REGEX": 2,
+    "REPEATED_PROCESSING": 1,
+    "STRINGS": 1
+   },
+   "by_confidence": {
+    "HIGH": 13,
+    "LOW": 1,
+    "MEDIUM": 10
+   },
+   "by_rule": {
+    "PP-ALLOC-001": 1,
+    "PP-ALLOC-002": 1,
+    "PP-ARCH-001": 1,
+    "PP-ARCH-002": 1,
+    "PP-ASYNC-001": 2,
+    "PP-CACHE-001": 1,
+    "PP-CACHE-002": 1,
+    "PP-COLL-001": 1,
+    "PP-COLL-002": 1,
+    "PP-COLL-003": 1,
+    "PP-DB-001": 2,
+    "PP-LOOP-001": 4,
+    "PP-LOOP-002": 1,
+    "PP-LOOP-003": 1,
+    "PP-LOOP-004": 1,
+    "PP-NET-001": 1,
+    "PP-REGEX-001": 2,
+    "PP-STR-001": 1
+   },
+   "by_severity": {
+    "HIGH": 5,
+    "LOW": 6,
+    "MEDIUM": 13
+   },
+   "call_graph_edges": 66,
+   "cycles": 1,
+   "duration_seconds": 0.4562,
+   "entrypoint_modules": 4,
+   "entrypoint_symbols": 5,
+   "files_analyzed": 20,
+   "files_skipped": 0,
+   "findings_total": 24,
+   "graph_edges": 29,
+   "graph_nodes": 20,
+   "import_roots": [
+    ""
+   ],
+   "limits_hit": [],
+   "modules": 20,
+   "parse_errors": 0,
+   "partial": false,
+   "partial_reasons": [],
+   "provenance": "STATIC",
+   "python_files_in_inventory": 20,
+   "rule_errors": 0,
+   "runtime": {
+    "backend": "docker",
+    "commands_discovered": 3,
+    "correlated_findings": 18,
+    "discovery_error": null,
+    "discovery_limits_hit": [],
+    "files_scanned": 24,
+    "measured_run_id": "2c90c54f-2228-4191-b320-4c8a4f3d418e",
+    "provenance": "STATIC",
+    "runnable_commands": 3,
+    "runtime_available": true,
+    "runtime_only_hotspots": 3,
+    "state": "measured",
+    "unavailable_reason": null
+   },
+   "skipped_reasons": {},
+   "stage_seconds": {
+    "AI_ANALYSIS": 0.0081,
+    "GRAPHING": 0.0084,
+    "INDEXING": 0.0342,
+    "PRIORITIZING": 0.0011,
+    "RUNTIME_DISCOVERY": 0.3662,
+    "STATIC_RULES": 0.0309
+   },
+   "suppressed_findings": 0,
+   "symbols": 79
+  },
+  "updated_at": "2026-10-20T18:41:13.935073",
   "use_llm": false,
   "warnings": []
  }

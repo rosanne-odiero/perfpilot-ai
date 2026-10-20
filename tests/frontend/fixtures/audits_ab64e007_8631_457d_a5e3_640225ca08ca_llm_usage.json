@@ -1,0 +1,19 @@
+{
+ "budget_exhausted": false,
+ "budget_tokens": 0,
+ "cache_hits": 0,
+ "calls": 0,
+ "estimated_cost_usd": 0.0,
+ "fallbacks": 0,
+ "input_tokens": 0,
+ "model": null,
+ "output_tokens": 0,
+ "prompt_version": null,
+ "redactions": 0,
+ "rejected_citations": 0,
+ "rejected_claims": 0,
+ "rejected_items": 0,
+ "stage_status": {
+  "llm": "not_requested"
+ }
+}

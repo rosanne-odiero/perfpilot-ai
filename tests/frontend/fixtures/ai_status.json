@@ -1,0 +1,16 @@
+{
+ "api_key_set": false,
+ "base_url_host": null,
+ "budget": {
+  "input_cost_per_1k": 0.0,
+  "max_tokens_per_audit": 60000,
+  "max_tokens_per_call": 6000,
+  "output_cost_per_1k": 0.0
+ },
+ "configured": false,
+ "consent_required": true,
+ "data_sent": "Only when an audit is started with use_llm=true and llm_consent=true: source snippets of the functions around static findings (and on their execution paths), finding descriptions, and module import summaries \u2014 redacted for secrets before sending. Content of sensitive files (.env, keys, credentials) is never sent, and the repository is never sent wholesale.",
+ "default_advisor": "deterministic",
+ "model": null,
+ "prompt_version": "system@1,unit_summaries@1,dependency_context@1,hot_paths@1,correlation@1,recommendations@1"
+}

@@ -10,9 +10,7 @@ from ui_fixtures import FakeApi, load
 from frontend import api_client
 
 
-@pytest.fixture
-def fake_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeApi]:
-    fake = FakeApi()
+def _install(monkeypatch: pytest.MonkeyPatch, fake: FakeApi) -> Iterator[FakeApi]:
     monkeypatch.setattr(api_client, "request", fake.request)
     monkeypatch.setattr(api_client, "download", fake.download)
     st.cache_data.clear()
@@ -21,8 +19,21 @@ def fake_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeApi]:
 
 
 @pytest.fixture
+def fake_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeApi]:
+    yield from _install(monkeypatch, FakeApi())
+
+
+@pytest.fixture
+def legacy_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeApi]:
+    """An API version without the AI, runtime and optimization endpoints."""
+    yield from _install(monkeypatch, FakeApi(legacy=True))
+
+
+@pytest.fixture
 def audit_id() -> str:
-    return next(a["id"] for a in load("audits.json") if a["status"] == "SUCCEEDED")
+    """The captured RUNTIME audit (with a measured run) whose sub-resources are recorded."""
+    key = next(k for k in load("manifest.json") if k.endswith("/findings"))
+    return key.split("/")[2]
 
 
 @pytest.fixture

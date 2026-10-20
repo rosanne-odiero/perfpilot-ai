@@ -1,0 +1,183 @@
+{
+ "default_size": "medium",
+ "description": "Return the query ids that appear in a list of known ids (membership test in a loop).",
+ "entrypoint": "workload:find_known",
+ "entrypoint_source": {
+  "content": "\"\"\"List lookup workload (deliberately inefficient, but correct).\n\n``find_known`` returns every query id that also appears in ``known_ids``, preserving query\norder and repeats. Membership is tested against a *list*, so each lookup is a linear scan and\nthe whole call is O(len(queries) * len(known_ids)).\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef find_known(known_ids: list[int], queries: list[int]) -> list[int]:\n    found: list[int] = []\n    for query in queries:\n        if query in known_ids:\n            found.append(query)\n    return found\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "fixture_description": "known_ids: n_known unique ints from [0, 4*n_known); queries: n_queries ints, about hit_ratio of them present in known_ids.",
+ "fixture_id": "fixtures:make_input",
+ "fixture_source": {
+  "content": "\"\"\"Deterministic input generator for the list lookup workload.\"\"\"\n\nfrom __future__ import annotations\n\nimport random\n\n\ndef make_input(n_known: int, n_queries: int, hit_ratio: float = 0.5, seed: int = 0) -> dict:\n    \"\"\"Return keyword arguments for ``find_known``.\n\n    ``known_ids`` are unique ints drawn from ``[0, 4 * n_known)``. Each query is a known id with\n    probability ``hit_ratio`` and otherwise an id that is guaranteed to be missing.\n    \"\"\"\n    rng = random.Random(seed)\n    universe = 4 * max(n_known, 1)\n    known_ids = rng.sample(range(universe), n_known)\n    known_set = set(known_ids)\n    missing = [value for value in range(universe) if value not in known_set]\n    queries = [\n        rng.choice(known_ids) if known_ids and rng.random() < hit_ratio else rng.choice(missing)\n        for _ in range(n_queries)\n    ]\n    return {\"known_ids\": known_ids, \"queries\": queries}\n",
+  "path": "fixtures.py",
+  "truncated": false
+ },
+ "has_reference_candidate": true,
+ "id": "564e4ab8-110c-4ca3-a91d-671fc1e22d01",
+ "invocation_mode": "keyword",
+ "name": "List lookup",
+ "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+ "readme": "# List lookup\n\n`workload.find_known(known_ids, queries)` returns the queries that also appear in `known_ids`.\n\n## Suspected bottleneck\n\n`query in known_ids` is a linear scan of a list, executed once per query, so the call is\nO(len(queries) \u00d7 len(known_ids)). The profile should show nearly all exclusive time inside\n`find_known` itself (the `in` operator on a list does not appear as a separate Python frame).\n\n## Plausible optimization and its semantic trade-offs\n\nBuilding `set(known_ids)` once turns each membership test into an average O(1) hash lookup.\n\n* Elements must be hashable (true for the generated ints, not for arbitrary objects).\n* Set membership uses `hash` + `==`; list membership uses identity then `==`. For ints these agree,\n  but for objects with inconsistent `__hash__`/`__eq__` the results can differ.\n* The set costs extra memory proportional to `len(known_ids)`.\n* Output order and repeats are unchanged because the queries are still iterated in order.\n\n`reference/optimized.py` is a hand-written **reference implementation for tests**, not output of\nthe platform.\n",
+ "size_parameters": {
+  "large": {
+   "n_known": 12000,
+   "n_queries": 12000
+  },
+  "medium": {
+   "n_known": 5000,
+   "n_queries": 5000
+  },
+  "small": {
+   "n_known": 300,
+   "n_queries": 300
+  }
+ },
+ "sizes": [
+  "large",
+  "medium",
+  "small"
+ ],
+ "slug": "list_lookup",
+ "spec": {
+  "default_size": "medium",
+  "description": "Return the query ids that appear in a list of known ids (membership test in a loop).",
+  "entrypoint": "workload:find_known",
+  "expected_output": {
+   "abs_tol": 0.0,
+   "comparison": "exact",
+   "description": "Query ids found in known_ids, in query order, repeats preserved.",
+   "rel_tol": 1e-09,
+   "type": "list[int]"
+  },
+  "fixture_description": "known_ids: n_known unique ints from [0, 4*n_known); queries: n_queries ints, about hit_ratio of them present in known_ids.",
+  "fixture_id": "fixtures:make_input",
+  "id": "564e4ab8-110c-4ca3-a91d-671fc1e22d01",
+  "input_dataset_id": null,
+  "invocation_mode": "keyword",
+  "memory_limit_mb": 1024,
+  "name": "List lookup",
+  "permitted_env_vars": [],
+  "project_id": "77ce2899-9f8b-4bf3-b9b8-6e61eb7f8b4c",
+  "reference_candidate": "reference/optimized.py",
+  "seed": 1729,
+  "sizes": {
+   "large": {
+    "n_known": 12000,
+    "n_queries": 12000
+   },
+   "medium": {
+    "n_known": 5000,
+    "n_queries": 5000
+   },
+   "small": {
+    "n_known": 300,
+    "n_queries": 300
+   }
+  },
+  "slug": "list_lookup",
+  "suspected_bottleneck": "`query in known_ids` scans a list for every query: O(n*m).",
+  "timeout_seconds": 120,
+  "validation": {
+   "allow_input_mutation": false,
+   "edge_cases": [
+    {
+     "expected_exception": null,
+     "input": {
+      "known_ids": [],
+      "queries": [
+       1,
+       2,
+       3
+      ]
+     },
+     "name": "no_known_ids"
+    },
+    {
+     "expected_exception": null,
+     "input": {
+      "known_ids": [
+       1,
+       2
+      ],
+      "queries": []
+     },
+     "name": "no_queries"
+    },
+    {
+     "expected_exception": null,
+     "input": {
+      "known_ids": [
+       1
+      ],
+      "queries": [
+       1,
+       1,
+       2,
+       1
+      ]
+     },
+     "name": "repeated_queries"
+    },
+    {
+     "expected_exception": null,
+     "input": {
+      "known_ids": [
+       1,
+       2.0,
+       true
+      ],
+      "queries": [
+       1,
+       2,
+       1.0,
+       true,
+       0,
+       3
+      ]
+     },
+     "name": "numeric_equality"
+    }
+   ],
+   "error_cases": [
+    {
+     "expected_exception": "TypeError",
+     "input": {
+      "known_ids": null,
+      "queries": [
+       1
+      ]
+     },
+     "name": "known_ids_none"
+    },
+    {
+     "expected_exception": "TypeError",
+     "input": {
+      "known_ids": [
+       1
+      ],
+      "queries": null
+     },
+     "name": "queries_none"
+    }
+   ],
+   "min_tests": 10,
+   "seeds": [
+    1729,
+    3,
+    5
+   ],
+   "sizes": [
+    "small",
+    "medium"
+   ],
+   "tests": [
+    "tests"
+   ]
+  },
+  "working_dir_id": "4403304c-f66c-43d4-bea7-9728388f060e"
+ },
+ "suspected_bottleneck": "`query in known_ids` scans a list for every query: O(n*m).",
+ "tree_sha256": "3a15485fcf5797f2980fb5d8a0a5357bd0c22f6cf670642e870f33640ceedb83"
+}
