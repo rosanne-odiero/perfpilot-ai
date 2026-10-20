@@ -109,6 +109,7 @@ Profile a workload, generate recommendations and a patch, approve it, validate c
 | POST | `/api/optimizations/{candidate_id}/reject` |  | 200 `CandidateOut` | Reject |
 | POST | `/api/optimizations/{candidate_id}/validate` |  | 202 `JobAccepted` — async job | Validate |
 | GET | `/api/optimizations/{candidate_id}/validation` |  | 200 `ValidationRunOut` | Get Validation |
+| GET | `/api/workloads/{workload_id}/optimizations` | `recommendation_id`, `limit` | 200 list[CandidateOut] | List Workload Candidates |
 
 ### benchmarks
 
