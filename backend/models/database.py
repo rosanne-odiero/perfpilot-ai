@@ -59,15 +59,37 @@ def build_engine(settings: Settings | None = None) -> Engine:
     return engine
 
 
-def init_engine(settings: Settings | None = None) -> Engine:
-    """(Re)initialise the global engine and create tables. Safe to call repeatedly."""
+def _is_memory_database(engine: Engine) -> bool:
+    return engine.url.get_backend_name() == "sqlite" and engine.url.database in (
+        None,
+        "",
+        ":memory:",
+    )
+
+
+def init_engine(settings: Settings | None = None, *, prepare_schema: bool = True) -> Engine:
+    """(Re)initialise the global engine and bring the schema up to date. Safe to call repeatedly.
+
+    With ``database_schema_mode="migrate"`` (the default) pending Alembic migrations are applied.
+    ``create_all`` is used for in-memory databases and when the test suite selects it: each test
+    gets a throwaway database, and ``tests/unit/test_migrations.py`` proves the migration head
+    produces exactly the same schema. Job child processes pass ``prepare_schema=False`` because
+    their parent worker already migrated the database.
+    """
     global _engine, _session_factory
+    settings = settings or get_settings()
     if _engine is not None:
         _engine.dispose()
     _engine = build_engine(settings)
     _session_factory = sessionmaker(bind=_engine, expire_on_commit=False, future=True)
     import_all_models()
-    Base.metadata.create_all(_engine)
+    if prepare_schema:
+        if settings.database_schema_mode == "create_all" or _is_memory_database(_engine):
+            Base.metadata.create_all(_engine)
+        else:
+            from backend.models.migrations import upgrade_to_head
+
+            upgrade_to_head(_engine)
     return _engine
 
 
