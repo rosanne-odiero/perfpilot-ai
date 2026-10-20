@@ -26,6 +26,7 @@ from backend.core.exceptions import (
     ValidationFailedError,
 )
 from backend.core.logging import get_logger
+from backend.core.observability import traced
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.jobs.service import enqueue_job
 from backend.models.database import session_scope, utcnow
@@ -142,6 +143,7 @@ def _plan(spec: WorkloadSpec, run: BenchmarkRun) -> BenchmarkPlan:
     )
 
 
+@traced("benchmark.run")
 def execute_benchmark_run(
     run_id: str, settings: Settings, progress: ProgressFn | None = None
 ) -> BenchmarkRun:

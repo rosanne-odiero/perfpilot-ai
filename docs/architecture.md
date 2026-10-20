@@ -58,3 +58,23 @@ was cancelled. Long-running endpoints return `202` with a `JobAccepted` body, an
 Every finding, recommendation, and metric carries a `Provenance`:
 `MEASURED` (this environment ran the code), `STATIC` (deterministic analysis), or
 `AI_HYPOTHESIS` (LLM or heuristic suggestion). Reports and the UI render these labels everywhere.
+
+## Persistence and schema
+
+SQLAlchemy 2 models live in `backend/models/orm/`; the schema is versioned with Alembic
+(`migrations/`, baseline `0001` generated from the models). The API and worker apply pending
+migrations at startup and `perfpilot init-db` does so explicitly. `make migration-check` (also run
+in CI and by `tests/unit/test_migrations.py`) fails when a model changes without a migration.
+
+## Deployment, observability, security
+
+- [deployment.md](deployment.md): the Docker Compose stack (api, worker, ui, sandbox image), the
+  data-directory "same path" rule for sibling sandbox containers, the Docker-socket trade-off,
+  settings, backups and workspace pruning.
+- Observability: JSON logs carry `job_id`/`audit_id`/`snapshot_id`/`run_id`, stage and operation
+  durations, and LLM token/cost per call; spans go to OpenTelemetry only when it is installed and
+  enabled (`backend/core/observability.py`, details in deployment.md).
+- [security.md](security.md): threat model, controls, review findings and residual risks;
+  [limitations.md](limitations.md): what the measurements and analyses cannot tell you.
+- [api.md](api.md): endpoint overview generated from [openapi.json](openapi.json)
+  (`make openapi`).

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -23,7 +23,18 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     data_dir: Path = Path("data")
     database_url: str | None = None
+    # "migrate" applies Alembic migrations on startup; "create_all" builds the schema straight from
+    # the ORM metadata (used by the test suite for fast throwaway databases).
+    database_schema_mode: Literal["migrate", "create_all"] = "migrate"
     api_base_url: str = "http://127.0.0.1:8000"
+    # Upper bound for request bodies other than repository ZIP uploads (those use max_upload_bytes).
+    max_request_bytes: int = 1024 * 1024
+    # Origins allowed to call the API from a browser (the Streamlit UI calls it server-side).
+    cors_allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:8501", "http://127.0.0.1:8501"]
+    )
+    # Emit OpenTelemetry spans when the opentelemetry API is importable (never a hard dependency).
+    otel_enabled: bool = False
 
     # --- Ingestion limits ----------------------------------------------------------
     local_allowlist: Annotated[list[Path], NoDecode] = Field(default_factory=list)
@@ -77,6 +88,13 @@ class Settings(BaseSettings):
     def _split_paths(cls, value: object) -> object:
         if isinstance(value, str):
             return [Path(p.strip()).expanduser() for p in value.split(",") if p.strip()]
+        return value
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [o.strip() for o in value.split(",") if o.strip()]
         return value
 
     @field_validator("github_allowed_hosts", mode="before")

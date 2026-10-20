@@ -21,6 +21,8 @@ from sqlalchemy import select, update
 from backend.core.config import Settings, get_settings
 from backend.core.exceptions import PerfPilotError
 from backend.core.logging import configure_logging, get_logger
+from backend.core.observability import configure_tracing, log_context, span
+from backend.core.redaction import redact_text
 from backend.jobs.registry import JobCancelledError, JobContext, get_handler
 from backend.models.database import init_engine, session_scope, utcnow
 from backend.models.enums import JobStatus
@@ -44,6 +46,17 @@ def _finish(job_id: str, status: JobStatus, **fields: Any) -> None:
             setattr(job, key, value)
 
 
+def job_log_fields(job: Job) -> dict[str, str]:
+    """Identifiers to bind to every log record emitted while ``job`` runs."""
+    fields = {"job_id": job.id, "job_type": job.job_type}
+    for key, value in (job.payload or {}).items():
+        if key.endswith("_id") and isinstance(value, str) and len(value) <= 64:
+            fields[key] = value
+    if job.subject_type and job.subject_id:
+        fields.setdefault(f"{job.subject_type}_id", job.subject_id)
+    return fields
+
+
 def execute_job(job_id: str, settings: Settings | None = None) -> JobStatus:
     """Run a claimed job's handler in the current process and persist the outcome."""
     settings = settings or get_settings()
@@ -54,37 +67,58 @@ def execute_job(job_id: str, settings: Settings | None = None) -> JobStatus:
         ctx = JobContext(
             job_id=job.id, job_type=job.job_type, payload=dict(job.payload), settings=settings
         )
+        fields = job_log_fields(job)
+    with log_context(**fields):
+        return _run_handler(ctx)
+
+
+def _run_handler(ctx: JobContext) -> JobStatus:
+    job_id = ctx.job_id
     started = time.perf_counter()
+
+    def elapsed_ms() -> float:
+        return round((time.perf_counter() - started) * 1000, 1)
+
     try:
-        handler = get_handler(ctx.job_type)
-        result = handler(ctx)
+        with span(f"job.{ctx.job_type}"):
+            handler = get_handler(ctx.job_type)
+            result = handler(ctx)
     except JobCancelledError:
+        ctx.close_stage("cancelled")
         _finish(job_id, JobStatus.CANCELLED, message="cancelled")
+        log.info("job cancelled", extra={"status": "cancelled", "duration_ms": elapsed_ms()})
         return JobStatus.CANCELLED
     except PerfPilotError as exc:
-        log.warning("job failed", extra={"job_id": job_id, "error_code": exc.code})
+        ctx.close_stage("failed")
+        log.warning(
+            "job failed",
+            extra={"status": "failed", "error_code": exc.code, "duration_ms": elapsed_ms()},
+        )
         _finish(
             job_id,
             JobStatus.FAILED,
-            error=exc.message,
+            error=redact_text(exc.message).text,
             error_details={"code": exc.code, **exc.details},
         )
         return JobStatus.FAILED
     except Exception as exc:
-        log.exception("job crashed", extra={"job_id": job_id})
+        ctx.close_stage("failed")
+        log.exception("job crashed", extra={"status": "failed", "duration_ms": elapsed_ms()})
+        # Exception text can quote repository content (e.g. a SyntaxError line), and both fields
+        # are returned by GET /api/jobs/{id}; redact them like any other exported text.
         _finish(
             job_id,
             JobStatus.FAILED,
-            error=f"{type(exc).__name__}: {exc}",
-            error_details={"code": "unhandled_exception", "traceback": traceback.format_exc()},
+            error=redact_text(f"{type(exc).__name__}: {exc}").text,
+            error_details={
+                "code": "unhandled_exception",
+                "traceback": redact_text(traceback.format_exc()).text,
+            },
         )
         return JobStatus.FAILED
-    duration = time.perf_counter() - started
+    ctx.close_stage("ok")
     _finish(job_id, JobStatus.SUCCEEDED, result=result, progress=1.0, message="completed")
-    log.info(
-        "job succeeded",
-        extra={"job_id": job_id, "job_type": ctx.job_type, "duration_s": round(duration, 3)},
-    )
+    log.info("job succeeded", extra={"status": "succeeded", "duration_ms": elapsed_ms()})
     return JobStatus.SUCCEEDED
 
 
@@ -92,7 +126,8 @@ def _child_main(job_id: str) -> None:
     signal.signal(signal.SIGTERM, signal.SIG_DFL)
     settings = get_settings()
     configure_logging(settings.log_level)
-    init_engine(settings)
+    configure_tracing(settings.otel_enabled)
+    init_engine(settings, prepare_schema=False)
     execute_job(job_id, settings)
 
 
@@ -185,6 +220,10 @@ class Worker:
                     _finish(job_id, JobStatus.TIMED_OUT, error="job exceeded its timeout")
                 else:
                     _finish(job_id, JobStatus.CANCELLED, message="cancelled")
+                log.warning(
+                    "job process terminated",
+                    extra={"job_id": job_id, "status": "timed_out" if timed_out else "cancelled"},
+                )
                 return
         with session_scope() as session:
             job = session.get(Job, job_id)
@@ -228,6 +267,7 @@ class Worker:
 def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
+    configure_tracing(settings.otel_enabled)
     init_engine(settings)
     Worker(settings).run_forever()
 

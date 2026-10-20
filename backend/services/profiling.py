@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from backend.benchmarking.environment import capture_environment
 from backend.core.config import Settings
 from backend.core.exceptions import NotFoundError, PerfPilotError
+from backend.core.observability import traced
 from backend.core.redaction import redact_text
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.jobs.service import enqueue_job
@@ -184,6 +185,7 @@ def _run_sampler(
     return info, output, []
 
 
+@traced("workload.profile")
 def execute_profile_run(
     run_id: str, settings: Settings, progress: ProgressFn | None = None
 ) -> ProfileRun:

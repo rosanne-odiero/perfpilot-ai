@@ -36,11 +36,13 @@ class RepositoryRef(Contract):
     """User-supplied pointer to a repository. Exactly one locator must be set per type."""
 
     source_type: RepositorySourceType
-    url: str | None = None
-    ref: str | None = Field(default=None, description="Branch, tag or commit for git sources")
-    local_path: str | None = None
-    upload_artifact_id: str | None = None
-    display_name: str | None = None
+    url: str | None = Field(default=None, max_length=2048)
+    ref: str | None = Field(
+        default=None, max_length=255, description="Branch, tag or commit for git sources"
+    )
+    local_path: str | None = Field(default=None, max_length=4096)
+    upload_artifact_id: str | None = Field(default=None, max_length=64)
+    display_name: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def _check_locator(self) -> RepositoryRef:

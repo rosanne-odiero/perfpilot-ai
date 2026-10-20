@@ -251,13 +251,13 @@ every merge leaves `main` runnable.
 - **Exit:** a user can audit a public repo end to end in the UI without an LLM key.
 
 ### Phase 11 — Hardening · `chore/hardening`
-- [ ] Alembic baseline migration generated from the final ORM metadata; `init-db` runs migrations
-- [ ] Security review of ingestion, sandbox, and patch paths; `tests/security/` complete
-- [ ] Observability: structured logs with job/project/run IDs, durations, token/cost; optional OpenTelemetry spans
-- [ ] Docker: `Dockerfile` (api/worker/ui), `docker-compose.yml` with volumes; separate sandbox image; non-root
-- [ ] `security.yml`: pip-audit, gitleaks, CodeQL (or bandit)
-- [ ] CI: coverage gate (≥80% on core logic), Docker build validation, no benchmarking on shared runners
-- [ ] Docs: `architecture.md`, `methodology.md`, `security.md`, `ai-design.md`, `api.md`, `limitations.md`
+- [x] Alembic baseline migration generated from the final ORM metadata; `init-db` runs migrations
+- [x] Security review of ingestion, sandbox, and patch paths; `tests/security/` complete
+- [x] Observability: structured logs with job/project/run IDs, durations, token/cost; optional OpenTelemetry spans
+- [x] Docker: `Dockerfile` (api/worker/ui), `docker-compose.yml` with volumes; separate sandbox image; non-root
+- [x] `security.yml`: pip-audit, gitleaks, CodeQL (or bandit)
+- [x] CI: coverage gate (≥80% on core logic), Docker build validation, no benchmarking on shared runners
+- [x] Docs: `architecture.md`, `methodology.md`, `security.md`, `ai-design.md`, `api.md`, `limitations.md`
 
 ### Phase 12 — End-to-end acceptance and demo · `test/e2e-acceptance`, then `docs/portfolio`
 - [x] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
