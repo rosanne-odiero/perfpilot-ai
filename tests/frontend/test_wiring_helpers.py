@@ -243,3 +243,16 @@ def test_experiments_frame() -> None:
     assert row["Kind"] == "reference benchmark"
     assert row["95% CI"] == "30.1\u00d7 to 34.9\u00d7"
     assert row["Validation"] == ""
+
+
+def test_priority_change_explains_share_and_exercised_path() -> None:
+    from frontend.views.audit_runtime import _priority_change
+
+    only_share = {
+        "static_priority_score": 20.0,
+        "measured_priority_score": 30.0,
+        "measured_factor": 1.5,
+    }
+    assert _priority_change(only_share) == "x1.50 from 20.0 (measured share)"
+    both = {"static_priority_score": 29.7, "measured_priority_score": 39.6, "measured_factor": 1.0}
+    assert _priority_change(both) == "x1.33 from 29.7 (share x1.00 · exercised path x1.33)"
