@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="48" viewBox="0 0 240 48">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="0.6" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="4" width="40" height="40" rx="10" fill="url(#g)"/>
+  <path d="M25 10 L13 27 H21 L18 38 L31 20 H23 Z" fill="#ffffff"/>
+  <text x="52" y="25" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="19"
+        font-weight="700" fill="#e2e8f0">PerfPilot <tspan fill="url(#t)">AI</tspan></text>
+  <text x="52" y="41" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="10.5"
+        fill="#94a3b8">Audit · Profile · Prove</text>
+</svg>

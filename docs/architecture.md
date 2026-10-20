@@ -18,7 +18,7 @@
 | ORM tables | a new module in `backend/models/orm/` | `import_all_models()` imports every module |
 | API routes | a module in `backend/api/routes/` exposing `router = APIRouter(...)` | mounted under `/api` automatically |
 | Background work | a module in `backend/jobs/handlers/` using `@job_handler("domain.action")` | `discover_handlers()` |
-| Streamlit pages | `frontend/pages/<name>.py` + an entry in `PAGES` in `frontend/app.py` | `st.navigation` |
+| Streamlit pages | `frontend/app_pages/<name>.py` (thin) + an entry in `PAGES` in `frontend/app.py`; sections in `frontend/views/`, widgets in `frontend/components/` | `st.navigation` (see `docs/frontend.md`) |
 
 ## Data contracts
 
