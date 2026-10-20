@@ -7,6 +7,7 @@ to ``data:`` URIs, so rendering never touches the network or the filesystem.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import io
 from functools import lru_cache
@@ -30,7 +31,10 @@ class ReportRenderError(PerfPilotError):
 def available_pdf_engine() -> str | None:
     """The first PDF engine whose Python package *and* native libraries load."""
     try:
-        weasyprint = importlib.import_module("weasyprint")
+        # WeasyPrint prints a multi-line banner to stdout when its native libraries are missing;
+        # the fallback is expected and logged below, so keep worker output clean.
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            weasyprint = importlib.import_module("weasyprint")
         if hasattr(weasyprint, "HTML"):
             return "weasyprint"
     except (ImportError, OSError) as exc:
