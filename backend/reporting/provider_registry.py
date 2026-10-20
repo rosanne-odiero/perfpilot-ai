@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from backend.models.audit_schemas import Finding
 from backend.reporting.model import (
     BenchmarkResult,
+    DiffEntry,
     ReportModel,
     RuntimeProfile,
     ValidationOutcome,
@@ -38,12 +39,16 @@ class ProviderContribution(ReportModel):
     runtime_profiles: list[RuntimeProfile] = Field(default_factory=list)
     validation_outcomes: list[ValidationOutcome] = Field(default_factory=list)
     benchmark_results: list[BenchmarkResult] = Field(default_factory=list)
+    code_changes: list[DiffEntry] = Field(
+        default_factory=list, description="Diffs of real patch candidates (section 10)"
+    )
     limitations: list[str] = Field(default_factory=list)
 
     @property
     def is_empty(self) -> bool:
         return not (
             self.runtime_profiles
+            or self.code_changes
             or self.validation_outcomes
             or self.benchmark_results
             or self.limitations
