@@ -3,8 +3,9 @@ UV ?= uv
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8000
 UI_PORT ?= 8501
+SANDBOX_IMAGE ?= perfpilot-sandbox:latest
 
-.PHONY: help install api worker ui dev check lint format typecheck test test-fast cov clean
+.PHONY: help install api worker ui dev check lint format typecheck test test-fast cov clean sandbox-image test-docker
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -47,6 +48,12 @@ test-fast: ## Tests excluding slow/docker/network
 
 cov: ## Tests with coverage
 	$(UV) run pytest --cov --cov-report=term-missing --cov-report=xml
+
+sandbox-image: ## Build the runtime sandbox image (needs Docker)
+	docker build --file docker/sandbox.Dockerfile --tag $(SANDBOX_IMAGE) docker
+
+test-docker: ## Sandbox integration tests (need Docker + the sandbox image)
+	$(UV) run pytest -m docker -ra
 
 check: lint typecheck test-fast ## Everything CI runs (minus docker/network)
 
