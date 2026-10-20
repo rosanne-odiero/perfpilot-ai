@@ -1,0 +1,161 @@
+# PerfPilot AI — local deployment (see docs/deployment.md).
+#
+#   make compose-up                      # = docker compose up --build -d (sets PERFPILOT_HOST_DATA_DIR)
+#   docker compose --profile sandbox build sandbox-image   # runtime-audit sandbox image
+#
+# Data: artifacts and repository workspaces live in ONE host directory that is bind-mounted at the
+# SAME absolute path in the api and worker, and PERFPILOT_DATA_DIR points at it. The worker starts
+# sandbox containers through the host's Docker daemon, and the daemon resolves bind-mount sources
+# on the HOST, so the paths the worker computes must be valid host paths. The SQLite database is
+# on the named volume "perfpilot-db".
+#
+# Docker socket: only the worker gets /var/run/docker.sock (ADR-005). Access to the socket is
+# root-equivalent on the host; see docs/deployment.md for rootless Docker / socket-proxy options.
+
+x-app-env: &app-env
+  PERFPILOT_DATA_DIR: ${PERFPILOT_HOST_DATA_DIR:-${PWD}/data}
+  # SQLite lives on a named volume (a native filesystem inside the Docker VM): WAL locking and
+  # shared memory are not reliable on the file-sharing layer Docker Desktop uses for bind mounts.
+  PERFPILOT_DATABASE_URL: sqlite:////var/lib/perfpilot/db/perfpilot.sqlite3
+  PERFPILOT_API_BASE_URL: http://api:8000
+  PERFPILOT_LOCAL_ALLOWLIST: ${PERFPILOT_CONTAINER_IMPORT_DIR:-/imports}
+
+x-app-volumes: &app-volumes
+  - type: volume
+    source: perfpilot-db
+    target: /var/lib/perfpilot/db
+  - type: bind
+    source: ${PERFPILOT_HOST_DATA_DIR:-${PWD}/data}
+    target: ${PERFPILOT_HOST_DATA_DIR:-${PWD}/data}
+  # Optional read-only directory the "Local directory" importer may read (allowlisted above).
+  - type: bind
+    source: ${PERFPILOT_IMPORT_DIR:-./docker/imports}
+    target: ${PERFPILOT_CONTAINER_IMPORT_DIR:-/imports}
+    read_only: true
+
+x-app-build: &app-build
+  context: .
+  args:
+    # Build-time package mirror for networks that cannot reach PyPI (empty = public PyPI).
+    UV_INDEX_URL: ${UV_INDEX_URL:-}
+    APP_UID: ${PERFPILOT_UID:-10001}
+    APP_GID: ${PERFPILOT_GID:-10001}
+
+services:
+  api:
+    build:
+      <<: *app-build
+      target: app
+    image: perfpilot-app:latest
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    env_file:
+      - path: .env
+        required: false
+    environment: *app-env
+    volumes: *app-volumes
+    ports:
+      - "127.0.0.1:${PERFPILOT_API_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "perfpilot-healthcheck", "api"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+    restart: unless-stopped
+
+  worker:
+    build:
+      <<: *app-build
+      target: worker
+    image: perfpilot-worker:latest
+    command: ["python", "-m", "backend.jobs.worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *app-env
+      PERFPILOT_SANDBOX_DOCKER_PATH: /usr/local/bin/docker
+      PERFPILOT_SANDBOX_IMAGE: ${PERFPILOT_SANDBOX_IMAGE:-perfpilot-sandbox:latest}
+      DOCKER_CONFIG: /tmp/.docker
+    volumes:
+      - type: volume
+        source: perfpilot-db
+        target: /var/lib/perfpilot/db
+      - type: bind
+        source: ${PERFPILOT_HOST_DATA_DIR:-${PWD}/data}
+        target: ${PERFPILOT_HOST_DATA_DIR:-${PWD}/data}
+      - type: bind
+        source: ${PERFPILOT_IMPORT_DIR:-./docker/imports}
+        target: ${PERFPILOT_CONTAINER_IMPORT_DIR:-/imports}
+        read_only: true
+      # Root-equivalent on the host. Only the worker mounts it; see docs/deployment.md.
+      - type: bind
+        source: ${DOCKER_SOCKET:-/var/run/docker.sock}
+        target: /var/run/docker.sock
+    # The socket is usually root:docker (Linux) or root:root (Docker Desktop); grant that group.
+    group_add:
+      - "${PERFPILOT_DOCKER_GID:-0}"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ui:
+    build:
+      <<: *app-build
+      target: app
+    image: perfpilot-app:latest
+    command:
+      - streamlit
+      - run
+      - frontend/app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --server.headless=true
+    # No env_file: the UI only talks to the API and never needs LLM keys or other settings.
+    environment:
+      PERFPILOT_API_BASE_URL: http://api:8000
+      HOME: /tmp
+    ports:
+      - "127.0.0.1:${PERFPILOT_UI_PORT:-8501}:8501"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "perfpilot-healthcheck", "ui"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Not a long-running service: builds the runtime-audit sandbox image the worker launches.
+  #   docker compose --profile sandbox build sandbox-image
+  sandbox-image:
+    profiles: [sandbox]
+    build:
+      context: docker
+      dockerfile: sandbox.Dockerfile
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+    image: ${PERFPILOT_SANDBOX_IMAGE:-perfpilot-sandbox:latest}
+    network_mode: none
+    command: ["python", "--version"]
+
+volumes:
+  perfpilot-db:
