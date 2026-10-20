@@ -144,7 +144,7 @@ every merge leaves `main` runnable.
 - [x] Git metadata: commit SHA, branch/ref, remote URL (credentials stripped), commit date, dirty flag
 - [x] Language and framework detection (by extension + manifest + import evidence: Django, Flask, FastAPI, SQLAlchemy, pandas, NumPy, asyncio, Celery, …), each with the evidence that triggered it
 - [x] Dependency discovery: `pyproject.toml` (PEP 621, Poetry), `requirements*.txt`, `setup.cfg`, `setup.py` (AST read only, never executed), `Pipfile`, lock files
-- [ ] Secret redaction module (regex + entropy: AWS/GCP/Azure keys, GitHub tokens, private keys, `.env` values, connection strings), used before **any** external AI call and in reports
+- [x] Secret redaction module (regex + entropy: AWS/GCP/Azure keys, GitHub tokens, private keys, `.env` values, connection strings), used before **any** external AI call and in reports *(`backend/core/redaction.py`; applied to LLM outbound messages, reports, file-content API, sandbox output and stored job errors)*
 - [x] API: `POST /api/repositories` (GitHub URL / local), `POST /api/repositories/upload` (ZIP), `GET /api/repositories/{id}`; the inventory is served per snapshot: `GET /api/snapshots/{id}`, `GET /api/snapshots/{id}/files`, `GET /api/snapshots/{id}/files/content` (see `docs/ingestion.md`)
 - [x] Tests: zip-slip, symlink escape, zip bomb, oversized repo, bad URLs (ssh, file://, other hosts, credentials in URL), allowlist escape, redaction corpus
 - **Exit:** a fixture repo imported through all three providers yields an identical inventory, and every security test passes.
@@ -163,11 +163,11 @@ every merge leaves `main` runnable.
 - [x] Repeated data processing: identical comprehension/transform recomputed in a loop or across sibling calls; repeated `json.loads`/`pd.read_*` of the same source
 - [x] Inefficient collections: list used as queue (`deque`), repeated `list(dict.keys())`, `len(list(...))`
 - [x] Repeated DB queries: ORM/DB-API calls inside loops (N+1 pattern) for SQLAlchemy, Django ORM, sqlite3, psycopg
-- [ ] Allocations: objects/large literals built inside hot loops, `copy.deepcopy` in loops, string formatting in tight loops
+- [ ] Allocations: objects/large literals built inside hot loops, `copy.deepcopy` in loops, string formatting in tight loops *(all except string formatting in tight loops — left out as too noisy)*
 - [x] Async blocking: `time.sleep`, `requests.*`, sync file I/O, `subprocess.run`, sync DB drivers inside `async def`
 - [x] Repeated network calls: HTTP clients inside loops; a new `requests.Session` / `httpx.Client` per call
 - [x] Caching opportunities: pure functions called repeatedly with literal/constant args; no `lru_cache` on recursive pure functions
-- [ ] Architectural: import-time heavy work, chatty module boundaries (high-fan-in hot modules), global mutable caches without bounds
+- [ ] Architectural: import-time heavy work, chatty module boundaries (high-fan-in hot modules), global mutable caches without bounds *(chatty module boundaries is an advisor insight, not a rule)*
 - [x] Complexity estimate per function (loop nesting, recursion), labeled as an estimate
 - [x] Prioritization score = severity × confidence × path-criticality (entry-point reachability, fan-in), with the formula documented
 - [x] Positive **and** false-positive unit tests per rule
@@ -192,7 +192,7 @@ every merge leaves `main` runnable.
 - [x] Subprocess runner: fixed interpreter, arg list (no `shell=True`), timeout, `resource` rlimits, scrubbed env, temp cwd
 - [x] cProfile → pstats → normalized `Hotspot` rows (exclusive% vs cumulative% documented and never summed)
 - [x] tracemalloc peak vs psutil RSS, labeled separately; unsupported → `unavailable`
-- [ ] Optional py-spy (flamegraph/speedscope) with graceful degradation
+- [ ] Optional py-spy (flamegraph/speedscope) with graceful degradation *(implemented; only the degradation path is verified: py-spy is not installed here and needs root on macOS)*
 - [x] Profiling UI pages (workload explorer, hotspots, memory)
 - **Exit:** profiling a bundled workload from the UI and from the CLI gives persisted, non-hardcoded metrics.
 
@@ -219,7 +219,7 @@ every merge leaves `main` runnable.
 **`feature/sandbox-runtime`**
 - [x] `ExecutionBackend` protocol; `DockerSandboxBackend`: `--network none`, `--read-only`, tmpfs `/tmp`, `--cpus`, `--memory`, `--pids-limit`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root UID, wall-clock kill *(verified 2026-10-20 against Docker Desktop 29.9.1: `tests/sandbox/test_docker_integration.py` — network blocked (only `lo` up, no routes, DNS fails), read-only FS, non-root, OOM and timeout kill)*
 - [x] Sandbox image with profilers preinstalled; dependency install happens in a separate, explicitly approved network-enabled step that produces a cached env layer, then runs offline *(`docker/sandbox.Dockerfile`, `make sandbox-image [PIP_INDEX_URL=...]`, `backend/sandbox/environment.py`; image build and the approved dependency-install test verified)*
-- [ ] The worker talks to Docker; **the API container gets no Docker socket**
+- [x] The worker talks to Docker; **the API container gets no Docker socket** *(verified in `docker compose` and by a test that fails if the API process touches the Docker backend)*
 - [x] If no isolation backend is available, runtime mode is **disabled with a clear reason**. It never falls back to the host.
 
 **`feature/runtime-audit`**
@@ -262,11 +262,11 @@ every merge leaves `main` runnable.
 ### Phase 12 — End-to-end acceptance and demo · `test/e2e-acceptance`, then `docs/portfolio`
 - [x] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
   import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data *(`tests/e2e/test_acceptance.py`: ZIP import of ShopFast, persistent worker with per-job child processes; steps 9–11 verified against the real Docker sandbox)*
-- [ ] Optional network-marked variant against a real small public repo
+- [ ] Optional network-marked variant against a real small public repo *(manual run verified via the UI/`scripts/evaluate_repository.py` on `pallets/itsdangerous`; no committed test)*
 - [x] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence *(`tests/e2e/test_workload_deep_dive.py`: `duplicate_counter` + `nested_loop` via the HTTP API and the isolated worker — profile → hotspots → analysis → patch → approve → validate → benchmark → experiment reports — then engine disposal + fresh app on the same data dir; plus a wrong candidate that fails validation and a validator-rejected patch, both reported without benchmark numbers)*
 - [x] Experiment report export (base spec: final engineering report for an issue/PR): `ExperimentReport` for a candidate or a reference benchmark in Markdown, JSON, HTML (inline SVG box/strip plot), CSV (raw samples + validation checks) and PDF; `POST/GET /api/optimizations/{id}/reports`, `POST/GET /api/benchmarks/{id}/reports`, `GET /api/experiments` *(see `docs/reports.md`)*
-- [ ] Real screenshots, real benchmark table, evaluation report from measured results
-- [ ] README polish
+- [x] Real screenshots, real benchmark table, evaluation report from measured results *(`docs/screenshots/`, README "Measured results"; `evals/evaluation_report.md`)*
+- [x] README polish *(step-by-step setup, own repo import, LLM configuration, runtime audit, compose; quick start verified on a fresh clone)*
 
 ---
 
@@ -350,3 +350,23 @@ be implemented, but runtime mode will report `isolation backend unavailable` loc
 | 2026-10-20 | `main` | Repository initialized |
 | 2026-10-20 | `docs/implementation-plan` | Implementation plan, decisions log, and development workflow |
 | 2026-10-20 | `feature/foundation` | Config, DB, job queue + worker, artifact store, API/UI shells, CI |
+| 2026-10-20 | `feature/redaction-core` | Shared secret redaction |
+| 2026-10-20 | `feature/repo-ingestion` | GitHub / ZIP / allowlisted local ingestion, filters, limits, detection, dependencies |
+| 2026-10-20 | `feature/static-audit` | AST index, import graph, 21 static rules, prioritization, audit job + API |
+| 2026-10-20 | `feature/workload-engine` | Five bundled workloads, profiling, paired A/B benchmarking |
+| 2026-10-20 | `feature/reporting` | Audit reports in HTML / MD / JSON / CSV / PDF |
+| 2026-10-20 | `feature/sandbox-runtime` | Docker sandbox, command discovery, approvals |
+| 2026-10-20 | `ci/github-actions`, `fix/linux-benchmark-ci` | CI workflow; Linux clock/RLIMIT fixes |
+| 2026-10-20 | `feature/runtime-audit` | Runtime audit: sandbox profiling, correlation, report section 7 |
+| 2026-10-20 | `feature/ai-advisor` | Path ranking, deterministic advisor, LLM pipeline with citation guard |
+| 2026-10-20 | `feature/patch-validation` | Patch generation, approval, correctness validation, candidate benchmarks |
+| 2026-10-20 | `feature/frontend-audit` | Repository-Audit-first Streamlit UI |
+| 2026-10-20 | `chore/docker-verification` | Sandbox verified against real Docker |
+| 2026-10-20 | `test/e2e-acceptance` | Feature-spec acceptance test (steps 1–11) |
+| 2026-10-20 | `feature/evaluation-tool`, `fix/report-local-path` | End-user evaluation script; host paths kept out of reports |
+| 2026-10-20 | `feature/experiment-reports` | Workload experiment reports; base-spec E2E with restart persistence |
+| 2026-10-20 | `feature/repo-optimization` | Patch, validate and benchmark repository hotspots in the sandbox; LLM patch proposer |
+| 2026-10-20 | `chore/hardening` | Docker Compose, Alembic, observability, security hardening, security CI |
+| 2026-10-20 | `fix/certifi-advisory` | certifi security update flagged by pip-audit |
+| 2026-10-20 | `feature/frontend-wiring` | UI for AI, runtime, optimization, repository candidates and experiment reports |
+| 2026-10-20 | `docs/readme` | README, measured results and real screenshots |
