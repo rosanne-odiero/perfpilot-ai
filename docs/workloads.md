@@ -29,11 +29,25 @@ patched copy of the workspace.
 | `fixture` | `module:function` that builds the input |
 | `fixture_description` | What the generated input looks like |
 | `invocation_mode` | `single` → `fn(data)`, `positional` → `fn(*data)`, `keyword` → `fn(**data)`, `none` → `fn()` |
-| `expected_output` | `{type, comparison: exact or float_tolerance, rel_tol, abs_tol, description}` |
+| `expected_output` | `{type, comparison: exact, unordered or float_tolerance, rel_tol, abs_tol, description}`. `unordered` compares a top-level list/tuple as a multiset |
 | `timeout_seconds`, `memory_limit_mb` | Per-process limits |
 | `permitted_env_vars` | Variables forwarded to the child (everything else is scrubbed) |
 | `sizes`, `default_size`, `seed` | Fixture keyword arguments per size and the fixed seed |
 | `reference_candidate` | Workspace-relative path of the bundled reference implementation |
+| `validation` | Contract used to validate patch candidates (below). Optional |
+
+### `validation`
+
+| Field | Meaning |
+|---|---|
+| `tests` | Workspace-relative test paths that pytest runs against the original and the patched copy (default `["tests"]`) |
+| `min_tests` | Fewer passing tests makes the check `INCONCLUSIVE` |
+| `sizes`, `seeds` | Fixture inputs compared between original and candidate (default: first + default size, `seed..seed+2`) |
+| `edge_cases` | `[{name, input}]`: literal inputs shaped for the invocation mode (JSON, so tuples arrive as lists) |
+| `error_cases` | `[{name, input, expected_exception}]`: inputs on which the original must raise; the candidate must raise the same type |
+| `allow_input_mutation` | If `false` (default), a candidate that starts mutating its input fails validation |
+
+See [optimization-workflow.md](optimization-workflow.md) for how these are used.
 
 The registered form is `backend.models.workloads.WorkloadSpec`. It adds `id`, `project_id`,
 `working_dir_id` (source snapshot id), and `input_dataset_id` (null for fixture-generated inputs).
@@ -71,9 +85,15 @@ GET  /api/benchmarks/{id}
 GET  /api/benchmarks/{id}/results?kind=preflight|timing|memory
 ```
 
-`{"candidate_id": …}` is part of the contract now. Until the patch-validation phase registers a
-resolver (`backend.benchmarking.candidates.register_candidate_resolver`), it returns
-`501 not_configured`.
+`{"candidate_id": …}` benchmarks a **VALIDATED** patch candidate against the original
+(see [optimization-workflow.md](optimization-workflow.md)). Unknown candidates return `404`.
+Candidates that are not validated, or that belong to another workload, return `409`. If no
+resolver is registered (`backend.benchmarking.candidates.register_candidate_resolver`), the
+request returns `501 not_configured`.
+
+The deep-dive endpoints (`/api/analyses`, `/api/optimizations`) and
+`scripts/optimize_workload.py` are documented in
+[optimization-workflow.md](optimization-workflow.md).
 
 CLI (same services, same JSON shapes, persisted to the same database):
 

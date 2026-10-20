@@ -106,9 +106,9 @@ the `command` object are used by Runtime Audits ([runtime-audit.md](runtime-audi
 ## 3. Benchmarking (paired A/B)
 
 The baseline is the registered workspace. The candidate is a copy of the workspace with the
-entrypoint module replaced: by the bundled reference (labeled
-`reference implementation (bundled, for testing)`), or by a validated patch candidate in a later
-phase through `register_candidate_resolver`. Both trees are hashed into `SourceSnapshot` rows.
+entrypoint module replaced by the bundled reference (labeled
+`reference implementation (bundled, for testing)`), or a copy of a **validated** patch
+candidate's workspace (see [optimization-workflow.md](optimization-workflow.md)). Both trees are hashed into `SourceSnapshot` rows.
 
 1. **Preflight.** One call per variant. The run is `INVALID` if the input hashes differ ("refusing
    to compare") or the outputs are not equivalent under the output contract (`exact` hash equality,

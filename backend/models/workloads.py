@@ -32,6 +32,8 @@ class InvocationMode(StrEnum):
 class OutputComparison(StrEnum):
     EXACT = "exact"
     FLOAT_TOLERANCE = "float_tolerance"
+    # Top-level sequence compared as a multiset (order ignored); elements compared exactly.
+    UNORDERED = "unordered"
 
 
 class RunStatus(StrEnum):
@@ -100,6 +102,50 @@ class OutputContract(BaseModel):
     description: str = ""
 
 
+class ValidationCase(BaseModel):
+    """A literal workload input (shaped for the invocation mode) used by patch validation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(pattern=r"^[a-z0-9_]{1,64}$")
+    input: Any = None
+    expected_exception: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,99}$",
+        description="Exception type name the original raises (error cases only)",
+    )
+
+
+class ValidationConfig(BaseModel):
+    """How a patch candidate is checked against the original (patch-validation phase)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tests: list[str] = Field(
+        default_factory=lambda: ["tests"],
+        description="Workspace-relative test paths run with pytest against the patched copy",
+    )
+    min_tests: int = Field(default=1, ge=0, description="Fewer passing tests is INCONCLUSIVE")
+    sizes: list[str] = Field(
+        default_factory=list, description="Fixture sizes compared (default: first + default)"
+    )
+    seeds: list[int] = Field(
+        default_factory=list, description="Fixture seeds compared (default: seed, seed+1, seed+2)"
+    )
+    edge_cases: list[ValidationCase] = Field(default_factory=list)
+    error_cases: list[ValidationCase] = Field(default_factory=list)
+    allow_input_mutation: bool = False
+
+    @field_validator("tests")
+    @classmethod
+    def _tests(cls, value: list[str]) -> list[str]:
+        for path in value:
+            parts = re.split(r"[/\\]", path)
+            if not path or path.startswith(("/", "\\")) or ".." in parts or ":" in path:
+                raise ValueError("validation tests must be relative paths inside the workspace")
+        return value
+
+
 class WorkloadManifest(BaseModel):
     """Schema of an example's ``workload.json``."""
 
@@ -122,6 +168,7 @@ class WorkloadManifest(BaseModel):
         default=None, description="Workspace-relative path of a bundled reference implementation"
     )
     suspected_bottleneck: str = ""
+    validation: ValidationConfig = Field(default_factory=ValidationConfig)
 
     @field_validator("entrypoint")
     @classmethod
@@ -158,6 +205,9 @@ class WorkloadManifest(BaseModel):
                 raise ValueError(f"invalid size name {size!r}")
         if self.default_size not in self.sizes:
             raise ValueError("default_size must be one of sizes")
+        unknown = [size for size in self.validation.sizes if size not in self.sizes]
+        if unknown:
+            raise ValueError(f"validation.sizes references unknown sizes {unknown}")
         return self
 
 
@@ -191,6 +241,7 @@ class WorkloadSpec(BaseModel):
     seed: int = 0
     reference_candidate: str | None = None
     suspected_bottleneck: str = ""
+    validation: ValidationConfig = Field(default_factory=ValidationConfig)
 
     @field_validator("entrypoint")
     @classmethod

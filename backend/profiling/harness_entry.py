@@ -18,6 +18,8 @@ The request is a JSON object; the result is always written (atomically) as a JSO
              Opt-in flags on the command object: ``trace_memory`` (tracemalloc concurrently
              with cProfile) and ``stats_json`` (``profile_stats.json``: the pstats table as JSON,
              so consumers never need to unmarshal an untrusted ``.prof``).
+``cases``    call the workload once per listed case (a fixture call or a literal JSON input)
+             and report each output digest or raised exception plus input mutation.
 
 Every target (entrypoint, fixture, script, pytest path) must resolve inside ``workspace_root``.
 """
@@ -44,12 +46,14 @@ from pathlib import Path
 from typing import Any
 
 PROTOCOL_VERSION = 1
-MODES = ("profile", "time", "memory", "command")
+MODES = ("profile", "time", "memory", "command", "cases")
 INVOCATION_MODES = ("single", "positional", "keyword", "none")
 COMMAND_KINDS = ("module", "script", "pytest")
 _DOTTED = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 _PREVIEW_CHARS = 300
 _DEFAULT_MAX_OUTPUT_VALUE_BYTES = 8 * 1024 * 1024
+_MAX_CASES = 500
+_MAX_EXCEPTION_MESSAGE_CHARS = 500
 
 
 class HarnessError(Exception):
@@ -195,8 +199,11 @@ class Workload:
             raise HarnessError("bad_request", f"invocation_mode must be one of {INVOCATION_MODES}")
         self.invocation_mode = mode
 
-    def make_input(self) -> Any:
-        data = self.fixture(**self.fixture_kwargs)
+    def make_input(self, fixture_kwargs: dict[str, Any] | None = None) -> Any:
+        data = self.fixture(**(self.fixture_kwargs if fixture_kwargs is None else fixture_kwargs))
+        return self.check_shape(data)
+
+    def check_shape(self, data: Any) -> Any:
         if self.invocation_mode == "positional" and not isinstance(data, (list, tuple)):
             raise HarnessError("bad_fixture", "positional invocation needs a list/tuple input")
         if self.invocation_mode == "keyword" and not isinstance(data, dict):
@@ -328,6 +335,57 @@ def run_memory(request: dict[str, Any], root: Path) -> dict[str, Any]:
     input_sha = _input_digest(data)
     result: dict[str, Any] = {"input_sha256": input_sha, "memory": _traced_call(workload, data)}
     return result
+
+
+def _case_input(workload: Workload, case: dict[str, Any]) -> Any:
+    kind = case.get("kind")
+    if kind == "fixture":
+        kwargs = case.get("fixture_kwargs")
+        if not isinstance(kwargs, dict):
+            raise HarnessError("bad_request", "fixture cases need a fixture_kwargs object")
+        return workload.make_input(kwargs)
+    if kind == "literal":
+        return workload.check_shape(case.get("input"))
+    raise HarnessError("bad_request", "case.kind must be 'fixture' or 'literal'")
+
+
+def _run_case(workload: Workload, case: Any, request: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(case, dict) or not isinstance(case.get("id"), str):
+        raise HarnessError("bad_request", "every case needs a string id")
+    entry: dict[str, Any] = {"id": case["id"]}
+    try:
+        data = _case_input(workload, case)
+    except HarnessError as exc:
+        if exc.code == "bad_request":
+            raise
+        return {**entry, "status": "bad_case", "error": str(exc)}
+    input_sha = _input_digest(data)
+    entry["input_sha256"] = input_sha
+    try:
+        output = workload.call(data)
+    except (Exception, SystemExit) as exc:  # the workload's own exceptions are the result
+        entry["status"] = "exception"
+        entry["exception"] = {
+            "type": type(exc).__name__,
+            "module": type(exc).__module__,
+            "message": str(exc)[:_MAX_EXCEPTION_MESSAGE_CHARS],
+        }
+    else:
+        entry["status"] = "ok"
+        entry.update(_output_summary(request, output))
+    try:
+        entry["input_mutated"] = _input_digest(data) != input_sha
+    except Exception:  # an exotic input may not survive re-hashing; report it as unknown
+        entry["input_mutated"] = None
+    return entry
+
+
+def run_cases(request: dict[str, Any], root: Path) -> dict[str, Any]:
+    workload = Workload(request, root)
+    cases = request.get("cases")
+    if not isinstance(cases, list) or not cases or len(cases) > _MAX_CASES:
+        raise HarnessError("bad_request", f"cases must be a list of 1..{_MAX_CASES} objects")
+    return {"cases": [_run_case(workload, case, request) for case in cases]}
 
 
 def _command_argv(command: dict[str, Any]) -> tuple[str, str, list[str]]:
@@ -507,7 +565,13 @@ def _process_info() -> dict[str, Any]:
     return info
 
 
-_DISPATCH = {"profile": run_profile, "time": run_time, "memory": run_memory, "command": run_command}
+_DISPATCH = {
+    "profile": run_profile,
+    "time": run_time,
+    "memory": run_memory,
+    "command": run_command,
+    "cases": run_cases,
+}
 
 
 def execute(request: dict[str, Any]) -> dict[str, Any]:

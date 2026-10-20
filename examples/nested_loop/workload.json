@@ -23,5 +23,24 @@
   },
   "seed": 99,
   "reference_candidate": "reference/optimized.py",
-  "suspected_bottleneck": "Inner loop over all orders for every customer: O(customers * orders)."
+  "suspected_bottleneck": "Inner loop over all orders for every customer: O(customers * orders).",
+  "validation": {
+    "tests": ["tests"],
+    "min_tests": 5,
+    "sizes": ["small", "medium"],
+    "seeds": [99, 1, 2],
+    "edge_cases": [
+      {"name": "empty", "input": {"customers": [], "orders": []}},
+      {"name": "customer_without_orders", "input": {"customers": [{"id": 1, "name": "a"}], "orders": []}},
+      {"name": "duplicate_customer_ids", "input": {"customers": [{"id": 1, "name": "a"}, {"id": 1, "name": "b"}], "orders": [{"customer_id": 1, "amount": 2.5}, {"customer_id": 1, "amount": 0.1}]}},
+      {"name": "orphan_orders_only", "input": {"customers": [{"id": 1, "name": "a"}], "orders": [{"customer_id": 2, "amount": 1.0}]}},
+      {"name": "float_accumulation", "input": {"customers": [{"id": 7, "name": "x"}], "orders": [{"customer_id": 7, "amount": 0.1}, {"customer_id": 7, "amount": 0.2}, {"customer_id": 7, "amount": 0.3}]}}
+    ],
+    "error_cases": [
+      {"name": "customers_none", "input": {"customers": null, "orders": []}, "expected_exception": "TypeError"},
+      {"name": "orders_none", "input": {"customers": [{"id": 1, "name": "a"}], "orders": null}, "expected_exception": "TypeError"},
+      {"name": "order_without_customer_id", "input": {"customers": [{"id": 1, "name": "a"}], "orders": [{"amount": 1.0}]}, "expected_exception": "KeyError"}
+    ],
+    "allow_input_mutation": false
+  }
 }

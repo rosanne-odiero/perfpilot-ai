@@ -13,18 +13,19 @@ from sqlalchemy.orm import Session
 
 from backend.benchmarking.candidates import (
     CandidateSource,
-    has_candidate_resolver,
+    check_candidate,
+    notify_benchmark_finished,
     resolve_candidate,
 )
 from backend.benchmarking.environment import capture_environment
 from backend.benchmarking.harness import BenchmarkPlan, PairedBenchmarkResult, run_paired_benchmark
 from backend.core.config import Settings
 from backend.core.exceptions import (
-    NotConfiguredError,
     NotFoundError,
     PerfPilotError,
     ValidationFailedError,
 )
+from backend.core.logging import get_logger
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.jobs.service import enqueue_job
 from backend.models.database import session_scope, utcnow
@@ -49,6 +50,8 @@ from backend.services.workloads import (
     validate_spec_targets,
 )
 
+log = get_logger(__name__)
+
 ProgressFn = Callable[[str, float, str | None], None]
 BENCHMARK_JOB_TYPE = "workload.benchmark"
 
@@ -69,16 +72,8 @@ def create_benchmark_run(session: Session, request: BenchmarkRequest) -> Benchma
     spec = build_spec(get_workload(session, request.workload_id))
     size = resolve_size(spec, request.size)
     if isinstance(request.candidate, CandidateRef):
-        if not has_candidate_resolver():
-            raise NotConfiguredError(
-                "benchmarking validated patch candidates requires the patch-validation phase",
-                details={"candidate_id": request.candidate.candidate_id},
-            )
-        kind, candidate_id, label = (
-            CandidateKind.CANDIDATE,
-            request.candidate.candidate_id,
-            f"candidate {request.candidate.candidate_id}",
-        )
+        candidate_id = request.candidate.candidate_id
+        kind, label = CandidateKind.CANDIDATE, check_candidate(session, spec, candidate_id)
     else:
         if not spec.reference_candidate:
             raise ValidationFailedError(f"workload {spec.slug!r} has no reference candidate")
@@ -224,8 +219,21 @@ def execute_benchmark_run(
         _fail(run_id, f"{type(exc).__name__}: {exc}", {"code": "internal_error"})
         raise
     finally:
+        _notify_finished(run_id)
         shutil.rmtree(candidate_dir, ignore_errors=True)
         shutil.rmtree(work_dir, ignore_errors=True)
+
+
+def _notify_finished(run_id: str) -> None:
+    """Let the candidate owner react to the terminal run. It must never mask the run's own
+    outcome, so failures are logged rather than raised."""
+    try:
+        with session_scope() as session:
+            run = session.get(BenchmarkRun, run_id)
+            if run is not None and run.status in (RunStatus.SUCCEEDED, RunStatus.FAILED):
+                notify_benchmark_finished(session, run)
+    except Exception:
+        log.exception("benchmark completion hook failed", extra={"benchmark_run_id": run_id})
 
 
 def _persist(

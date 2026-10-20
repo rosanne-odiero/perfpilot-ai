@@ -2,12 +2,15 @@
 
 Outputs arrive in the harness' canonical form (see ``harness_entry.canonical``): dict and set
 ordering are already normalized, and tuples/lists stay distinct, so ``EXACT`` comparison is a
-hash comparison and ``FLOAT_TOLERANCE`` walks both structures with ``math.isclose``.
+hash comparison, ``FLOAT_TOLERANCE`` walks both structures with ``math.isclose``, and
+``UNORDERED`` compares a top-level list/tuple as a multiset of exactly-equal elements.
 """
 
 from __future__ import annotations
 
+import json
 import math
+from collections import Counter
 from typing import Any
 
 from pydantic import BaseModel
@@ -51,6 +54,26 @@ def _close(a: Any, b: Any, contract: OutputContract, path: str) -> str | None:
     return None if a == b else f"{path}: {a!r} != {b!r}"
 
 
+def _multiset(value: Any) -> Counter[str] | None:
+    items = value.get("__tuple__") if isinstance(value, dict) else value
+    if not isinstance(items, list):
+        return None
+    return Counter(json.dumps(item, sort_keys=True, separators=(",", ":")) for item in items)
+
+
+def _unordered(a: Any, b: Any) -> str | None:
+    left, right = _multiset(a), _multiset(b)
+    if left is None or right is None:
+        return None if a == b else "output: values differ (not sequences, compared exactly)"
+    if left == right:
+        return None
+    missing, extra = left - right, right - left
+    return (
+        f"output: {sum(missing.values())} element(s) only in baseline, "
+        f"{sum(extra.values())} only in candidate (order ignored)"
+    )
+
+
 def compare_outputs(
     baseline: dict[str, Any], candidate: dict[str, Any], contract: OutputContract
 ) -> CorrectnessResult:
@@ -75,9 +98,12 @@ def compare_outputs(
             comparison=contract.comparison,
             detail="outputs differ and are too large to compare with tolerance",
         )
-    problem = _close(baseline["output_value"], candidate["output_value"], contract, "output")
+    if contract.comparison == OutputComparison.UNORDERED:
+        problem = _unordered(baseline["output_value"], candidate["output_value"])
+        detail = problem or "outputs contain the same elements (order ignored)"
+    else:
+        problem = _close(baseline["output_value"], candidate["output_value"], contract, "output")
+        detail = problem or "outputs equal within tolerance"
     return CorrectnessResult(
-        equivalent=problem is None,
-        comparison=contract.comparison,
-        detail=problem or "outputs equal within tolerance",
+        equivalent=problem is None, comparison=contract.comparison, detail=detail
     )

@@ -21,5 +21,21 @@
   },
   "seed": 4242,
   "reference_candidate": "reference/optimized.py",
-  "suspected_bottleneck": "`re.findall(pattern_string, line)` resolves the pattern through re's cache on every line instead of using a precompiled pattern."
+  "suspected_bottleneck": "`re.findall(pattern_string, line)` resolves the pattern through re's cache on every line instead of using a precompiled pattern.",
+  "validation": {
+    "tests": ["tests"],
+    "min_tests": 5,
+    "sizes": ["small", "medium"],
+    "seeds": [4242, 1, 2],
+    "edge_cases": [
+      {"name": "no_lines", "input": []},
+      {"name": "two_codes_one_line", "input": ["ERR-1234 then ERR-5678"]},
+      {"name": "decoys", "input": ["XERR-1234", "ERR-12", "ERR-12345", "err-1234", "ERR-0000."]}
+    ],
+    "error_cases": [
+      {"name": "none_input", "input": null, "expected_exception": "TypeError"},
+      {"name": "none_line", "input": [null], "expected_exception": "TypeError"}
+    ],
+    "allow_input_mutation": false
+  }
 }

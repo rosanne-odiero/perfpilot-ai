@@ -21,5 +21,21 @@
   },
   "seed": 31337,
   "reference_candidate": "reference/optimized.py",
-  "suspected_bottleneck": "`report += line` in a loop may copy the growing string (O(n^2)) unless CPython resizes it in place."
+  "suspected_bottleneck": "`report += line` in a loop may copy the growing string (O(n^2)) unless CPython resizes it in place.",
+  "validation": {
+    "tests": ["tests"],
+    "min_tests": 5,
+    "sizes": ["small", "medium"],
+    "seeds": [31337, 1, 2],
+    "edge_cases": [
+      {"name": "no_rows", "input": []},
+      {"name": "one_row", "input": [["widget", 3, 9.5]]},
+      {"name": "long_name_and_rounding", "input": [["a-very-long-product-name", 0, 0.005], ["b", 9999, 1234.5678]]}
+    ],
+    "error_cases": [
+      {"name": "none_input", "input": null, "expected_exception": "TypeError"},
+      {"name": "price_not_a_number", "input": [["a", 1, "x"]], "expected_exception": "ValueError"}
+    ],
+    "allow_input_mutation": false
+  }
 }
