@@ -23,7 +23,7 @@ DB rows ──► build_audit_report() ──► AuditReport ──► redact �
 | 7 | CPU & memory measurements | **Optional.** Report providers only. | MEASURED |
 | 8 | Algorithmic complexity analysis | `Finding.complexity_note`, labeled *estimate* | per finding |
 | 9 | Proposed optimization strategies | `RecommendationRecord.data` | per recommendation |
-| 10 | Suggested code changes & diffs | `Recommendation.suggested_diff`, or "No code changes were generated" | per recommendation |
+| 10 | Suggested code changes & diffs | Patch candidates from report providers (real diffs with their lifecycle state), then `Recommendation.suggested_diff`, or "No code changes were generated" | per candidate / recommendation |
 | 11 | Correctness validation outcomes | **Optional.** Report providers only. | MEASURED |
 | 12 | Measured benchmark results | **Optional.** Report providers only (medians, speedup, CI, classification, samples, environment) | MEASURED |
 | 13 | Estimated engineering effort & uncertainty | Recommendation effort sizes (qualitative, not time estimates) | per recommendation |
@@ -145,11 +145,18 @@ or timed out, a new attempt is queued under a suffixed key.
 ## Adding a report provider
 
 The measured sections (7, 11, 12) are filled by providers. A provider is a module in
-`backend/reporting/providers/` that is discovered automatically. PerfPilot ships one,
-`runtime-audit` (`backend/reporting/providers/runtime.py`): it fills section 7 from successful
-sandbox profile runs (hotspot table, wall/CPU time, peak RSS and tracemalloc peak labelled
-separately, environment, exact command and limits) and lists failed runs as limitations without
-numbers. See [runtime-audit.md](runtime-audit.md). The shape of a provider:
+`backend/reporting/providers/` that is discovered automatically. PerfPilot ships two:
+
+* `runtime-audit` (`backend/reporting/providers/runtime.py`) fills section 7 from successful
+  sandbox profile runs (hotspot table, wall/CPU time, peak RSS and tracemalloc peak labelled
+  separately, environment, exact command and limits) and lists failed runs as limitations without
+  numbers. See [runtime-audit.md](runtime-audit.md).
+* `repo-optimization` (`backend/reporting/providers/repo_optimization.py`) adds the diffs of
+  repository patch candidates to section 10, their sandbox validations to section 11 and their
+  paired A/B benchmarks (with raw samples for the samples CSV) to section 12. See
+  [repo-optimization.md](repo-optimization.md#8-report).
+
+The shape of a provider:
 
 ```python
 # backend/reporting/providers/<name>.py
@@ -173,8 +180,8 @@ def runtime_audit(session: Session, ctx: ProviderContext) -> ProviderContributio
 
 - `ProviderContext` contains `audit_id`, `snapshot_id`, `repository_id`, `commit_sha` and the
   audit's prioritized findings, so a provider can link hotspots to finding ids.
-- A contribution can contain `runtime_profiles`, `validation_outcomes`, `benchmark_results` and
-  extra `limitations`. Providers run in name order and their lists are concatenated. The names of
+- A contribution can contain `runtime_profiles`, `code_changes` (section 10 entries, listed before
+  the advisor's diffs), `validation_outcomes`, `benchmark_results` and extra `limitations`. Providers run in name order and their lists are concatenated. The names of
   providers that contributed are listed in `metadata.providers_applied`.
 - Only return data from real runs. The measured models fix `provenance` to `MEASURED`.
 - Measured evidence on individual findings (`Finding.measured`) is read from the finding rows
