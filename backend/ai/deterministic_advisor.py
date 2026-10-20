@@ -40,6 +40,7 @@ MAX_LISTED_SUGGESTIONS = 3
 MAX_HOT_MODULES = 3
 SECONDARY_WEIGHT = 0.1
 SYNC_DB_MARKERS = ("synchronous database",)
+SYNC_DB_TITLE = "Choose one async/sync boundary for database access"
 NON_REQUEST_ROLES = frozenset(
     {CodeRole.SEED_MIGRATION, CodeRole.TEST, CodeRole.EXAMPLE_DOCS, CodeRole.CLI_SCRIPT}
 )
@@ -179,6 +180,18 @@ class DeterministicAdvisor:
             return f"module-level code of {group.file_path}"
         return f"{len(group.symbols)} functions in {group.file_path}"
 
+    @staticmethod
+    def _title_location(group: FindingGroup) -> str:
+        short_path = "/".join(group.file_path.split("/")[-2:])
+        symbols = group.symbols
+        if group.symbol:
+            return f"{group.symbol} ({short_path})"
+        if symbols == ["<module>"]:
+            return short_path
+        if len(symbols) == 1:
+            return f"{symbols[0]} ({short_path})"
+        return f"{len(symbols)} functions of {short_path}"
+
     def _recommend(self, group: FindingGroup, rank: int, output: AdvisorOutput) -> Recommendation:
         advice = group.advice
         top = group.top
@@ -201,14 +214,10 @@ class DeterministicAdvisor:
                 f"A mechanical diff is attached for {covered} of {count} {noun}; review it like "
                 "any other change and run the tests."
             )
-        title_where = group.symbol or (
-            group.symbols[0] if len(group.symbols) == 1 else group.file_path.rsplit("/", 1)[-1]
-        )
-        if title_where == "<module>":
-            title_where = group.file_path.rsplit("/", 1)[-1]
+        title = SYNC_DB_TITLE if group.variant == "sync-db" else advice.title
         return Recommendation(
             id=stable_id("rec", group.key, *sorted(f.id for f in group.findings)),
-            title=f"{advice.title} in {title_where}",
+            title=f"{title} in {self._title_location(group)}",
             summary=(
                 f"{count} {top.title.lower()} {noun} in {where}. {first_sentence(top.description)}"
             ),
