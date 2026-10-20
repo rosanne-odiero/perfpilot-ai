@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 from pathlib import Path
@@ -30,6 +31,7 @@ def scan_inventory(root: Path) -> RepositoryInventory:
                 SourceFileInfo(
                     path=rel,
                     size_bytes=path.stat().st_size,
+                    sha256=None if sensitive else hashlib.sha256(path.read_bytes()).hexdigest(),
                     is_python=filename.endswith(".py"),
                     skipped=sensitive,
                     skip_reason="sensitive file" if sensitive else None,
