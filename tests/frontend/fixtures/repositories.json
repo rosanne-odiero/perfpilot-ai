@@ -1,0 +1,12 @@
+[
+ {
+  "created_at": "2026-10-20T16:48:18.672065",
+  "id": "3de676ef-4ca4-4683-8717-68cf7d07d574",
+  "latest_snapshot_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced",
+  "latest_snapshot_status": "READY",
+  "name": "shopfast",
+  "requested_ref": null,
+  "source_locator": "/srv/perfpilot/tests/fixtures/repos/shopfast",
+  "source_type": "LOCAL_DIRECTORY"
+ }
+]

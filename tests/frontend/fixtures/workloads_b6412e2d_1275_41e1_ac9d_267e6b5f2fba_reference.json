@@ -1,0 +1,14 @@
+{
+ "baseline": {
+  "content": "\"\"\"List lookup workload (deliberately inefficient, but correct).\n\n``find_known`` returns every query id that also appears in ``known_ids``, preserving query\norder and repeats. Membership is tested against a *list*, so each lookup is a linear scan and\nthe whole call is O(len(queries) * len(known_ids)).\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef find_known(known_ids: list[int], queries: list[int]) -> list[int]:\n    found: list[int] = []\n    for query in queries:\n        if query in known_ids:\n            found.append(query)\n    return found\n",
+  "path": "workload.py",
+  "truncated": false
+ },
+ "label": "reference implementation (bundled, for testing)",
+ "reference": {
+  "content": "\"\"\"REFERENCE IMPLEMENTATION (bundled, for tests).\n\nHand-written by the PerfPilot maintainers to exercise the benchmark engine. It was NOT produced\nby the platform's optimizer. The benchmark labels any run against this file as\n\"reference implementation (bundled, for testing)\".\n\nChange: build a ``set`` once so each membership test is an average O(1) hash lookup.\nTrade-off: requires hashable ids and costs O(len(known_ids)) extra memory.\n\"\"\"\n\nfrom __future__ import annotations\n\n\ndef find_known(known_ids: list[int], queries: list[int]) -> list[int]:\n    known = set(known_ids)\n    return [query for query in queries if query in known]\n",
+  "path": "reference/optimized.py",
+  "truncated": false
+ },
+ "workload_id": "b6412e2d-1275-41e1-ac9d-267e6b5f2fba"
+}

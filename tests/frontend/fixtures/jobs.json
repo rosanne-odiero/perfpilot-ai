@@ -1,0 +1,454 @@
+[
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:23:32.773129",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:23:46.215951",
+  "id": "4b8d5c52-7718-4357-a674-f04f9ef50517",
+  "job_type": "workload.benchmark",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "benchmark_run_id": "7efffeb3-c10f-44db-8161-6b583dbe178d",
+   "classification": "IMPROVED",
+   "speedup": 700.1173993334738,
+   "status": "SUCCEEDED"
+  },
+  "stage": "memory",
+  "started_at": "2026-10-20T17:23:33.480043",
+  "status": "SUCCEEDED",
+  "subject_id": "7efffeb3-c10f-44db-8161-6b583dbe178d",
+  "subject_type": "benchmark_run"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:23:23.416428",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:23:26.340090",
+  "id": "061743b3-ec6e-4f5c-b94e-f786a0313ddb",
+  "job_type": "workload.profile",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "profile_run_id": "91a999c2-65d1-482a-823e-c01e46edd1d4",
+   "status": "SUCCEEDED",
+   "total_profiled_time_ms": 164.49225
+  },
+  "stage": "persisting",
+  "started_at": "2026-10-20T17:23:24.155379",
+  "status": "SUCCEEDED",
+  "subject_id": "91a999c2-65d1-482a-823e-c01e46edd1d4",
+  "subject_type": "profile_run"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:21:07.113411",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:21:16.353029",
+  "id": "2a478431-0f49-4234-b771-0f8c9a84417b",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "4d33cdf8-32c5-4918-a846-37fd906cdb9a",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.pdf"
+   ],
+   "format": "pdf",
+   "pdf_engine": "xhtml2pdf",
+   "redaction_count": 0,
+   "report_id": "727ef330-c78a-44dc-87b7-19c4e8876a89",
+   "size_bytes": 75139
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T17:21:12.730393",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:21:07.113027",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:21:12.633588",
+  "id": "62ad0c4c-56fc-4caa-a180-63e3378e98aa",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "25ddd39b-b945-4110-ba0c-47f12327769a",
+   "files": [
+    "perfpilot-shopfast-nosha-findings.csv"
+   ],
+   "format": "csv",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "6286d369-6e7b-42d1-9cf6-9571d59ec702",
+   "size_bytes": 4020
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T17:21:11.616789",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:21:07.112634",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:21:11.516977",
+  "id": "eb016eff-9c10-4cbd-9210-13a72ddce67e",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "8825c97b-3da6-4ac8-98ef-124140ed62af",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.json"
+   ],
+   "format": "json",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "f17f2807-2f02-4e60-a68c-16b68fa5efb3",
+   "size_bytes": 79681
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T17:21:10.484652",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:21:07.112215",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:21:10.385033",
+  "id": "8c0f4709-9f0e-4c2a-81e7-b6695f5c1e47",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "fe832ca3-03a5-4efc-ba93-be52310157a9",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.md"
+   ],
+   "format": "md",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "2a62d6e7-0d0a-4a08-8a73-c1f38d7df381",
+   "size_bytes": 39915
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T17:21:09.339669",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:21:07.111257",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:21:09.227510",
+  "id": "bc157fd2-874b-464b-b213-3ec24e72ded8",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "80c1b80e-8fba-426e-bf88-69eb08b17baf",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.html"
+   ],
+   "format": "html",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "9db2db11-7dab-4393-b46c-82539c6626e8",
+   "size_bytes": 95221
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T17:21:07.759303",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:18:21.168154",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:18:22.897647",
+  "id": "2f7a3597-c2ff-4b9c-a336-2d4f7842036a",
+  "job_type": "audit.run",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "audit_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+   "duration_seconds": 0.0783,
+   "files_analyzed": 20,
+   "findings": 24,
+   "parse_errors": 0,
+   "status": "SUCCEEDED"
+  },
+  "stage": "COMPLETED",
+  "started_at": "2026-10-20T17:18:21.876142",
+  "status": "SUCCEEDED",
+  "subject_id": "56ba3251-ec9d-4641-8c5e-375fc6558d1d",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T17:18:19.081953",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T17:18:20.742864",
+  "id": "0a2e3fc9-a7ae-41d3-8891-701cdba21f2c",
+  "job_type": "repository.ingest",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "content_hash": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3",
+   "files_seen": 25,
+   "limits_hit": [],
+   "python_files": 20,
+   "snapshot_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced",
+   "status": "READY"
+  },
+  "stage": "finalize",
+  "started_at": "2026-10-20T17:18:19.586668",
+  "status": "SUCCEEDED",
+  "subject_id": "ac8487fe-5d9d-49b4-bb65-a2025309bced",
+  "subject_type": "snapshot"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:49:09.045680",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:49:14.514431",
+  "id": "92fe00ba-93f2-4574-8109-9492f0af0ef4",
+  "job_type": "workload.benchmark",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "benchmark_run_id": "6b7b0a90-4560-417b-91b3-0302622ddd25",
+   "classification": "IMPROVED",
+   "speedup": 63.112770741556545,
+   "status": "SUCCEEDED"
+  },
+  "stage": "memory",
+  "started_at": "2026-10-20T16:49:10.658852",
+  "status": "SUCCEEDED",
+  "subject_id": "6b7b0a90-4560-417b-91b3-0302622ddd25",
+  "subject_type": "benchmark_run"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:49:09.020738",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:49:10.561899",
+  "id": "40c3f39a-d5be-48da-9fc5-c396815e5a9c",
+  "job_type": "workload.profile",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "profile_run_id": "4bbe5222-1a81-4f85-89f6-2539d5a2fc80",
+   "status": "SUCCEEDED",
+   "total_profiled_time_ms": 1.4687500000000002
+  },
+  "stage": "persisting",
+  "started_at": "2026-10-20T16:49:09.424626",
+  "status": "SUCCEEDED",
+  "subject_id": "4bbe5222-1a81-4f85-89f6-2539d5a2fc80",
+  "subject_type": "profile_run"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:47.642485",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:49:04.188894",
+  "id": "a63ebb10-2248-4095-95f2-f0f1686fc717",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "f7ea4431-83c0-4565-a1c2-7bea86cb009b",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.pdf"
+   ],
+   "format": "pdf",
+   "pdf_engine": "xhtml2pdf",
+   "redaction_count": 0,
+   "report_id": "ac36716d-6b38-4de1-a214-da93dbf56739",
+   "size_bytes": 75135
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T16:48:52.218898",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:47.642096",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:52.128163",
+  "id": "d346c22c-8617-4591-ad0e-1b4f819ef109",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "a2a447c5-bf95-4b51-8b6c-27ada7ea86bc",
+   "files": [
+    "perfpilot-shopfast-nosha-findings.csv"
+   ],
+   "format": "csv",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "0acfcd50-14a9-49be-81d7-47c40549b60d",
+   "size_bytes": 4020
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T16:48:51.133014",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:47.641701",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:51.042295",
+  "id": "c201a4fe-2315-4680-b241-63c33263a1c1",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "b96ebeed-9533-4aba-8ed7-4cb2077ca4b3",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.json"
+   ],
+   "format": "json",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "6c32014a-4544-4195-a79a-d094ca7338aa",
+   "size_bytes": 79681
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T16:48:50.027103",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:47.641263",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:49.936403",
+  "id": "f3d8a165-b3da-4224-a9e3-b26129d29280",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "68b08729-ab73-495f-a935-909f062835de",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.md"
+   ],
+   "format": "md",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "333c8b51-a1f1-4d7b-adce-93383e378edb",
+   "size_bytes": 39915
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T16:48:48.992740",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:47.640169",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:48.905224",
+  "id": "2d8e8d08-2a68-40d7-9339-69d9fb2bc6a5",
+  "job_type": "report.generate",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "artifact_id": "7933e09f-6a3b-43e4-b5a9-777d7d87f421",
+   "files": [
+    "perfpilot-shopfast-nosha-audit.html"
+   ],
+   "format": "html",
+   "pdf_engine": null,
+   "redaction_count": 0,
+   "report_id": "1dcd4892-b052-4fed-8de2-52f20afa3c60",
+   "size_bytes": 95221
+  },
+  "stage": "storing",
+  "started_at": "2026-10-20T16:48:47.762611",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:28.980709",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:30.534862",
+  "id": "d1b4cba1-48ce-41aa-b174-aa45cb74c752",
+  "job_type": "audit.run",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "audit_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+   "duration_seconds": 0.076,
+   "files_analyzed": 20,
+   "findings": 24,
+   "parse_errors": 0,
+   "status": "SUCCEEDED"
+  },
+  "stage": "COMPLETED",
+  "started_at": "2026-10-20T16:48:29.516251",
+  "status": "SUCCEEDED",
+  "subject_id": "b31e73c5-ca59-400d-9431-e0ffa9947802",
+  "subject_type": "audit"
+ },
+ {
+  "attempts": 1,
+  "created_at": "2026-10-20T16:48:18.675983",
+  "error": null,
+  "error_details": null,
+  "finished_at": "2026-10-20T16:48:21.359813",
+  "id": "7be85eed-4052-4fa8-a117-e13d50a1dd7c",
+  "job_type": "repository.ingest",
+  "message": "completed",
+  "progress": 1.0,
+  "result": {
+   "content_hash": "cc2d6db784107c86fa2bee9dc8f76e9272a472239c8b9cbc4b84d6167d433ce3",
+   "files_seen": 25,
+   "limits_hit": [],
+   "python_files": 20,
+   "snapshot_id": "391eedf4-d9e0-4a1f-9ed1-b914133bd555",
+   "status": "READY"
+  },
+  "stage": "finalize",
+  "started_at": "2026-10-20T16:48:19.614160",
+  "status": "SUCCEEDED",
+  "subject_id": "391eedf4-d9e0-4a1f-9ed1-b914133bd555",
+  "subject_type": "snapshot"
+ }
+]
