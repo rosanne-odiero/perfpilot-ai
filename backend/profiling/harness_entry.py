@@ -15,6 +15,9 @@ The request is a JSON object; the result is always written (atomically) as a JSO
              (``perf_counter_ns`` wall time and ``process_time_ns`` CPU time, separately).
 ``memory``   one call under tracemalloc (input generated *before* tracing starts).
 ``command``  run a module, script, or pytest target from the workspace under cProfile.
+             Opt-in flags on the command object: ``trace_memory`` (tracemalloc concurrently
+             with cProfile) and ``stats_json`` (``profile_stats.json``: the pstats table as JSON,
+             so consumers never need to unmarshal an untrusted ``.prof``).
 
 Every target (entrypoint, fixture, script, pytest path) must resolve inside ``workspace_root``.
 """
@@ -29,6 +32,7 @@ import json
 import math
 import os
 import platform
+import pstats
 import re
 import runpy
 import sys
@@ -336,7 +340,36 @@ def _command_argv(command: dict[str, Any]) -> tuple[str, str, list[str]]:
         raise HarnessError("bad_request", "command.target must be a non-empty string")
     if not isinstance(args, list) or not all(isinstance(a, str) and "\x00" not in a for a in args):
         raise HarnessError("bad_request", "command.args must be a list of strings")
+    for flag in ("trace_memory", "stats_json"):
+        if not isinstance(command.get(flag, False), bool):
+            raise HarnessError("bad_request", f"command.{flag} must be a boolean")
     return kind, target, args
+
+
+def _write_stats_json(profiler: cProfile.Profile, path: Path) -> None:
+    """Write the pstats table as plain JSON so a consumer never has to unmarshal ``.prof``.
+
+    Each entry is ``[file, line, function, cc, nc, tt, ct, callers]`` where ``callers`` is a list
+    of ``[file, line, function, cc, nc, tt, ct]`` (the time this function spent when called from
+    that caller)."""
+    raw = pstats.Stats(profiler).stats  # type: ignore[attr-defined]
+    entries = [
+        [
+            filename,
+            line,
+            func,
+            cc,
+            nc,
+            tt,
+            ct,
+            [[c[0], c[1], c[2], *values] for c, values in callers.items()],
+        ]
+        for (filename, line, func), (cc, nc, tt, ct, callers) in raw.items()
+    ]
+    path.write_text(
+        json.dumps({"format": "perfpilot-pstats", "version": 1, "entries": entries}),
+        encoding="utf-8",
+    )
 
 
 def _workspace_file(root: Path, relative: str, what: str) -> Path:
@@ -400,8 +433,14 @@ def run_command(request: dict[str, Any], root: Path) -> dict[str, Any]:
         test_path = _workspace_file(root, path_part, "pytest target")
         runner = _pytest_runner(f"{test_path}{sep}{node}", args)
 
+    # Opt-in: tracemalloc runs *concurrently* with cProfile, so timings include its overhead.
+    trace_memory = bool(command.get("trace_memory", False))
     profiler = cProfile.Profile()
     exit_code = 0
+    traced: dict[str, int] | None = None
+    if trace_memory:
+        gc.collect()
+        tracemalloc.start()
     wall0, cpu0 = time.perf_counter_ns(), time.process_time_ns()
     profiler.enable()
     try:
@@ -410,17 +449,30 @@ def run_command(request: dict[str, Any], root: Path) -> dict[str, Any]:
         exit_code = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
     finally:
         profiler.disable()
+        if trace_memory and tracemalloc.is_tracing():
+            current, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            traced = {"tracemalloc_peak_bytes": peak, "tracemalloc_retained_bytes": current}
     wall1, cpu1 = time.perf_counter_ns(), time.process_time_ns()
     prof_path = out_dir / "profile.prof"
     profiler.dump_stats(str(prof_path))
-    return {
-        "command": {"kind": kind, "target": target, "args": args, "exit_code": exit_code},
-        "profile": {
-            "prof_file": prof_path.name,
-            "wall_ns_under_profiler": wall1 - wall0,
-            "cpu_ns_under_profiler": cpu1 - cpu0,
-        },
+    profile: dict[str, Any] = {
+        "prof_file": prof_path.name,
+        "wall_ns_under_profiler": wall1 - wall0,
+        "cpu_ns_under_profiler": cpu1 - cpu0,
+        "tracemalloc_active": trace_memory,
     }
+    if command.get("stats_json", False):
+        stats_path = out_dir / "profile_stats.json"
+        _write_stats_json(profiler, stats_path)
+        profile["stats_file"] = stats_path.name
+    result: dict[str, Any] = {
+        "command": {"kind": kind, "target": target, "args": args, "exit_code": exit_code},
+        "profile": profile,
+    }
+    if traced is not None:
+        result["memory"] = traced
+    return result
 
 
 # --------------------------------------------------------------------------------------------
