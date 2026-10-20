@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from backend.core.observability import traced
 from backend.models.enums import ReportFormat
 from backend.reporting.model import AuditReport
 from backend.reporting.redaction import redact_html, redact_report, redact_report_text
@@ -23,6 +24,7 @@ def _merge(kinds: dict[str, int], extra: dict[str, int]) -> None:
         kinds[kind] = kinds.get(kind, 0) + count
 
 
+@traced("report.render")
 def render_report(
     report: AuditReport, fmt: ReportFormat, *, pdf_engine: str | None = None
 ) -> RenderResult:

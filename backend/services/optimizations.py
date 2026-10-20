@@ -20,6 +20,7 @@ from backend.core.exceptions import (
     PerfPilotError,
     ValidationFailedError,
 )
+from backend.core.observability import traced
 from backend.infrastructure.artifact_store import ArtifactStore
 from backend.jobs.service import enqueue_job
 from backend.models.database import session_scope, utcnow
@@ -107,6 +108,7 @@ def _require_original(candidate: OptimizationCandidate, spec: WorkloadSpec, when
 # ------------------------------------------------------------------------------------------
 
 
+@traced("optimization.patch_generation")
 def create_candidate(
     session: Session, settings: Settings, request: OptimizationRequest
 ) -> OptimizationCandidate:
@@ -358,6 +360,7 @@ def _finish_validation(
             )
 
 
+@traced("optimization.validation")
 def execute_validation(
     validation_id: str, settings: Settings, progress: ProgressFn | None = None
 ) -> ValidationRun:

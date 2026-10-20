@@ -29,6 +29,7 @@ from backend.ai.outbound import ChatMessage, redact_messages
 from backend.core.config import Settings
 from backend.core.exceptions import ExternalServiceError, NotConfiguredError
 from backend.core.logging import get_logger
+from backend.core.observability import span
 
 log = get_logger(__name__)
 
@@ -87,6 +88,9 @@ class LLMClient:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         key = settings.llm_api_key.get_secret_value() if settings.llm_api_key else ""
         host = endpoint_host(settings.llm_base_url) or ""
+        self._host = host
+        self._input_cost = settings.llm_input_cost_per_1k
+        self._output_cost = settings.llm_output_cost_per_1k
         if key:
             if host.split(":", 1)[0].endswith(_AZURE_HOST_SUFFIXES):
                 headers["api-key"] = key
@@ -150,7 +154,27 @@ class LLMClient:
         return float(min(delay, MAX_BACKOFF_SECONDS))
 
     def complete(self, messages: list[ChatMessage], *, max_tokens: int) -> ChatCompletion:
-        """One chat completion. Messages are redacted here, immediately before sending."""
+        """One chat completion. Messages are redacted here, immediately before sending.
+
+        The ``llm.call`` span/log records model, endpoint host, tokens and cost — never prompts,
+        completions or credentials.
+        """
+        with span("llm.call", model=self.model, endpoint_host=self._host) as handle:
+            completion = self._complete(messages, max_tokens=max_tokens)
+            handle.set(
+                input_tokens=completion.input_tokens,
+                output_tokens=completion.output_tokens,
+                usage_estimated=completion.usage_estimated,
+                cost_usd=self.cost_usd(completion.input_tokens, completion.output_tokens),
+            )
+            return completion
+
+    def cost_usd(self, input_tokens: int, output_tokens: int) -> float:
+        return round(
+            input_tokens / 1000 * self._input_cost + output_tokens / 1000 * self._output_cost, 6
+        )
+
+    def _complete(self, messages: list[ChatMessage], *, max_tokens: int) -> ChatCompletion:
         safe, redactions = redact_messages(messages)
         self.redactions += redactions
         attempt = 0

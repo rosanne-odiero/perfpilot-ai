@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.audit.pipeline import STATIC_STAGES, AuditState, ProgressCallback, run_pipeline
 from backend.core.config import Settings
+from backend.core.observability import traced
 from backend.models.audit_schemas import CodeIndex, Finding, RepositoryInventory
 
 MAX_LISTED_WARNINGS = 20
@@ -109,6 +110,7 @@ def summarize(state: AuditState, duration: float) -> StaticAuditResult:
     )
 
 
+@traced("audit.static_analysis")
 def run_static_audit(
     root: Path,
     inventory: RepositoryInventory,
