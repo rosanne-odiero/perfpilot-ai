@@ -29,6 +29,7 @@ only after you explicitly consent, and only redacted snippets are sent.
 ## Contents
 
 - [What it does](#what-it-does)
+- [Demo](#demo)
 - [Quick start (step by step)](#quick-start-step-by-step)
 - [Audit your own repository](#audit-your-own-repository)
 - [Connect your LLM (optional)](#connect-your-llm-optional)
@@ -76,6 +77,22 @@ it to see the full loop without importing anything.
 
 Every finding is a hypothesis with evidence and stated trade-offs. None is presented as a
 measurement.
+
+---
+
+## Demo
+
+Screenshots from the running application auditing the bundled ShopFast fixture
+(`tests/fixtures/repos/shopfast`) with a runtime audit in the Docker sandbox. Every number shown
+was computed by that run.
+
+| Repository Audit (landing page) | Audit overview |
+|---|---|
+| ![Repository Audit landing page](docs/screenshots/01-repository-audit.png) | ![Audit overview with metric cards and charts](docs/screenshots/02-audit-overview.png) |
+| **Prioritized findings with file:line evidence** | **Module dependency graph** |
+| ![Findings table](docs/screenshots/03-findings.png) | ![Dependency graph](docs/screenshots/04-dependency-graph.png) |
+| **Runtime audit: approved command, MEASURED run** | **Static claim next to measured evidence** |
+| ![Runtime tab](docs/screenshots/05-runtime.png) | ![Correlated findings](docs/screenshots/06-static-vs-measured.png) |
 
 ---
 
