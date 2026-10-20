@@ -209,7 +209,7 @@
 {% else %}<p class="muted">No entrypoints detected.</p>{% endif %}
 <h3>Import cycles</h3>
 {% if a.cycles %}
-<ul>{% for cycle in a.cycles %}<li class="mono">{{ cycle|join(" → ") }} → {{ cycle[0] }}</li>{% endfor %}</ul>
+<ul>{% for cycle in a.cycles %}<li class="mono">{{ cycle|join(" -> ") }} -> {{ cycle[0] }}</li>{% endfor %}</ul>
 {% else %}<p class="muted">No import cycles detected.</p>{% endif %}
 {% endif %}
 <h3>Technologies</h3>
