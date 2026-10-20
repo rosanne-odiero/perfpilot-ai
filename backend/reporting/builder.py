@@ -12,6 +12,7 @@ import shlex
 from collections import Counter
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from pathlib import PurePosixPath
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -229,6 +230,9 @@ def _llm_model_display(data: _AuditData) -> str:
 def _source_display(data: _AuditData) -> str:
     if data.source_type == RepositorySourceType.ZIP_UPLOAD:
         return f"ZIP upload ({data.repository.name})"
+    if data.source_type == RepositorySourceType.LOCAL_DIRECTORY:
+        # Reports get shared; the host's absolute path (user name, folder layout) stays private.
+        return f"local directory ({PurePosixPath(data.repository.source_locator).name})"
     return data.repository.source_locator
 
 
@@ -662,7 +666,9 @@ def _reproduction_commands(data: _AuditData) -> list[str]:
         if ref:
             import_body["ref"] = ref
     elif data.source_type == RepositorySourceType.LOCAL_DIRECTORY:
-        import_body["local_path"] = data.repository.source_locator
+        import_body["local_path"] = (
+            f"<path to {PurePosixPath(data.repository.source_locator).name}>"
+        )
     if data.source_type == RepositorySourceType.ZIP_UPLOAD:
         commands.append(
             "# upload the same ZIP archive again: POST /api/repositories/upload (multipart)"

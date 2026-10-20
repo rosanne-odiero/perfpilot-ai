@@ -150,7 +150,10 @@ def test_local_source_has_no_permalinks(make_audit: AuditFactory) -> None:
     assert all(e.permalink is None for e in report.evidence.entries)
     assert not report.evidence.permalinks_available
     commands = report.limitations.reproducibility.commands
-    assert any('"local_path": "/srv/allowed/shopfront"' in c for c in commands)
+    # The host path is never written into a shareable report; only the folder name is.
+    assert any('"local_path": "<path to shopfront>"' in c for c in commands)
+    assert report.repository.source_display == "local directory (shopfront)"
+    assert "/srv/allowed" not in report.model_dump_json()
 
 
 def test_missing_index_and_partial_audit_are_reported(make_audit: AuditFactory) -> None:
