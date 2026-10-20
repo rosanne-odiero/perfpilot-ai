@@ -217,8 +217,14 @@ def test_box_strip_plot_scales_and_is_valid_svg() -> None:
 
 
 def test_hypotheses_are_never_labeled_measured() -> None:
-    deterministic = OptimizationRecommendation(generated_by="deterministic", provenance={})
-    assert _hypothesis_label(deterministic, "expected_effect") == Provenance.STATIC
+    # Expected effects are predictions: rule templates record them as AI_HYPOTHESIS too, and the
+    # report uses the same label as the recommendations API.
+    deterministic = OptimizationRecommendation(
+        generated_by="deterministic", provenance={"expected_effect": "AI_HYPOTHESIS"}
+    )
+    assert _hypothesis_label(deterministic, "expected_effect") == Provenance.AI_HYPOTHESIS
+    unrecorded = OptimizationRecommendation(generated_by="deterministic", provenance={})
+    assert _hypothesis_label(unrecorded, "expected_effect") == Provenance.AI_HYPOTHESIS
     model = OptimizationRecommendation(
         generated_by="some-model", provenance={"expected_effect": "MEASURED"}
     )

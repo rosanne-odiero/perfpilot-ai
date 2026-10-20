@@ -230,8 +230,9 @@ Code: `backend/reporting/experiment_model.py` (contract, `schema_version` 1.0),
 | 10. Reproducibility | | `scripts/optimize_workload.py …` (or `scripts/run_workload.py benchmark …`) and the exact API calls with this experiment's IDs and settings |
 | 11. Limitations | | Host execution, validation scope, memory definitions, profiler overhead, small sample sizes |
 
-Expected effect and estimated impact are labeled `STATIC` when the deterministic rule templates
-wrote them and `AI_HYPOTHESIS` when a model did; a hypothesis is never labeled `MEASURED`.
+Expected effect and estimated impact are predictions, so they carry the label the analysis
+recorded for them (`AI_HYPOTHESIS`, for rule templates and model output alike) and the same label
+the recommendations API returns; a hypothesis is never labeled `MEASURED`.
 Sections that did not run are `null` with a reason. A candidate that **failed validation** shows
 the failing checks and `benchmark: null` with "No benchmark ran: correctness validation FAILED…",
 so the report contains no performance numbers for it. A candidate **rejected** by the patch
