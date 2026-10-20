@@ -81,8 +81,12 @@ def _render_running(audit: dict[str, Any]) -> bool:
         st.info("The audit is queued; no job is attached yet.")
         return True
     job = track_job(job_id, "Audit")
-    if job is not None and not job.succeeded:
+    if job is None:
+        return True
+    if not job.succeeded:
         render_job_error(job, "Audit job")
+    else:
+        st.info("The audit job finished; its results are being recorded. Refresh in a moment.")
     return True
 
 

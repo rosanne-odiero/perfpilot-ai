@@ -263,6 +263,8 @@ def render_progress() -> None:
     pipeline = render_pipeline(PIPELINE_KEY)
     if pipeline is None:
         return
+    # The audit list on this page must include the run that just finished.
+    data.clear_audit_caches()
     if pipeline.phase is Phase.DONE and pipeline.audit_id:
         st.success("Audit finished.", icon="✅")
         if st.button("Open audit results", type="primary", icon="📊"):
