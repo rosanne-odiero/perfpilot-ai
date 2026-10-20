@@ -12,7 +12,7 @@
 # The mirror is a build-time setting only and is never baked into the image.
 
 # Base images are literal (not ARGs) so Dependabot can keep them current.
-FROM ghcr.io/astral-sh/uv:0.13.3 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.4 AS uv
 FROM docker:28-cli AS docker-cli
 
 # --------------------------------------------------------------------------- dependencies
