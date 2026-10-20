@@ -1,0 +1,25 @@
+{
+  "name": "Duplicate counter",
+  "description": "Count how often each repeated item occurs (list.count called for every element).",
+  "entrypoint": "workload:count_duplicates",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "items: n_items lowercase words drawn from a vocabulary of about unique_ratio*n_items words with Zipf-like frequencies (exponent skew).",
+  "invocation_mode": "single",
+  "expected_output": {
+    "type": "dict[str, int]",
+    "comparison": "exact",
+    "description": "Mapping of every item that occurs more than once to its occurrence count (dict equality, key order ignored)."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "permitted_env_vars": [],
+  "default_size": "medium",
+  "sizes": {
+    "small": {"n_items": 500},
+    "medium": {"n_items": 4000},
+    "large": {"n_items": 15000}
+  },
+  "seed": 2024,
+  "reference_candidate": "reference/optimized.py",
+  "suspected_bottleneck": "`items.count(item)` rescans the whole list for every element: O(n^2)."
+}

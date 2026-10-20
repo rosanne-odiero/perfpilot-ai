@@ -1,0 +1,25 @@
+{
+  "name": "Regex matching",
+  "description": "Extract ERR-dddd codes from log lines, passing the pattern string to re.findall on every line.",
+  "entrypoint": "workload:extract_error_codes",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "lines: n_lines synthetic log lines; about error_ratio of them contain one or two ERR-dddd tokens, some contain decoys (ERR-12, XERR-1234).",
+  "invocation_mode": "single",
+  "expected_output": {
+    "type": "list[str]",
+    "comparison": "exact",
+    "description": "Every 4-digit code from a standalone ERR-dddd token, in line order."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "permitted_env_vars": [],
+  "default_size": "medium",
+  "sizes": {
+    "small": {"n_lines": 2000},
+    "medium": {"n_lines": 100000},
+    "large": {"n_lines": 400000}
+  },
+  "seed": 4242,
+  "reference_candidate": "reference/optimized.py",
+  "suspected_bottleneck": "`re.findall(pattern_string, line)` resolves the pattern through re's cache on every line instead of using a precompiled pattern."
+}

@@ -1,0 +1,27 @@
+{
+  "name": "Nested loop join",
+  "description": "Sum order amounts per customer by scanning every order for every customer.",
+  "entrypoint": "workload:customer_totals",
+  "fixture": "fixtures:make_input",
+  "fixture_description": "customers: n_customers dicts with unique ids; orders: n_orders dicts with a customer_id (about orphan_ratio unknown ids) and a 2-decimal float amount.",
+  "invocation_mode": "keyword",
+  "expected_output": {
+    "type": "list[tuple[str, float]]",
+    "comparison": "float_tolerance",
+    "rel_tol": 1e-9,
+    "abs_tol": 1e-9,
+    "description": "(name, total) per customer in customer order; totals compared with math.isclose."
+  },
+  "timeout_seconds": 120,
+  "memory_limit_mb": 1024,
+  "permitted_env_vars": [],
+  "default_size": "medium",
+  "sizes": {
+    "small": {"n_customers": 50, "n_orders": 500},
+    "medium": {"n_customers": 600, "n_orders": 6000},
+    "large": {"n_customers": 1500, "n_orders": 15000}
+  },
+  "seed": 99,
+  "reference_candidate": "reference/optimized.py",
+  "suspected_bottleneck": "Inner loop over all orders for every customer: O(customers * orders)."
+}
