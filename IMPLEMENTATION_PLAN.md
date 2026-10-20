@@ -260,8 +260,8 @@ every merge leaves `main` runnable.
 - [ ] Docs: `architecture.md`, `methodology.md`, `security.md`, `ai-design.md`, `api.md`, `limitations.md`
 
 ### Phase 12 — End-to-end acceptance and demo · `test/e2e-acceptance`, then `docs/portfolio`
-- [ ] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
-  import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data
+- [x] E2E test (feature spec acceptance 1–11) against `tests/fixtures/repos/<fixture>`:
+  import → index → graph → static audit → findings with valid refs → HTML+PDF → assert no `MEASURED` values present → select trusted workload → approve → sandbox profile → report with measured data *(`tests/e2e/test_acceptance.py`: ZIP import of ShopFast, persistent worker with per-job child processes; steps 9–11 verified against the real Docker sandbox)*
 - [ ] Optional network-marked variant against a real small public repo
 - [ ] Base-spec E2E (§24) for the duplicate-counter and one other workload, including restart persistence
 - [ ] Real screenshots, real benchmark table, evaluation report from measured results
