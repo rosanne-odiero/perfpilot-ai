@@ -102,6 +102,11 @@ the `command` object are used by Runtime Audits ([runtime-audit.md](runtime-audi
 * `stats_json`: also write `profile_stats.json`, the pstats table as plain JSON
   (`[file, line, function, cc, nc, tt, ct, callers]`). Consumers of untrusted runs read this
   instead of unmarshalling `profile.prof`, because `marshal` is not safe for untrusted input.
+* `profile` (default `true`): `false` runs the command once **without any profiler** and returns
+  only `timing.wall_ns` (`perf_counter_ns`) and `timing.cpu_ns` (`process_time_ns`), read
+  immediately around the command after the target has been resolved, so interpreter start-up and
+  the harness's own imports are excluded. It cannot be combined with `trace_memory`/`stats_json`.
+  Repository A/B benchmarks use it ([repo-optimization.md](repo-optimization.md)).
 
 ## 3. Benchmarking (paired A/B)
 
