@@ -105,13 +105,21 @@ def test_benchmark_request_validation(client: TestClient, overrides: dict[str, A
 
 
 def test_candidate_id_requires_a_registered_resolver(client: TestClient) -> None:
+    from backend.benchmarking import candidates
+    from backend.optimization import candidate_resolver
+
     workload = _workload(client, "list_lookup")
-    response = client.post(
-        "/api/benchmarks",
-        json={"workload_id": workload["id"], "candidate": {"candidate_id": "c-1"}},
-    )
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "not_configured"
+    body = {"workload_id": workload["id"], "candidate": {"candidate_id": "c-1"}}
+    # The patch-validation phase installs the resolver: unknown candidates are 404s.
+    response = client.post("/api/benchmarks", json=body)
+    assert response.status_code == 404
+    candidates.register_candidate_resolver(None)
+    try:
+        response = client.post("/api/benchmarks", json=body)
+        assert response.status_code == 501
+        assert response.json()["error"]["code"] == "not_configured"
+    finally:
+        candidate_resolver.install()
 
 
 def test_profile_end_to_end(client: TestClient, settings: Settings) -> None:
