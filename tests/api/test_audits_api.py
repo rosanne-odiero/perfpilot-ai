@@ -170,7 +170,11 @@ def test_llm_flags(client: TestClient, settings: Settings) -> None:
     audit = client.get(f"/api/audits/{audit_id}").json()
     assert audit["status"] == "SUCCEEDED"
     assert audit["use_llm"] is True
-    assert any("no AI analysis stage" in w for w in audit["warnings"])
+    assert any("no LLM endpoint is configured" in w for w in audit["warnings"])
+    assert audit["summary"]["advisor"]["mode"] == "deterministic"
+    usage = client.get(f"/api/audits/{audit_id}/llm-usage").json()
+    assert usage["calls"] == 0
+    assert usage["stage_status"] == {"llm": "not_configured"}
 
 
 def test_runtime_mode_is_not_configured(client: TestClient, settings: Settings) -> None:

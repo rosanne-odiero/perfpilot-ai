@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from backend.audit.prioritization import PriorityContext, prioritize
 from backend.audit.rule_engine import RuleRunResult, run_rules
@@ -20,6 +21,9 @@ from backend.core.config import Settings
 from backend.indexing.code_index import IndexBuild, index_repository, link_repository
 from backend.models.audit_schemas import Finding, RepositoryInventory
 from backend.models.enums import AuditStage
+
+if TYPE_CHECKING:
+    from backend.ai.analysis import AIAnalysisResult
 
 ProgressCallback = Callable[[AuditStage, float, str | None], None]
 
@@ -37,6 +41,9 @@ class AuditState:
     stage_seconds: dict[str, float] = field(default_factory=dict)
     current_stage: AuditStage = AuditStage.QUEUED
     position: tuple[int, int] = (0, 1)
+    use_llm: bool = False
+    llm_consent: bool = False
+    ai: AIAnalysisResult | None = None
 
     def report(self, fraction: float, message: str | None = None) -> None:
         """Progress within the current stage (0..1), mapped onto the whole pipeline."""

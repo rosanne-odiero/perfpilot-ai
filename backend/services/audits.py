@@ -39,10 +39,6 @@ RUNTIME_NOT_CONFIGURED = (
     "Runtime audits execute repository code and require the isolated sandbox backend, which is "
     "not available in this build. Start a STATIC audit instead."
 )
-LLM_UNAVAILABLE_WARNING = (
-    "AI-assisted analysis was requested, but this build has no AI analysis stage; only "
-    "deterministic static analysis ran and no code was sent to any model."
-)
 
 
 def finding_record_id(audit_id: str, finding_id: str) -> str:
@@ -113,7 +109,7 @@ def create_audit(
         stage=AuditStage.QUEUED,
         use_llm=use_llm,
         llm_consent=llm_consent,
-        warnings=[LLM_UNAVAILABLE_WARNING] if use_llm else [],
+        warnings=[],
     )
     session.add(audit)
     session.flush()
