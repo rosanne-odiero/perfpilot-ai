@@ -21,7 +21,8 @@ from backend import __version__
 from backend.core.config import get_settings
 from backend.core.exceptions import PerfPilotError
 from backend.core.logging import configure_logging, get_logger
-from backend.models.database import init_engine
+from backend.models.database import init_engine, session_scope
+from backend.services.workloads import seed_bundled_examples
 
 log = get_logger(__name__)
 
@@ -50,6 +51,8 @@ def create_app() -> FastAPI:
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         configure_logging(settings.log_level)
         init_engine(settings)
+        with session_scope() as session:
+            seed_bundled_examples(session)
         yield
 
     app = FastAPI(
