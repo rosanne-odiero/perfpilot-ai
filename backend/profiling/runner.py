@@ -98,7 +98,7 @@ class HarnessRun(BaseModel):
         if self.timed_out:
             return "timed out"
         if self.memory_limit_exceeded:
-            return "exceeded the memory limit (sampled RSS)"
+            return "exceeded the memory limit (sampled RSS or RLIMIT_AS)"
         if self.result is None:
             tail = self.stderr.strip().splitlines()[-1:] or ["no output"]
             return f"harness exited with code {self.returncode} without a result: {tail[0]}"
@@ -306,11 +306,17 @@ def run_harness(
     stdout, stdout_truncated = _read_capped(stdout_path)
     stderr, stderr_truncated = _read_capped(stderr_path)
     sampled = rss_sample_interval is not None and sampler.samples > 0
+    # Where the kernel enforces RLIMIT_AS (Linux), the child fails with MemoryError before the
+    # parent's RSS sampler sees the growth; that is the same limit being hit.
+    hit_address_space_limit = "RLIMIT_AS" in report.applied and (
+        (result or {}).get("error", {}).get("type") == "MemoryError"
+        or (result is None and "MemoryError" in stderr)
+    )
     return HarnessRun(
         argv=argv,
         returncode=proc.returncode,
         timed_out=timed_out,
-        memory_limit_exceeded=sampler.exceeded,
+        memory_limit_exceeded=sampler.exceeded or hit_address_space_limit,
         wall_seconds=wall,
         stdout=stdout,
         stderr=stderr,
