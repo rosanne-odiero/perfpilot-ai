@@ -38,7 +38,7 @@
       <td><span class="k">Generated</span><br>{{ r.metadata.generated_at|dt }}</td>
     </tr>
   </table>
-  <p class="cover-source">{{ r.repository.source_display }}</p>
+  <p class="cover-source">{{ brk(r.repository.source_display, 90) }}</p>
 </div>
 
 <div class="toc">
@@ -53,7 +53,7 @@
 <div class="legend" id="legend">
   <h3>How to read this report: provenance labels</h3>
   <table class="data">
-    <thead><tr><th>Label</th><th>Meaning</th><th>Example</th></tr></thead>
+    <thead><tr><th width="20%">Label</th><th width="40%">Meaning</th><th width="40%">Example</th></tr></thead>
     <tbody>
     {% for entry in r.legend %}
       <tr><td><span class="legend-term legend-{{ entry.label|lower }}">{{ entry.label }}</span></td><td>{{ entry.meaning }}</td><td>{{ entry.example }}</td></tr>
@@ -84,10 +84,10 @@
 <h3>Top risks</h3>
 {% if r.executive_summary.top_risks %}
 <table class="data">
-  <thead><tr><th>Severity</th><th>Finding</th><th>Location</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="14%">Severity</th><th width="68%">Finding</th><th width="18%">Provenance</th></tr></thead>
   <tbody>
   {% for t in r.executive_summary.top_risks %}
-    <tr><td>{{ sev(t.severity) }}</td><td>{{ t.title }}</td><td class="mono">{{ t.location }}</td><td>{{ prov(t.provenance) }}</td></tr>
+    <tr><td>{{ sev(t.severity) }}</td><td>{{ t.title }}<br><span class="mono loc">{{ brk(t.location) }}</span></td><td>{{ prov(t.provenance) }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -102,7 +102,7 @@
 {% set repo = r.repository %}
 <table class="kv">
   <tr><th>Repository</th><td>{{ repo.name }}</td></tr>
-  <tr><th>Source</th><td>{{ repo.source_type|human }} · <span class="mono">{{ repo.source_display }}</span></td></tr>
+  <tr><th>Source</th><td>{{ repo.source_type|human }} · <span class="mono">{{ brk(repo.source_display, 60) }}</span></td></tr>
   <tr><th>Commit SHA</th><td class="mono">{{ repo.commit_sha or "unknown" }}</td></tr>
   <tr><th>Branch</th><td>{{ repo.branch or "n/a" }}</td></tr>
   <tr><th>Requested ref</th><td>{{ repo.requested_ref or "default branch" }}</td></tr>
@@ -163,8 +163,8 @@
 <h3>Parse errors</h3>
 {% if f.parse_errors %}
 <table class="data">
-  <thead><tr><th>File</th><th>Error</th></tr></thead>
-  <tbody>{% for e in f.parse_errors %}<tr><td class="mono">{{ e.file_path }}</td><td>{{ e.error }}</td></tr>{% endfor %}</tbody>
+  <thead><tr><th>File and error</th></tr></thead>
+  <tbody>{% for e in f.parse_errors %}<tr><td><span class="mono">{{ brk(e.file_path, 90) }}</span><br>{{ e.error }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}<p class="muted">All analyzed Python files parsed successfully.</p>{% endif %}
 </section>
@@ -195,10 +195,10 @@
 <h3>Most depended-upon modules (fan-in)</h3>
 {% if a.top_fan_in %}
 <table class="data">
-  <thead><tr><th>Module</th><th>File</th><th class="num">Fan-in</th><th class="num">Fan-out</th><th class="num">Findings</th><th>Flags</th></tr></thead>
+  <thead><tr><th width="52%">Module</th><th width="10%" class="num">Fan-in</th><th width="10%" class="num">Fan-out</th><th width="10%" class="num">Findings</th><th width="18%">Flags</th></tr></thead>
   <tbody>
   {% for m in a.top_fan_in %}
-    <tr><td class="mono">{{ m.module_name }}</td><td class="mono">{{ m.file_path }}</td><td class="num">{{ m.fan_in }}</td><td class="num">{{ m.fan_out }}</td><td class="num">{{ m.finding_count }}</td><td>{% if m.is_entrypoint %}entrypoint {% endif %}{% if m.in_cycle %}in cycle{% endif %}</td></tr>
+    <tr><td><span class="mono">{{ brk(m.module_name) }}</span><br><span class="mono loc">{{ brk(m.file_path) }}</span></td><td class="num">{{ m.fan_in }}</td><td class="num">{{ m.fan_out }}</td><td class="num">{{ m.finding_count }}</td><td>{% if m.is_entrypoint %}entrypoint {% endif %}{% if m.in_cycle %}in cycle{% endif %}</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -239,17 +239,17 @@
 <p>{{ fs.total|num }} findings, ordered by priority score (severity, confidence and structural importance). Each finding is a hypothesis about where performance may be lost.</p>
 {% if fs.entries %}
 <table class="data findings-table" repeat="1">
-  <thead><tr><th>#</th><th>Severity</th><th>Finding</th><th>Rule</th><th>Location</th><th>Confidence</th><th>Provenance</th><th class="num">Priority</th></tr></thead>
+  <thead><tr><th width="5%">#</th><th width="13%">Severity</th><th width="50%">Finding</th><th width="12%">Confidence</th><th width="12%">Provenance</th><th width="8%" class="num">Priority</th></tr></thead>
   <tbody>
   {% for e in fs.entries %}
-    <tr><td>{{ e.rank }}</td><td>{{ sev(e.severity) }}</td><td><a href="#f-{{ e.rank }}">{{ e.title }}</a></td><td class="mono">{{ e.rule_id }}</td><td class="mono">{{ e.location }}</td><td>{{ e.confidence }}</td><td>{{ prov(e.provenance) }}</td><td class="num">{{ e.priority_score|fixed(2) }}</td></tr>
+    <tr><td>{{ e.rank }}</td><td>{{ sev(e.severity) }}</td><td><a href="#f-{{ e.rank }}">{{ e.title }}</a><br><span class="mono loc">{{ brk(e.location) }} · {{ e.rule_id }}</span></td><td>{{ e.confidence }}</td><td>{{ prov(e.provenance) }}</td><td class="num">{{ e.priority_score|fixed(2) }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
 {% for e in fs.entries %}
 <div class="card finding" id="f-{{ e.rank }}">
   <p class="card-title">#{{ e.rank }} {{ sev(e.severity) }} {{ prov(e.provenance) }} {{ e.title }}</p>
-  <p class="muted"><span class="mono">{{ e.location }}</span>{% if e.symbol %} · <span class="mono">{{ e.symbol }}</span>{% endif %} · rule <span class="mono">{{ e.rule_id }}</span> · {{ e.category|human }} · confidence {{ e.confidence|lower }}</p>
+  <p class="muted"><span class="mono">{{ brk(e.location, 90) }}</span>{% if e.symbol %} · <span class="mono">{{ e.symbol }}</span>{% endif %} · rule <span class="mono">{{ e.rule_id }}</span> · {{ e.category|human }} · confidence {{ e.confidence|lower }}</p>
   <p>{{ e.description }}</p>
   <p><strong>Suggestion.</strong> {{ e.suggestion }}</p>
   {% if e.tradeoffs %}<p><strong>Trade-offs.</strong> {{ e.tradeoffs }}</p>{% endif %}
@@ -273,7 +273,7 @@
 {% endif %}
 {% for ev in r.evidence.entries %}
 <div class="evidence">
-  <p class="evidence-head">#{{ ev.rank }} {{ prov(ev.provenance) }} {{ ev.title }} · <span class="mono">{{ ev.location }}</span>{% if ev.permalink %} · <a href="{{ ev.permalink }}">view on GitHub</a>{% endif %}</p>
+  <p class="evidence-head">#{{ ev.rank }} {{ prov(ev.provenance) }} {{ ev.title }} · <span class="mono">{{ brk(ev.location, 90) }}</span>{% if ev.permalink %} · <a href="{{ ev.permalink }}">view on GitHub</a>{% endif %}</p>
   {% if ev.withheld_reason %}
   <p class="muted">{{ ev.withheld_reason }}</p>
   {% elif ev.lines %}
@@ -311,10 +311,10 @@
   </table>
   {% if p.hotspots %}
   <table class="data">
-    <thead><tr><th>Function</th><th>Location</th><th class="num">Internal</th><th class="num">Cumulative</th><th class="num">Calls</th><th class="num">Share</th><th>Findings</th></tr></thead>
+    <thead><tr><th width="40%">Function</th><th width="13%" class="num">Internal</th><th width="13%" class="num">Cumulative</th><th width="9%" class="num">Calls</th><th width="9%" class="num">Share</th><th width="16%">Findings</th></tr></thead>
     <tbody>
     {% for h in p.hotspots %}
-      <tr><td class="mono">{{ h.function_name }}</td><td class="mono">{% if h.file_path %}{{ h.file_path }}{% if h.line %}:{{ h.line }}{% endif %}{% else %}n/a{% endif %}</td><td class="num">{{ h.internal_time_ms|fixed(2) }} ms</td><td class="num">{{ h.cumulative_time_ms|fixed(2) }} ms</td><td class="num">{{ h.call_count|num }}</td><td class="num">{{ h.percentage_of_profiled_time|fixed(1) }}%</td><td class="mono">{{ h.finding_ids|join(", ") }}</td></tr>
+      <tr><td><span class="mono">{{ brk(h.function_name) }}</span>{% if h.file_path %}<br><span class="mono loc">{{ brk(h.file_path ~ (":" ~ h.line if h.line else "")) }}</span>{% endif %}</td><td class="num">{{ h.internal_time_ms|fixed(2) }} ms</td><td class="num">{{ h.cumulative_time_ms|fixed(2) }} ms</td><td class="num">{{ h.call_count|num }}</td><td class="num">{{ h.percentage_of_profiled_time|fixed(1) }}%</td><td class="mono">{{ h.finding_ids|join(", ") }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -332,10 +332,10 @@
 <p class="muted">{{ r.complexity.note }}</p>
 {% if r.complexity.entries %}
 <table class="data">
-  <thead><tr><th>#</th><th>Finding</th><th>Location</th><th>Estimate</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="5%">#</th><th width="47%">Finding</th><th width="33%">Estimate</th><th width="15%">Provenance</th></tr></thead>
   <tbody>
   {% for c in r.complexity.entries %}
-    <tr><td>{{ c.rank }}</td><td>{{ c.title }}</td><td class="mono">{{ c.location }}</td><td><span class="estimate">estimate</span> {{ c.estimate }}</td><td>{{ prov(c.provenance) }}</td></tr>
+    <tr><td>{{ c.rank }}</td><td>{{ c.title }}<br><span class="mono loc">{{ brk(c.location) }}</span></td><td><span class="estimate">estimate</span> {{ c.estimate }}</td><td>{{ prov(c.provenance) }}</td></tr>
   {% endfor %}
   </tbody>
 </table>
@@ -399,12 +399,12 @@
 {{ not_measured_box("No candidate change was applied and validated for this audit. Correctness validation runs the repository's tests against a patched copy inside the sandbox.") }}
 {% else %}
 <table class="data">
-  <thead><tr><th>Validation</th><th>Recommendation</th><th>Status</th><th>Command</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="60%">Validation</th><th width="20%">Status</th><th width="20%">Provenance</th></tr></thead>
   <tbody>
   {% for o in r.validation.outcomes %}
-    <tr><td class="mono">{{ o.validation_id }}</td><td class="mono">{{ o.recommendation_id or "n/a" }}</td><td><span class="badge status status-{{ o.status|lower }}">{{ o.status }}</span></td><td class="mono">{{ o.command|join(" ") }}</td><td>{{ prov(o.provenance) }}</td></tr>
+    <tr><td><span class="mono">{{ brk(o.validation_id) }}</span> · recommendation <span class="mono">{{ o.recommendation_id or "n/a" }}</span>{% if o.command %}<br><span class="mono loc">{{ brk(o.command|join(" ")) }}</span>{% endif %}</td><td><span class="badge status status-{{ o.status|lower }}">{{ o.status }}</span></td><td>{{ prov(o.provenance) }}</td></tr>
     {% for chk in o.checks %}
-    <tr class="sub"><td></td><td colspan="2">{{ chk.name }}: {{ chk.status }}</td><td colspan="2">{{ chk.detail }}</td></tr>
+    <tr class="sub"><td>{{ chk.name }}{% if chk.detail %}: {{ chk.detail }}{% endif %}</td><td>{{ chk.status }}</td><td></td></tr>
     {% endfor %}
   {% endfor %}
   </tbody>
@@ -420,7 +420,7 @@
 {% else %}
 {% if benchmark_chart %}<div class="figure">{{ benchmark_chart }}<p class="caption">Figure 2. Median wall time per benchmark (MEASURED).</p></div>{% endif %}
 <table class="data">
-  <thead><tr><th>Benchmark</th><th class="num">Baseline median</th><th class="num">Candidate median</th><th class="num">Speedup</th><th>CI</th><th>Result</th><th class="num">Samples</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="22%">Benchmark</th><th width="11%" class="num">Baseline median</th><th width="11%" class="num">Candidate median</th><th width="9%" class="num">Speedup</th><th width="12%">CI</th><th width="13%">Result</th><th width="9%" class="num">Samples</th><th width="13%">Provenance</th></tr></thead>
   <tbody>
   {% for b in r.benchmarks.results %}
     <tr><td>{{ b.name }}</td><td class="num">{{ b.baseline_median_ms|fixed(2) }} ms</td><td class="num">{{ b.candidate_median_ms|fixed(2) }} ms</td><td class="num">{{ b.speedup|fixed(2) }}×</td><td>{% if b.speedup_ci_low is not none and b.speedup_ci_high is not none %}{{ b.speedup_ci_low|fixed(2) }}–{{ b.speedup_ci_high|fixed(2) }}×{% if b.confidence_level %} ({{ (b.confidence_level * 100)|round|int }}%){% endif %}{% else %}n/a{% endif %}</td><td><span class="badge status status-{{ b.classification|lower }}">{{ b.classification }}</span></td><td class="num">{{ b.sample_count }} + {{ b.warmup_runs }} warmup</td><td>{{ prov(b.provenance) }}</td></tr>
@@ -445,12 +445,12 @@
 {{ heading(13) }}
 <p class="muted">{{ r.effort.note }}</p>
 <table class="data">
-  <thead><tr><th>Size</th><th>Meaning</th><th class="num">Recommendations</th></tr></thead>
+  <thead><tr><th width="15%">Size</th><th width="65%">Meaning</th><th width="20%" class="num">Recommendations</th></tr></thead>
   <tbody>{% for size, meaning in r.effort.scale.items() %}<tr><td>{{ effort(size) }}</td><td>{{ meaning }}</td><td class="num">{{ r.effort.totals[size] }}</td></tr>{% endfor %}</tbody>
 </table>
 {% if r.effort.entries %}
 <table class="data">
-  <thead><tr><th>Recommendation</th><th>Effort</th><th>Uncertainty</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="35%">Recommendation</th><th width="12%">Effort</th><th width="38%">Uncertainty</th><th width="15%">Provenance</th></tr></thead>
   <tbody>{% for e in r.effort.entries %}<tr><td>{{ e.title }}</td><td>{{ effort(e.effort) }}</td><td>{{ e.uncertainty }}</td><td>{{ prov(e.provenance) }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}
@@ -468,7 +468,7 @@
 <p class="muted">{{ phase.description }}</p>
 {% if phase.items %}
 <table class="data">
-  <thead><tr><th>Rank</th><th>Recommendation</th><th>Effort</th><th>Highest severity</th><th>Why here</th><th>Provenance</th></tr></thead>
+  <thead><tr><th width="7%">Rank</th><th width="33%">Recommendation</th><th width="11%">Effort</th><th width="13%">Highest severity</th><th width="22%">Why here</th><th width="14%">Provenance</th></tr></thead>
   <tbody>{% for i in phase.items %}<tr><td>{{ i.priority_rank if i.priority_rank > 0 else "–" }}</td><td>{{ i.title }}</td><td>{{ effort(i.effort) }}</td><td>{% if i.highest_severity %}{{ sev(i.highest_severity) }}{% else %}n/a{% endif %}</td><td>{{ i.reason }}</td><td>{{ prov(i.provenance) }}</td></tr>{% endfor %}</tbody>
 </table>
 {% else %}
@@ -486,11 +486,11 @@
 <h3>Reproducibility</h3>
 <table class="kv">
   <tr><th>Commit SHA</th><td class="mono">{{ rp.commit_sha or "unknown" }}</td></tr>
-  <tr><th>Source</th><td class="mono">{{ rp.source_display }}</td></tr>
+  <tr><th>Source</th><td class="mono">{{ brk(rp.source_display, 60) }}</td></tr>
   <tr><th>Requested ref</th><td>{{ rp.requested_ref or "default branch" }}</td></tr>
   <tr><th>PerfPilot version</th><td>{{ rp.perfpilot_version }}</td></tr>
-  {% for k, v in rp.configuration.items() %}<tr><th>{{ k }}</th><td class="mono">{{ v }}</td></tr>{% endfor %}
-  {% for k, v in rp.environment.items() %}<tr><th>{{ k }}</th><td class="mono">{{ v }}</td></tr>{% endfor %}
+  {% for k, v in rp.configuration.items() %}<tr><th>{{ k }}</th><td class="mono">{{ brk(v, 60) }}</td></tr>{% endfor %}
+  {% for k, v in rp.environment.items() %}<tr><th>{{ k }}</th><td class="mono">{{ brk(v, 60) }}</td></tr>{% endfor %}
 </table>
 <p>Commands to reproduce this audit with PerfPilot:</p>
 <div class="commands">

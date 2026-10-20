@@ -261,3 +261,14 @@ def test_large_report_renders_quickly(make_audit: AuditFactory) -> None:
     assert report.findings.total == 500
     assert result.primary.data.count(b'class="card finding"') == 500
     assert elapsed < 20.0, f"500-finding HTML report took {elapsed:.1f}s"
+
+
+def test_pdf_break_splits_long_tokens_safely() -> None:
+    from backend.reporting.renderers.html import pdf_break
+
+    path = "pkg/very_long_directory_name/another_long_directory/module_name.py:120-140"
+    broken = str(pdf_break(path, 30))
+    assert broken.replace("<br/>", "") == path
+    assert all(len(part) <= 30 for part in broken.split("<br/>"))
+    assert str(pdf_break("<b>" + "x" * 60, 20)).count("&lt;b&gt;") == 1
+    assert str(pdf_break("short words stay intact")) == "short words stay intact"

@@ -38,6 +38,7 @@ ul { padding-left: 22px; }
 li { margin: 3px 0; }
 .muted { color: var(--muted); }
 .mono, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.loc { font-size: 12px; color: #475569; overflow-wrap: anywhere; }
 
 /* Cover */
 .cover {
@@ -127,7 +128,10 @@ table.data th, table.data td, table.kv th, table.kv td {
   padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top;
   overflow-wrap: anywhere;
 }
-table.data th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: #475569; }
+table.data th {
+  background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: .03em;
+  color: #475569; white-space: nowrap; overflow-wrap: normal;
+}
 table.data tbody tr:nth-child(even) td { background: #fcfdfe; }
 table.kv th { width: 28%; color: #475569; font-weight: 600; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }

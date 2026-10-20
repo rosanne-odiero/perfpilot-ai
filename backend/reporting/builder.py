@@ -744,7 +744,6 @@ def _limitations_section(
         "use_llm": str(bool(data.audit.use_llm)).lower(),
         "llm_consent": str(bool(data.audit.llm_consent)).lower(),
         "llm_model": _llm_model_display(data),
-        "requested_ref": data.repository.requested_ref or "default branch",
         "max_repo_files (current setting)": str(settings.max_repo_files),
         "max_python_files (current setting)": str(settings.max_python_files),
         "max_file_bytes (current setting)": str(settings.max_file_bytes),

@@ -23,6 +23,7 @@ ul { margin: 2pt 0 6pt 0; }
 li { margin: 1pt 0; }
 .muted { color: #64748b; }
 .mono { font-family: Courier, monospace; font-size: 8.5pt; }
+.loc { font-size: 7.5pt; color: #475569; }
 
 .cover { background-color: #1e3a8a; color: #ffffff; padding: 16pt 16pt 12pt 16pt; }
 .eyebrow { color: #bfdbfe; font-size: 8pt; margin: 0; }

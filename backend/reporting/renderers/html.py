@@ -32,6 +32,28 @@ def code_line(text: str) -> Markup:
     return Markup(escaped)  # noqa: S704 - built from escape() output above
 
 
+def pdf_break(text: str, limit: int = 48) -> Markup:
+    """Escape ``text`` and add line breaks inside whitespace-free runs longer than ``limit``.
+
+    xhtml2pdf only wraps at whitespace and ignores zero-width spaces, so long paths would spill
+    into the next table cell. Breaks are placed after ``/ . _ - :`` where possible.
+    """
+    pieces: list[str] = []
+    for token in re.split(r"(\s+)", text):
+        while len(token) > limit:
+            cut = max(token.rfind(c, 0, limit) for c in "/._-:")
+            cut = cut if cut > 0 else limit - 1
+            pieces.append(str(escape(token[: cut + 1])) + "<br/>")
+            token = token[cut + 1 :]
+        pieces.append(str(escape(token)))
+    return Markup("".join(pieces))  # noqa: S704 - every piece is escaped above
+
+
+def _plain(text: str, limit: int = 48) -> Markup:
+    del limit  # browsers wrap long tokens with CSS
+    return escape(text)
+
+
 def _number(value: int | float) -> str:
     return f"{value:,}"
 
@@ -87,6 +109,7 @@ def render_html(report: AuditReport, *, pdf_engine: str | None = None) -> str:
         not_measured=NOT_MEASURED_TEXT,
         pdf=pdf,
         pdf_engine=pdf_engine,
+        brk=pdf_break if pdf else _plain,
         css=_stylesheet(pdf_engine),
         graph_figure=_svg_markup(
             report.architecture.graph.svg if report.architecture.graph else None, pdf=pdf
