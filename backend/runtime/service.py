@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from backend.audit.correlation import (
@@ -358,7 +358,6 @@ def measured_run(runs: Sequence[RuntimeProfileRun]) -> RuntimeProfileRun | None:
 
 def runtime_overview(session: Session, settings: Settings, audit_id: str) -> RuntimeAuditOut:
     audit = audit_service.get_audit(session, audit_id)
-    runtime_summary = (audit.summary or {}).get("runtime") or {}
     status = latest_backend_status(session, settings)
     runs = list_runs(session, audit_id)
     measured = measured_run(runs)
@@ -372,7 +371,7 @@ def runtime_overview(session: Session, settings: Settings, audit_id: str) -> Run
         ]
         correlations, runtime_only = run_correlations(session, measured.id)
     commands = session.scalar(
-        select(RuntimeCommand.id).where(RuntimeCommand.audit_id == audit_id).limit(1)
+        select(func.count()).select_from(RuntimeCommand).where(RuntimeCommand.audit_id == audit_id)
     )
     return RuntimeAuditOut(
         audit_id=audit.id,
@@ -383,9 +382,7 @@ def runtime_overview(session: Session, settings: Settings, audit_id: str) -> Run
         runtime_available=status.available,
         unavailable_reason=None if status.available else status.reason,
         backend=status.backend,
-        commands_discovered=int(runtime_summary.get("commands_discovered", 0))
-        if commands is not None
-        else 0,
+        commands_discovered=int(commands or 0),
         runs=[_run_summary(r) for r in runs],
         measured_run_id=measured.id if measured else None,
         hotspots=hotspots,

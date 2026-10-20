@@ -277,7 +277,8 @@ def _check_backend(
     if backend is None or not status.available:
         reason = status.reason or "sandbox backend unavailable"
         with session_scope() as session:
-            revoke_approval(session, run.approval_id, reason=f"sandbox unavailable: {reason}")
+            with contextlib.suppress(PerfPilotError):  # already consumed/revoked: nothing to do
+                revoke_approval(session, run.approval_id, reason=f"sandbox unavailable: {reason}")
             row = session.get(RuntimeProfileRun, run.id)
             if row is not None:
                 row.status = RuntimeRunStatus.UNAVAILABLE
