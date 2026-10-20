@@ -87,8 +87,19 @@ def test_network_is_blocked(settings: Settings, sandbox_dirs: SandboxDirs) -> No
         sandbox_dirs,
         """
         import socket
-        interfaces = sorted(l.split(":")[0].strip() for l in open("/proc/net/dev").readlines()[2:])
-        print("IFACES", ",".join(interfaces))
+        # Some kernels (e.g. Docker Desktop's) list inactive tunnel placeholders such as gre0 or
+        # sit0 in every namespace; what matters is that only loopback is UP and no route exists.
+        import fcntl, struct
+        up = []
+        for line in open("/proc/net/dev").readlines()[2:]:
+            name = line.split(":")[0].strip()
+            req = struct.pack("16sH14s", name.encode(), 0, b"")
+            flags = struct.unpack("16sH14s", fcntl.ioctl(socket.socket(), 0x8913, req))[1]
+            if flags & 0x1:
+                up.append(name)
+        print("UP", ",".join(sorted(up)))
+        routes = open("/proc/net/route").readlines()[1:]
+        print("ROUTES", len(routes))
         for target in [("1.1.1.1", 53), ("8.8.8.8", 443)]:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(3)
@@ -105,7 +116,8 @@ def test_network_is_blocked(settings: Settings, sandbox_dirs: SandboxDirs) -> No
         """,
     )
     assert result.exit_code == 0, result.stderr
-    assert "IFACES lo" in result.stdout
+    assert "UP lo\n" in result.stdout
+    assert "ROUTES 0" in result.stdout
     assert "CONNECTED" not in result.stdout
     assert result.stdout.count("BLOCKED") == 3
     assert "DNS_BLOCKED" in result.stdout

@@ -149,7 +149,10 @@ def test_repository_tests_run_in_the_real_sandbox(
     run = _profile(api, settings, audit_id, PYTEST_ARGV)
     assert run["status"] == "SUCCEEDED", (run["failure_reason"], run["stdout_tail"])
     assert "24 passed" in run["stdout_tail"]
-    assert any(h["file_path"].startswith("tests/") for h in run["hotspots"] if h["is_user_code"])
+    # Only the top hotspots are stored; ShopFast's tiny test bodies rank below pytest's own
+    # overhead, but the repository code they exercise must appear as user code.
+    user_files = {h["file_path"] for h in run["hotspots"] if h["is_user_code"]}
+    assert any(path.startswith("shopfast/") for path in user_files), user_files
     assert any(h["file_path"].startswith("<site-packages>/") for h in run["hotspots"])
 
 

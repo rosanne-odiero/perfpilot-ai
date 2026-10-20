@@ -13,6 +13,8 @@ FROM python:3.12-slim
 ARG PYTEST_VERSION=9.1.1
 ARG PYTEST_BENCHMARK_VERSION=5.3.0
 ARG PSUTIL_VERSION=7.2.2
+# Optional package mirror for networks that cannot reach PyPI directly (build-time only).
+ARG PIP_INDEX_URL=
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -23,6 +25,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Wheels only: no compilers are installed or needed. Setuid/setgid bits are stripped so
 # no binary in the image can regain privileges (no-new-privileges is also set at run time).
 RUN python -m pip install --no-cache-dir --only-binary=:all: \
+        ${PIP_INDEX_URL:+--index-url "$PIP_INDEX_URL"} \
         "pytest==${PYTEST_VERSION}" \
         "pytest-benchmark==${PYTEST_BENCHMARK_VERSION}" \
         "psutil==${PSUTIL_VERSION}" \

@@ -217,15 +217,15 @@ every merge leaves `main` runnable.
 
 ### Phase 8 — Runtime Repository Audit · `feature/sandbox-runtime`, then `feature/runtime-audit`
 **`feature/sandbox-runtime`**
-- [ ] `ExecutionBackend` protocol; `DockerSandboxBackend`: `--network none`, `--read-only`, tmpfs `/tmp`, `--cpus`, `--memory`, `--pids-limit`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root UID, wall-clock kill *(implemented + unit-tested; real-container tests in `tests/sandbox/test_docker_integration.py` pending a Docker install)*
-- [ ] Sandbox image with profilers preinstalled; dependency install happens in a separate, explicitly approved network-enabled step that produces a cached env layer, then runs offline *(`docker/sandbox.Dockerfile`, `make sandbox-image`, `backend/sandbox/environment.py`; image build not yet verified)*
+- [x] `ExecutionBackend` protocol; `DockerSandboxBackend`: `--network none`, `--read-only`, tmpfs `/tmp`, `--cpus`, `--memory`, `--pids-limit`, `--cap-drop ALL`, `--security-opt no-new-privileges`, non-root UID, wall-clock kill *(verified 2026-10-20 against Docker Desktop 29.9.1: `tests/sandbox/test_docker_integration.py` — network blocked (only `lo` up, no routes, DNS fails), read-only FS, non-root, OOM and timeout kill)*
+- [x] Sandbox image with profilers preinstalled; dependency install happens in a separate, explicitly approved network-enabled step that produces a cached env layer, then runs offline *(`docker/sandbox.Dockerfile`, `make sandbox-image [PIP_INDEX_URL=...]`, `backend/sandbox/environment.py`; image build and the approved dependency-install test verified)*
 - [ ] The worker talks to Docker; **the API container gets no Docker socket**
 - [x] If no isolation backend is available, runtime mode is **disabled with a clear reason**. It never falls back to the host.
 
 **`feature/runtime-audit`**
 - [x] Command discovery: pytest/unittest, `pytest-benchmark`, `asv`, `tox`/`nox` envs, Makefile targets, `[project.scripts]`. Each is a proposal with provenance, never auto-run. *(landed on `feature/sandbox-runtime`)*
 - [x] Approval record (who, when, exact argv, image, limits) required before execution *(tables + services landed on `feature/sandbox-runtime`; API + single-use enforcement in the `runtime.profile` job, see `docs/runtime-audit.md`)*
-- [ ] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols *(implemented; tested with real harness output through a test-double backend; real-container tests in `tests/runtime/test_runtime_docker_e2e.py` pending a Docker install)*
+- [x] Profile approved command in the sandbox (cProfile + tracemalloc + RSS); map hotspots → indexed symbols *(verified in the real sandbox: `tests/runtime/test_runtime_docker_e2e.py` — ShopFast workload and its pytest suite profiled, hotspots correlated, failures/timeouts recorded honestly)*
 - [x] Correlation: findings with a matching runtime hotspot get upgraded with `MEASURED` evidence; static-only findings stay `STATIC`
 - [ ] Hotspot → deep-dive: generate a candidate patch → validate (repo tests in sandbox) → A/B benchmark with an identical workload
 - **Exit:** on a trusted fixture, an approved workload yields measured hotspots that are correlated to findings.
