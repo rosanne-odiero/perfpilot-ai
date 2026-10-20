@@ -145,11 +145,14 @@ or timed out, a new attempt is queued under a suffixed key.
 ## Adding a report provider
 
 The measured sections (7, 11, 12) are filled by providers. A provider is a module in
-`backend/reporting/providers/` that is discovered automatically. PerfPilot ships no providers; the
-runtime-audit phase will add one that reads its profiling, validation and benchmark tables.
+`backend/reporting/providers/` that is discovered automatically. PerfPilot ships one,
+`runtime-audit` (`backend/reporting/providers/runtime.py`): it fills section 7 from successful
+sandbox profile runs (hotspot table, wall/CPU time, peak RSS and tracemalloc peak labelled
+separately, environment, exact command and limits) and lists failed runs as limitations without
+numbers. See [runtime-audit.md](runtime-audit.md). The shape of a provider:
 
 ```python
-# backend/reporting/providers/runtime_audit.py
+# backend/reporting/providers/<name>.py
 from sqlalchemy.orm import Session
 
 from backend.reporting.model import RuntimeProfile

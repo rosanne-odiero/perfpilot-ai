@@ -25,8 +25,9 @@ correlation) are added by extending the stage tuple per mode in `backend/jobs/ha
 ### Job and API
 
 `POST /api/audits {snapshot_id, mode, use_llm, llm_consent}` creates an `AuditRun` and enqueues
-`audit.run` (HTTP 202 with `JobAccepted`, `subject_type="audit"`). These requests are rejected:
-`mode=RUNTIME` returns 501 `not_configured` until the sandbox exists, `use_llm` without
+`audit.run` (HTTP 202 with `JobAccepted`, `subject_type="audit"`). `mode=RUNTIME` runs the same
+static stages plus static command discovery and then waits for an explicit approval (see
+[runtime-audit.md](runtime-audit.md)). These requests are rejected: `use_llm` without
 `llm_consent` returns 422, an unknown snapshot returns 404, and a snapshot that is not `READY`
 returns 409. This build has no AI stage, so `use_llm=true` with consent adds a warning and no code
 leaves the machine.

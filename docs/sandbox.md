@@ -34,7 +34,8 @@ a reason. There is no host fallback.
 5. **Execute** (`consume_approval` → `backend.run`). Consumption is atomic and single use. The
    worker runs exactly the returned argv, image and limits.
 
-The `feature/runtime-audit` branch adds the API routes and job handlers on top of these services.
+The Runtime Audit (API routes, the `runtime.profile` job, correlation and reporting) is built on
+top of these services; see [runtime-audit.md](runtime-audit.md).
 
 ## Container hardening
 
