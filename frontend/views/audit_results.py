@@ -10,6 +10,7 @@ from frontend import data, routes
 from frontend.api_client import ApiError
 from frontend.components.job_progress import render_job_error, track_job
 from frontend.components.notices import empty_state, show_api_error
+from frontend.components.url_select import url_selectbox
 from frontend.formatting import fmt_dt, short_sha
 from frontend.theme import badge, esc, status_badge
 from frontend.views import (
@@ -43,13 +44,14 @@ def _select_audit(rows: list[AuditRow]) -> str | None:
     requested = st.query_params.get(routes.AUDIT_PARAM)
     options = list(labels)
     if requested and requested not in labels:
+        # A just-started audit can be newer than the briefly cached list.
         options.insert(0, requested)
-    return st.selectbox(
+    return url_selectbox(
         "Audit",
         options,
+        key="audit_select",
+        param=routes.AUDIT_PARAM,
         format_func=lambda audit_id: labels.get(audit_id, audit_id),
-        key=routes.AUDIT_PARAM,
-        bind="query-params",
         label_visibility="collapsed",
     )
 

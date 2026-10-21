@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -314,3 +315,27 @@ def test_unreachable_api_is_reported_not_raised(monkeypatch: pytest.MonkeyPatch)
         at = app(page)
         assert not at.exception
         assert any("cannot reach the API" in e.value for e in at.error)
+
+
+def test_link_to_another_audit_replaces_the_previous_selection(
+    fake_api: FakeApi, audit_id: str
+) -> None:
+    """Regression: opening results for a newer audit kept showing the first one viewed."""
+    other = "0f0f0f0f-1111-4222-8333-444444444444"
+    for path, body in list(fake_api.routes.items()):
+        if path.startswith(f"/audits/{audit_id}"):
+            fake_api.overrides[path.replace(audit_id, other, 1)] = copy.deepcopy(body)
+            if path == f"/audits/{audit_id}":
+                fake_api.overrides[path.replace(audit_id, other, 1)]["id"] = other
+    newer = copy.deepcopy(fake_api.overrides[f"/audits/{other}"])
+    fake_api.overrides["/audits"] = [newer, copy.deepcopy(fake_api.routes[f"/audits/{audit_id}"])]
+
+    at = app("app_pages/audit_results.py", audit=audit_id)
+    assert_clean(at)
+    assert f"Audit {audit_id}" in text(at)
+
+    at.query_params["audit"] = other  # what "Open results" for the new audit does
+    at.run()
+    assert_clean(at)
+    assert f"Audit {other}" in text(at)
+    assert at.query_params["audit"] == other
