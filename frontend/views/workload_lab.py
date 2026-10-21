@@ -9,6 +9,7 @@ import streamlit as st
 from frontend import data, routes
 from frontend.api_client import ApiError
 from frontend.components.notices import empty_state, show_api_error
+from frontend.components.url_select import url_selectbox
 from frontend.theme import badge, esc
 from frontend.views import (
     workload_benchmark,
@@ -58,13 +59,16 @@ def render_page() -> None:
         return
     labels = {w["id"]: f"{w['name']} ({w['slug']})" for w in workloads}
     left, right = st.columns([2, 3])
-    workload_id = left.selectbox(
+    workload_id = url_selectbox(
         "Workload",
         list(labels),
+        key="workload_select",
+        param=routes.WORKLOAD_PARAM,
         format_func=labels.__getitem__,
-        key=routes.WORKLOAD_PARAM,
-        bind="query-params",
+        container=left,
     )
+    if workload_id is None:
+        return
     right.caption(
         "Trusted, bundled workloads: deterministic inputs, profiled and benchmarked in fresh "
         "processes. Results here are MEASURED on this machine."
