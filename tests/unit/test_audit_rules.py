@@ -258,6 +258,64 @@ def test_string_concat_false_positives() -> None:
     assert lines(src, "PP-STR-001") == []
 
 
+def test_string_concat_read_inside_the_loop_is_not_flagged() -> None:
+    src = """
+    async def stream(resp, emit):
+        answer = ""
+        async for chunk in resp:
+            if chunk.text:
+                answer += chunk.text
+                yield {"answer": answer}
+
+    def preview(rows):
+        text = ""
+        for row in rows:
+            text += row
+            emit(text)
+        tail = ""
+        for row in rows:
+            tail = tail + row
+            if tail[-3:] == "end":
+                break
+        buf = ""
+        while len(buf) < 80:
+            buf += "x"
+        return text, tail, buf
+
+    def closure(rows, cb):
+        acc = ""
+        for row in rows:
+            acc += row
+            cb(lambda: acc)
+        return acc
+    """
+    assert lines(src, "PP-STR-001") == []
+
+
+def test_string_concat_is_flagged_in_async_for_and_while_when_used_after_the_loop() -> None:
+    src = """
+    async def collect(resp):
+        answer = ""
+        async for chunk in resp:
+            if chunk.text:
+                answer += chunk.text
+        return answer
+
+    def pad(n):
+        out = ""
+        i = 0
+        while i < n:
+            out = out + "-"
+            i += 1
+        for row in range(n):
+            pass
+        else:
+            out += "!"
+        return out
+    """
+    assert lines(src, "PP-STR-001") == [5, 12]
+
+
 # --- PP-REGEX-001 ---------------------------------------------------------------------
 
 

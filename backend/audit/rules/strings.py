@@ -4,10 +4,54 @@ from __future__ import annotations
 
 import ast
 
-from backend.audit.rules.base import BaseRule, RuleMeta, ScopeTracker
+from backend.audit.rules.base import BaseRule, LoopFrame, RuleMeta, ScopeTracker
 from backend.audit.rules.kinds import Kind
 from backend.audit.rules.loops import names_in, reassigned_in_loop
 from backend.models.enums import Confidence, FindingCategory, Severity
+
+
+def _concat_operands(name: str, nodes: list[ast.AST]) -> set[int]:
+    """ids of the ``name`` occurrences that only express the accumulation itself: the target of
+    ``name += ...`` and both sides' ``name`` in ``name = name + ...`` / ``name = ... + name``."""
+    own: set[int] = set()
+    for node in nodes:
+        if isinstance(node, ast.AugAssign) and isinstance(node.op, ast.Add):
+            if isinstance(node.target, ast.Name) and node.target.id == name:
+                own.add(id(node.target))
+        elif (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == name
+            and isinstance(node.value, ast.BinOp)
+            and isinstance(node.value.op, ast.Add)
+        ):
+            sides = [node.value.left, node.value.right]
+            operand = next((s for s in sides if isinstance(s, ast.Name) and s.id == name), None)
+            if operand is not None:
+                own |= {id(node.targets[0]), id(operand)}
+    return own
+
+
+def read_in_loop(name: str, loop: LoopFrame) -> bool:
+    """True when ``name`` is read on every pass of ``loop`` (its body, or a ``while`` test) other
+    than by the accumulation statements themselves: yielded, passed to a call, compared, sliced.
+    Reads in nested functions count too, since they see the partial value."""
+    node = loop.node
+    region: list[ast.AST] = []
+    if isinstance(node, ast.For | ast.AsyncFor | ast.While):
+        region = [*node.body]
+        if isinstance(node, ast.While):
+            region.insert(0, node.test)
+    nodes = [child for item in region for child in ast.walk(item)]
+    own = _concat_operands(name, nodes)
+    return any(
+        isinstance(child, ast.Name)
+        and child.id == name
+        and isinstance(child.ctx, ast.Load)
+        and id(child) not in own
+        for child in nodes
+    )
 
 
 class StringConcatInLoop(BaseRule):
@@ -59,6 +103,8 @@ class StringConcatInLoop(BaseRule):
             own_targets is not None and target.id in names_in(own_targets)
         ):
             return  # a fresh string every iteration, not an accumulator
+        if read_in_loop(target.id, loop):
+            return  # the partial string is consumed every iteration; a join would be repeated
         self.emit(
             scope,
             node,
