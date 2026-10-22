@@ -71,6 +71,27 @@ def start_repo_optimization(audit_id: str, finding_id: str) -> None:
     data.clear_repo_optimization_caches()
     st.session_state[SELECT_KEY.format(audit_id=audit_id)] = candidate["id"]
     st.session_state[TAB_KEY] = TAB_NAME
+    st.toast(generation_message(candidate), icon=OUTCOME_ICONS.get(candidate.get("outcome"), "🛠️"))
+
+
+OUTCOME_ICONS = {"proposed": "✅", "no_safe_patch": "⚠️", "rejected_by_validator": "⛔"}
+
+
+def generation_message(candidate: dict[str, Any]) -> str:
+    """What happened after Generate patch, pointing at where the result is shown."""
+    short = str(candidate.get("id", ""))[:8]
+    outcome = candidate.get("outcome")
+    if outcome == "proposed":
+        return (
+            f"Patch {short} generated for {candidate.get('target_file')}. Review the diff under "
+            "Candidates below, then approve or reject it."
+        )
+    if outcome == "no_safe_patch":
+        return f"No safe patch for this finding: {candidate.get('error') or 'see the candidate'}"
+    return (
+        f"The proposed patch {short} was rejected by the patch validator; the reasons are shown "
+        "under Candidates below."
+    )
 
 
 def open_candidate(audit_id: str, candidate_id: str) -> None:

@@ -59,6 +59,33 @@ def side_by_side_rows(before: str, after: str) -> list[DiffRow]:
     return rows
 
 
+DEFAULT_CONTEXT = 4
+
+
+def fold_unchanged(rows: list[DiffRow], context: int = DEFAULT_CONTEXT) -> list[DiffRow | int]:
+    """Keep changed rows plus ``context`` unchanged rows around them; runs of other unchanged
+    rows become a single ``int`` (how many lines were hidden)."""
+    changed = [i for i, row in enumerate(rows) if row.kind != "equal"]
+    if not changed:
+        return list(rows)
+    keep = set()
+    for i in changed:
+        keep.update(range(max(0, i - context), min(len(rows), i + context + 1)))
+    folded: list[DiffRow | int] = []
+    hidden = 0
+    for i, row in enumerate(rows):
+        if i in keep:
+            if hidden:
+                folded.append(hidden)
+                hidden = 0
+            folded.append(row)
+        else:
+            hidden += 1
+    if hidden:
+        folded.append(hidden)
+    return folded
+
+
 def unified_diff(before: str, after: str, before_name: str, after_name: str) -> str:
     return "".join(
         difflib.unified_diff(
@@ -94,7 +121,9 @@ def side_by_side_html(
     before_title: str,
     after_title: str,
     language: str | None = "python",
+    context: int | None = DEFAULT_CONTEXT,
 ) -> str:
+    """Side-by-side table; with ``context`` set, unchanged stretches are folded."""
     left_html = highlight_lines(before, language)
     right_html = highlight_lines(after, language)
     rows = side_by_side_rows(before, after)
@@ -109,11 +138,21 @@ def side_by_side_html(
             f'<td class="pp-src"><pre>{body or " "}</pre></td></tr></table>'
         )
 
-    body = "".join(
-        f"<tr><td style='width:50%;padding:0'>{cell(r.left_no, left_html, r.kind, 'left')}</td>"
-        f"<td style='width:50%;padding:0'>{cell(r.right_no, right_html, r.kind, 'right')}</td></tr>"
-        for r in rows
-    )
+    def row_html(item: DiffRow | int) -> str:
+        if isinstance(item, int):
+            return (
+                "<tr><td colspan='2' class='pp-diff-fold' style='text-align:center;opacity:.6'>"
+                f"⋯ {item} unchanged line{'s' if item != 1 else ''} ⋯</td></tr>"
+            )
+        left = cell(item.left_no, left_html, item.kind, "left")
+        right = cell(item.right_no, right_html, item.kind, "right")
+        return (
+            f"<tr><td style='width:50%;padding:0'>{left}</td>"
+            f"<td style='width:50%;padding:0'>{right}</td></tr>"
+        )
+
+    shown: list[DiffRow | int] = list(rows) if context is None else fold_unchanged(rows, context)
+    body = "".join(row_html(item) for item in shown)
     added, removed = diff_stats(rows)
     head = (
         '<div class="pp-code-head">'
