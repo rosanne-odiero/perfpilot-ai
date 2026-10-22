@@ -157,6 +157,7 @@ Routes not yet assigned to a workflow.
 |---|---|---|---|---|
 | GET | `/api/audits/{audit_id}/optimizations` |  | 200 list[RepoCandidateOut] | List Repo Optimizations |
 | POST | `/api/audits/{audit_id}/optimizations` |  | 201 `RepoCandidateOut` | Create Repo Optimization |
+| GET | `/api/audits/{audit_id}/optimizations/preview` |  | 200 `PatchPreviewOut` | Which findings can be patched automatically right now (dry run; nothing is created). |
 | GET | `/api/repo-optimizations/{candidate_id}` |  | 200 `RepoCandidateOut` | Get Repo Optimization |
 | POST | `/api/repo-optimizations/{candidate_id}/approve` |  | 200 `RepoCandidateOut` | Approve Repo Optimization |
 | GET | `/api/repo-optimizations/{candidate_id}/benchmark` |  | 200 `RepoBenchmarkOut` | Get Repo Benchmark |

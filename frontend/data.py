@@ -270,6 +270,12 @@ def repo_diff(candidate_id: str) -> dict[str, Any]:
     return dict(api.get(f"/repo-optimizations/{candidate_id}/diff"))
 
 
+@st.cache_data(ttl=MEDIUM, show_spinner=False)
+def repo_patch_preview(audit_id: str) -> Any:
+    """Per finding: is an automatic patch available, and why not (dry run, nothing created)."""
+    return api.get_if_supported(f"/audits/{audit_id}/optimizations/preview")
+
+
 def clear_repo_optimization_caches() -> None:
-    for fn in (repo_candidates, repo_candidate, jobs):
+    for fn in (repo_candidates, repo_candidate, repo_patch_preview, jobs):
         fn.clear()

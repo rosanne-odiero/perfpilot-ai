@@ -11,6 +11,7 @@
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/llm-usage": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_llm_usage.json",
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/modules": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_modules.json",
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/optimizations": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_optimizations.json",
+ "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/optimizations/preview": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_optimizations_preview.json",
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/recommendations": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_recommendations.json",
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/reports": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_reports.json",
  "/audits/b95b0ad7-11d0-4c59-b6c9-f4cfefb7f082/runtime": "audits_b95b0ad7_11d0_4c59_b6c9_f4cfefb7f082_runtime.json",

@@ -84,6 +84,7 @@ candidate.
 |---|---|---|
 | `POST /api/audits/{audit_id}/optimizations` | `{"finding_id": str}` | `201 RepoCandidate` (also for `no_safe_patch` and validator rejections; see `outcome`) |
 | `GET /api/audits/{audit_id}/optimizations` | | `200 [RepoCandidate]`, oldest first |
+| `GET /api/audits/{audit_id}/optimizations/preview` | | `200 PatchPreviewOut`: for up to 300 highest-priority findings, whether a deterministic patch applies (`automatic_patch`, `transform`) or why not (`reason`), whether an LLM would be asked (`llm_fallback`), and existing `candidate_ids`. A dry run: nothing is created and no model is called. The UI's Optimize tab uses it to let you pick a patchable finding. |
 | `GET /api/repo-optimizations/{id}` | | `200 RepoCandidate` |
 | `GET /api/repo-optimizations/{id}/diff` | | `200 {"candidate_id", "generated_by", "unified_diff", "files": [{"path", "original", "patched", "original_sha256", "patched_sha256"}]}`; `404` when there is no diff |
 | `POST /api/repo-optimizations/{id}/approve` | `{"approved_by": str = "local-user"}` | `200 RepoCandidate`; `409 invalid_state_transition` unless `AWAITING_APPROVAL` with a valid diff and still pending |

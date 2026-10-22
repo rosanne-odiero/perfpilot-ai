@@ -16,6 +16,7 @@ from backend.core.exceptions import NotFoundError
 from backend.models.enums import JobStatus
 from backend.models.optimization_api import DiffOut
 from backend.models.repo_optimization_api import (
+    PatchPreviewOut,
     RepoApprovalRequest,
     RepoBenchmarkOut,
     RepoBenchmarkRequest,
@@ -41,6 +42,14 @@ def create_repo_optimization(
     candidate = service.create_candidate(session, settings, audit_id, body.finding_id)
     session.flush()
     return service.candidate_view(session, candidate.id)
+
+
+@router.get("/audits/{audit_id}/optimizations/preview", response_model=PatchPreviewOut)
+def preview_repo_optimizations(
+    audit_id: str, session: DbSession, settings: AppSettings
+) -> PatchPreviewOut:
+    """Which findings can be patched automatically right now (dry run; nothing is created)."""
+    return service.preview_patches(session, settings, audit_id)
 
 
 @router.get("/audits/{audit_id}/optimizations", response_model=list[RepoCandidateOut])

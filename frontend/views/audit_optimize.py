@@ -126,30 +126,160 @@ def _approved_commands(context: AuditContext) -> tuple[list[str], list[str]]:
     return tests, workloads
 
 
+def go_to_runtime() -> None:
+    st.session_state[TAB_KEY] = "Runtime"
+
+
 def _prerequisites(context: AuditContext) -> tuple[bool, bool]:
+    """Show what validation/benchmarking will reuse; return (has_tests, has_workload)."""
     tests, workloads = _approved_commands(context)
     with st.container(border=True):
-        st.markdown("**What validation and benchmarking will run**")
+        st.markdown("**Before validating and benchmarking a patch**")
         st.caption(
-            "Approving a candidate only allows testing its diff. Validation and benchmarking "
-            "reuse commands you already approved for this audit in the Runtime tab (same argv, "
-            "image and limits); nothing new is ever run."
+            "Generating and reviewing a patch needs nothing else. To *prove* it, PerfPilot reuses "
+            "commands you approved for this audit in the Runtime tab (same argv, image and "
+            "limits) and runs them in the Docker sandbox; nothing new is ever run."
         )
         cols = st.columns(2)
         with cols[0]:
             if tests:
-                st.markdown("Validation (tests): " + ", ".join(f"`{t}`" for t in tests))
-            else:
-                st.warning("No approved pytest command yet: approve one in the Runtime tab.")
-        with cols[1]:
-            if workloads:
-                st.markdown("Benchmark (workload): " + ", ".join(f"`{w}`" for w in workloads))
+                st.success("Validation (tests): " + ", ".join(f"`{t}`" for t in tests), icon="✅")
             else:
                 st.warning(
-                    "No approved workload command (script/module/benchmark) yet: approve one in "
-                    "the Runtime tab."
+                    "Step 1 — approve and run a **pytest** command in the Runtime tab "
+                    "(tick *Install dependencies* if the tests need packages).",
+                    icon="1️⃣",
                 )
+        with cols[1]:
+            if workloads:
+                st.success(
+                    "Benchmark (workload): " + ", ".join(f"`{w}`" for w in workloads), icon="✅"
+                )
+            else:
+                st.warning(
+                    "Step 2 — approve and run a **workload** command (a script, module or "
+                    "benchmark that exercises the code) in the Runtime tab.",
+                    icon="2️⃣",
+                )
+        if not (tests and workloads):
+            st.button(
+                "Go to the Runtime tab",
+                key=f"repo_go_runtime_{context.id}",
+                icon="🧪",
+                on_click=go_to_runtime,
+            )
     return bool(tests), bool(workloads)
+
+
+PATCH_LABELS = {"auto": "✅ automatic", "llm": "🤖 via LLM", "none": "— not available"}
+
+
+def preview_frame(items: list[dict[str, Any]]) -> pd.DataFrame:
+    def patch(item: dict[str, Any]) -> str:
+        if item.get("automatic_patch"):
+            return PATCH_LABELS["auto"]
+        return PATCH_LABELS["llm"] if item.get("llm_fallback") else PATCH_LABELS["none"]
+
+    return pd.DataFrame(
+        [
+            {
+                "Patch": patch(item),
+                "Priority": float(item.get("priority_score") or 0.0),
+                "Severity": item["severity"],
+                "Rule": item["rule_id"],
+                "Finding": item["title"],
+                "Location": f"{item['file_path']}:{item['line_start']}",
+                "Measured": bool(item.get("measured")),
+                "Why not automatic": item.get("reason") or "",
+                "Candidates": len(item.get("candidate_ids") or []),
+            }
+            for item in items
+        ]
+    )
+
+
+def _pick_finding(context: AuditContext) -> None:
+    """Step 0: choose a finding (with its patch availability) and generate a candidate."""
+    preview = data.repo_patch_preview(context.id)
+    if isinstance(preview, Unsupported):
+        st.info(
+            "Open a finding (Findings tab) or a confirmed hotspot (Runtime tab) and press "
+            "Optimize this finding.",
+            icon="🧭",
+        )
+        return
+    items: list[dict[str, Any]] = list(preview.get("items") or [])
+    auto = int(preview.get("automatic_patches") or 0)
+    st.markdown("#### Pick a finding to patch")
+    st.caption(
+        f"{auto} of {preview.get('previewed', len(items))} findings can be patched automatically "
+        "(deterministic AST rewrites for rules "
+        + ", ".join(f"`{r}`" for r in preview.get("patchable_rules") or [])
+        + "). The others show why not. Nothing is created until you press Generate patch."
+    )
+    if not preview.get("llm_configured"):
+        st.caption(
+            "Findings without an automatic patch can get an LLM-proposed patch: configure "
+            "`PERFPILOT_LLM_*` in `.env` and start an audit with *Use AI* and consent."
+        )
+    elif not preview.get("llm_consent"):
+        st.caption(
+            "An LLM is configured, but this audit was started without AI consent, so only "
+            "automatic patches are offered. Re-run the audit with *Use AI* to enable LLM patches."
+        )
+    only_patchable = st.toggle(
+        "Only findings that can be patched",
+        value=auto > 0,
+        key=f"repo_only_patchable_{context.id}",
+    )
+    shown = [
+        i for i in items if not only_patchable or i.get("automatic_patch") or i.get("llm_fallback")
+    ]
+    if not shown:
+        empty_state(
+            "No finding in this audit can be patched automatically.",
+            "Turn off the filter to see each finding's reason, or configure an LLM.",
+        )
+        return
+    state = st.dataframe(
+        preview_frame(shown),
+        key=f"repo_preview_{context.id}",
+        hide_index=True,
+        width="stretch",
+        height=min(420, 38 + 35 * len(shown)),
+        on_select="rerun",
+        selection_mode="single-row",
+        column_config={
+            "Priority": st.column_config.ProgressColumn(
+                "Priority", format="%.1f", min_value=0.0, max_value=100.0
+            ),
+            "Finding": st.column_config.TextColumn(width="medium"),
+            "Why not automatic": st.column_config.TextColumn(width="large"),
+        },
+    )
+    rows = state.selection.rows if state is not None else []
+    selected = shown[rows[0]] if rows and rows[0] < len(shown) else None
+    if selected is None:
+        st.caption("Select a row, then generate a patch for it.")
+        return
+    can_patch = bool(selected.get("automatic_patch") or selected.get("llm_fallback"))
+    cols = st.columns([1, 2])
+    cols[0].button(
+        "Generate patch",
+        key=f"repo_generate_{context.id}",
+        type="primary",
+        icon="🛠️",
+        disabled=not can_patch,
+        on_click=start_repo_optimization,
+        args=(context.id, selected["finding_id"]),
+    )
+    if can_patch:
+        how = selected.get("transform") or "LLM proposal (AI_HYPOTHESIS until validated)"
+        cols[1].caption(
+            f"`{selected['rule_id']}` at `{selected['file_path']}:{selected['line_start']}` · {how}"
+        )
+    else:
+        cols[1].caption(f"Not patchable: {selected.get('reason') or 'unknown reason'}")
 
 
 def _finding_block(context: AuditContext, candidate: dict[str, Any]) -> None:
@@ -400,15 +530,13 @@ def render(context: AuditContext) -> None:
             "the API serves /api/audits/{id}/optimizations.",
         )
         return
-    has_tests, has_workload = _prerequisites(context)
     candidates = list(reversed(items_of(payload)))
+    with st.expander("Pick a finding to patch", expanded=not candidates, icon="🛠️"):
+        _pick_finding(context)
+    has_tests, has_workload = _prerequisites(context)
     if not candidates:
-        empty_state(
-            "No optimization candidates for this audit yet.",
-            "Open a finding (Findings tab) or a confirmed hotspot (Runtime tab) and press "
-            "Optimize this finding.",
-        )
         return
+    st.markdown("#### Candidates")
     labels = {
         c["id"]: f"{c['id'][:8]} · {c['rule_id']} · {c['target_file']} · {c['state'].lower()} · "
         f"{fmt_dt(c['created_at'])}"

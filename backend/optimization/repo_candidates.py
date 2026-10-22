@@ -41,6 +41,8 @@ from backend.models.orm.repo_optimization import (
 from backend.models.orm.runtime import RuntimeApproval, RuntimeApprovalStatus, RuntimeCommand
 from backend.models.repo_optimization_api import (
     CandidateOutcome,
+    PatchPreviewItem,
+    PatchPreviewOut,
     RepoBenchmarkOut,
     RepoBenchmarkRequest,
     RepoBenchmarkSampleOut,
@@ -52,6 +54,7 @@ from backend.optimization.patch_generator import (
     PatchProposal,
     PatchRequest,
     PatchTarget,
+    generate_patch,
     select_patch_proposer,
 )
 from backend.optimization.patch_validator import PatchViolation, validate_patch
@@ -767,4 +770,81 @@ def candidate_diff(session: Session, candidate_id: str) -> DiffOut:
                 patched_sha256=candidate.patched_file_sha256,
             )
         ],
+    )
+
+
+# ----------------------------------------------------------------------------- preview
+
+PREVIEW_LIMIT = 300
+
+
+def preview_patches(session: Session, settings: Settings, audit_id: str) -> PatchPreviewOut:
+    """Dry-run the deterministic proposer for every finding (highest priority first).
+
+    Nothing is persisted and no model is called: this only tells the user which findings can be
+    patched automatically, and why the others cannot.
+    """
+    from backend.optimization.transforms import TRANSFORMS
+
+    audit = audit_service.get_audit(session, audit_id)
+    snapshot = audit_service.get_snapshot(session, audit.snapshot_id)
+    _, inventory = audit_service.ensure_snapshot_ready(snapshot)
+    root = snapshot_root(session, settings, audit.snapshot_id)
+    total, findings = audit_service.query_findings(
+        session, audit_id, audit_service.FindingFilters(), limit=PREVIEW_LIMIT, offset=0
+    )
+    existing: dict[str, list[str]] = {}
+    for candidate in session.scalars(
+        select(RepoOptimizationCandidate)
+        .where(RepoOptimizationCandidate.audit_id == audit_id)
+        .order_by(RepoOptimizationCandidate.created_at)
+    ):
+        existing.setdefault(candidate.finding_id, []).append(candidate.id)
+    llm_fallback = settings.llm_configured and audit.llm_consent
+    items: list[PatchPreviewItem] = []
+    for finding in findings:
+        location = finding.location
+        try:
+            proposal = generate_patch(
+                PatchTarget(
+                    source_root=root,
+                    target_file=location.file_path,
+                    target_function=location.symbol,
+                    line_start=location.line_start,
+                    line_end=location.line_end,
+                    rule_id=finding.rule_id,
+                    expected_sha256=_inventory_hash(inventory, location.file_path),
+                )
+            )
+            automatic = proposal.status == "proposed"
+            transform, reason = proposal.transform, None if automatic else proposal.reason
+        except PerfPilotError as exc:
+            automatic, transform, reason = False, None, exc.message
+        items.append(
+            PatchPreviewItem(
+                finding_id=finding.id,
+                rule_id=finding.rule_id,
+                title=finding.title,
+                severity=finding.severity.value,
+                priority_score=finding.priority_score,
+                file_path=location.file_path,
+                line_start=location.line_start,
+                symbol=location.symbol,
+                measured=finding.measured is not None,
+                automatic_patch=automatic,
+                transform=transform,
+                reason=reason,
+                llm_fallback=llm_fallback and not automatic,
+                candidate_ids=existing.get(finding.id, []),
+            )
+        )
+    return PatchPreviewOut(
+        audit_id=audit_id,
+        total_findings=total,
+        previewed=len(items),
+        automatic_patches=sum(1 for i in items if i.automatic_patch),
+        llm_configured=settings.llm_configured,
+        llm_consent=audit.llm_consent,
+        patchable_rules=sorted(TRANSFORMS),
+        items=items,
     )
