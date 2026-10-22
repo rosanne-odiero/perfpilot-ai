@@ -103,3 +103,33 @@ def test_untokenizable_python_is_plain_text() -> None:
     assert highlight_lines("def broken(:\n  x", "Python") == ["def broken(:", "  x"]
     assert highlight_lines("a = '''open\n", filename="a.py") == ["a = &#x27;&#x27;&#x27;open"]
     assert highlight_lines("", "Python") == [""]
+
+
+def test_side_by_side_folds_unchanged_lines_around_the_change() -> None:
+    from frontend.components.diff_view import fold_unchanged, side_by_side_html, side_by_side_rows
+
+    before = "\n".join(f"line {i}" for i in range(1, 201))
+    after = before.replace("line 100", "line 100 changed")
+    folded = fold_unchanged(side_by_side_rows(before, after), context=3)
+    hidden = [item for item in folded if isinstance(item, int)]
+    assert hidden == [96, 97]
+    assert sum(hidden) + len([i for i in folded if not isinstance(i, int)]) == 200
+    page = side_by_side_html(before, after, before_title="a", after_title="b", context=3)
+    assert "96 unchanged lines" in page
+    assert "97 unchanged lines" in page
+    assert "line 100 changed" in page
+    assert "line 50" not in page
+    full = side_by_side_html(before, after, before_title="a", after_title="b", context=None)
+    assert "unchanged line" not in full
+    assert "line 50" in full
+
+
+def test_generation_message_points_at_the_result() -> None:
+    from frontend.views.audit_optimize import generation_message
+
+    ok = generation_message({"id": "abcdef1234", "outcome": "proposed", "target_file": "x.py"})
+    assert "abcdef12" in ok
+    assert "Candidates below" in ok
+    nope = generation_message({"outcome": "no_safe_patch", "error": "no transformation"})
+    assert "No safe patch" in nope
+    assert "no transformation" in nope
