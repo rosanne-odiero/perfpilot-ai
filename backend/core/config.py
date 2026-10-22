@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     # Absolute path to the docker CLI. When unset, a fixed lookup is used (PATH + well-known dirs).
     sandbox_docker_path: Path | None = None
     sandbox_install_timeout_seconds: int = 900
+    # Package mirrors that proxy PyPI on demand can 404 a file until it is cached; the install
+    # step is retried (same approved manifest/image/limits) only for such index errors.
+    sandbox_install_attempts: int = Field(default=3, ge=1, le=5)
+    sandbox_install_retry_delay_seconds: float = Field(default=10.0, ge=0.0, le=120.0)
     # Optional package index for the (separately approved) dependency-install step.
     sandbox_pip_index_url: str | None = None
     sandbox_approval_ttl_seconds: int = 24 * 3600

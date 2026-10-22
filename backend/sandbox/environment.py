@@ -18,6 +18,7 @@ import json
 import posixpath
 import re
 import shutil
+import time
 import tomllib
 import uuid
 from pathlib import Path
@@ -71,6 +72,8 @@ class PreparedEnvironment(BaseModel):
     manifest: DependencyManifest
     allow_sdist_builds: bool
     result: SandboxRunResult
+    attempts: int = Field(default=1, description="Install attempts (retries only on index errors)")
+    retry_reasons: list[str] = Field(default_factory=list)
 
     @property
     def succeeded(self) -> bool:
@@ -208,6 +211,26 @@ def build_dependency_manifest(
     return builder.manifest
 
 
+# pip output that means the package index (or a mirror still caching from PyPI) failed, not the
+# requirements: a retry of the same approved install can succeed.
+_TRANSIENT_INDEX_ERROR = re.compile(
+    r"HTTP error (?:404|408|429|500|502|503|504) while getting"
+    r"|(?:404|429|5\d\d) (?:Client|Server) Error"
+    r"|Read timed out|Connection (?:reset|aborted|refused)|Max retries exceeded"
+    r"|SSLError|ProtocolError|IncompleteRead"
+)
+
+
+def transient_index_error(result: SandboxRunResult) -> str | None:
+    """The first line explaining a retryable index failure, or None for a real install error."""
+    if result.succeeded or result.timed_out or result.oom_killed:
+        return None
+    for line in (result.stderr or "").splitlines():
+        if _TRANSIENT_INDEX_ERROR.search(line):
+            return line.strip()[:300]
+    return None
+
+
 def install_limits(settings: Settings) -> SandboxLimits:
     return SandboxLimits(
         cpus=settings.sandbox_cpus,
@@ -243,28 +266,37 @@ def prepare_environment(
     env_root.mkdir(parents=True, exist_ok=True)
     manifest_file = env_root / "requirements.txt"
     manifest_file.write_text("\n".join(manifest.requirements) + "\n", encoding="utf-8")
-    staging = env_root / f"deps.partial-{uuid.uuid4().hex[:12]}"
-    staging.mkdir()
     final = deps_dir_for(settings, grant.snapshot_id)
-    try:
-        result = backend.install_dependencies(
-            DependencyInstallRequest(
-                manifest_file=manifest_file,
-                target_dir=staging,
-                allow_sdists=grant.allow_sdist_builds,
-                index_url=settings.sandbox_pip_index_url,
-                limits=install_limits(settings),
-                image=grant.image,
+    retry_reasons: list[str] = []
+    attempt = 0
+    while True:
+        attempt += 1
+        staging = env_root / f"deps.partial-{uuid.uuid4().hex[:12]}"
+        staging.mkdir()
+        try:
+            result = backend.install_dependencies(
+                DependencyInstallRequest(
+                    manifest_file=manifest_file,
+                    target_dir=staging,
+                    allow_sdists=grant.allow_sdist_builds,
+                    index_url=settings.sandbox_pip_index_url,
+                    limits=install_limits(settings),
+                    image=grant.image,
+                )
             )
-        )
-        installed = result.succeeded
-        if installed:
-            if final.exists():
-                shutil.rmtree(final)
-            staging.rename(final)
-    finally:
-        if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
+            installed = result.succeeded
+            if installed:
+                if final.exists():
+                    shutil.rmtree(final)
+                staging.rename(final)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging, ignore_errors=True)
+        reason = None if installed else transient_index_error(result)
+        if reason is None or attempt >= settings.sandbox_install_attempts:
+            break
+        retry_reasons.append(reason)
+        time.sleep(settings.sandbox_install_retry_delay_seconds * attempt)
 
     prepared = PreparedEnvironment(
         snapshot_id=grant.snapshot_id,
@@ -272,6 +304,8 @@ def prepare_environment(
         manifest=manifest,
         allow_sdist_builds=grant.allow_sdist_builds,
         result=result,
+        attempts=attempt,
+        retry_reasons=retry_reasons,
     )
     (env_root / "environment.json").write_text(
         json.dumps(
@@ -279,6 +313,7 @@ def prepare_environment(
                 "approval_id": grant.approval_id,
                 "image_digest": result.image_digest,
                 "succeeded": installed,
+                "attempts": attempt,
                 "manifest": manifest.model_dump(mode="json"),
             },
             indent=2,

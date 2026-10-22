@@ -169,6 +169,8 @@ Application settings (generated from `backend/core/config.py`; regenerate with `
 | `PERFPILOT_SANDBOX_OUTPUT_MAX_BYTES` | int | `16777216` | Captured stdout/stderr/output cap per run. |
 | `PERFPILOT_SANDBOX_DOCKER_PATH` | path |  | Absolute path of the docker CLI (default: fixed lookup). |
 | `PERFPILOT_SANDBOX_INSTALL_TIMEOUT_SECONDS` | int | `900` | Timeout of the separately approved dependency install. |
+| `PERFPILOT_SANDBOX_INSTALL_ATTEMPTS` | int | `3` |  |
+| `PERFPILOT_SANDBOX_INSTALL_RETRY_DELAY_SECONDS` | float | `10.0` |  |
 | `PERFPILOT_SANDBOX_PIP_INDEX_URL` | str |  | Package index for the approved dependency-install step. |
 | `PERFPILOT_SANDBOX_APPROVAL_TTL_SECONDS` | int | `86400` | How long a runtime approval stays valid. |
 <!-- settings-table:end -->
