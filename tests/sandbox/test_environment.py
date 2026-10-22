@@ -11,15 +11,19 @@ import itertools
 import json
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from backend.core.config import Settings
 from backend.core.exceptions import SecurityViolationError, ValidationFailedError
+from backend.runtime.execution import install_failure_reason
 from backend.sandbox.approvals import DependencyInstallGrant
+from backend.sandbox.backend import DependencyInstallRequest, SandboxRunResult
 from backend.sandbox.docker_backend import DockerSandboxBackend
 from backend.sandbox.environment import (
+    DependencyManifest,
+    PreparedEnvironment,
     RequirementsSource,
     build_dependency_manifest,
     deps_dir_for,
@@ -245,3 +249,114 @@ def test_install_preconditions(settings: Settings, workspace: Path, tmp_path: Pa
         prepare_environment(
             backend, _grant(), workspace_dir=tmp_path, source=SOURCE, settings=settings
         )
+
+
+# ---------------------------------------------------------------------- retries
+
+MIRROR_404 = (
+    "ERROR: HTTP error 404 while getting https://mirror.example/pypi/download/librt/0.7.7/"
+    "librt-0.7.7-cp312-cp312-manylinux_2_28_aarch64.whl.metadata\n"
+)
+
+
+def _result(exit_code: int, stderr: str = "", **flags: bool) -> SandboxRunResult:
+    return SandboxRunResult(
+        exit_code=exit_code,
+        timed_out=flags.get("timed_out", False),
+        oom_killed=flags.get("oom_killed", False),
+        duration_s=0.1,
+        stdout="",
+        stderr=stderr,
+    )
+
+
+class ScriptedInstaller:
+    """TEST DOUBLE: returns pre-set install results; only exercises the retry policy."""
+
+    def __init__(self, *results: SandboxRunResult) -> None:
+        self.results = list(results)
+        self.calls = 0
+
+    def install_dependencies(self, request: DependencyInstallRequest) -> SandboxRunResult:
+        self.calls += 1
+        assert request.target_dir.is_dir()  # a fresh staging dir for every attempt
+        return self.results.pop(0)
+
+
+@pytest.fixture
+def quick_retries(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> Settings:
+    monkeypatch.setattr(settings, "sandbox_install_retry_delay_seconds", 0.0)
+    return settings
+
+
+def _prepare(installer: ScriptedInstaller, settings: Settings, workspace: Path) -> Any:
+    return prepare_environment(
+        installer,  # type: ignore[arg-type]
+        _grant(),
+        workspace_dir=workspace,
+        source=SOURCE,
+        settings=settings,
+    )
+
+
+def test_mirror_404_is_retried_until_the_install_succeeds(
+    quick_retries: Settings, workspace: Path
+) -> None:
+    installer = ScriptedInstaller(_result(1, MIRROR_404), _result(0))
+    prepared = _prepare(installer, quick_retries, workspace)
+    assert prepared.succeeded
+    assert installer.calls == prepared.attempts == 2
+    assert prepared.retry_reasons == [MIRROR_404.strip()[:300]]
+    assert deps_dir_for(quick_retries, "snap-1").is_dir()
+    meta = json.loads(
+        (deps_dir_for(quick_retries, "snap-1").parent / "environment.json").read_text()
+    )
+    assert meta["attempts"] == 2
+
+
+def test_retries_are_bounded(quick_retries: Settings, workspace: Path) -> None:
+    installer = ScriptedInstaller(*[_result(1, MIRROR_404) for _ in range(5)])
+    prepared = _prepare(installer, quick_retries, workspace)
+    assert not prepared.succeeded
+    assert installer.calls == prepared.attempts == quick_retries.sandbox_install_attempts == 3
+    assert not list(deps_dir_for(quick_retries, "snap-1").parent.glob("deps.partial-*"))
+    reason = install_failure_reason(prepared)
+    assert reason.startswith("dependency installation failed in the sandbox after 3 attempts")
+    assert "HTTP error 404" in reason
+    assert "PERFPILOT_SANDBOX_PIP_INDEX_URL" in reason
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        _result(1, "ERROR: No matching distribution found for nope==9.9\n"),
+        _result(1, "ERROR: Could not install packages due to an OSError\n"),
+        _result(None, MIRROR_404, timed_out=True),  # type: ignore[arg-type]
+        _result(137, MIRROR_404, oom_killed=True),
+    ],
+)
+def test_real_install_errors_are_not_retried(
+    quick_retries: Settings, workspace: Path, result: SandboxRunResult
+) -> None:
+    installer = ScriptedInstaller(result, _result(0))
+    prepared = _prepare(installer, quick_retries, workspace)
+    assert not prepared.succeeded
+    assert installer.calls == prepared.attempts == 1
+
+
+def test_failure_reasons_are_specific() -> None:
+    def reason(result: SandboxRunResult) -> str:
+        prepared = PreparedEnvironment(
+            snapshot_id="s",
+            deps_dir=None,
+            manifest=DependencyManifest(requirements=["x"]),
+            allow_sdist_builds=False,
+            result=result,
+        )
+        return install_failure_reason(prepared)
+
+    assert "timed out" in reason(_result(None, "", timed_out=True))  # type: ignore[arg-type]
+    assert "ran out of memory" in reason(_result(137, "", oom_killed=True))
+    missing = reason(_result(1, "ERROR: No matching distribution found for nope==9.9\n"))
+    assert "No matching distribution found for nope==9.9" in missing
+    assert "allow source builds" in missing

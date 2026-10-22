@@ -55,9 +55,11 @@ from backend.sandbox.backend import (
     SandboxRunResult,
 )
 from backend.sandbox.environment import (
+    PreparedEnvironment,
     RequirementsSource,
     deps_dir_for,
     prepare_environment,
+    transient_index_error,
 )
 from backend.services import audits as audit_service
 
@@ -321,11 +323,13 @@ def _prepare_dependencies(
         "exit_code": prepared.result.exit_code,
         "timed_out": prepared.result.timed_out,
         "image_digest": prepared.result.image_digest,
+        "attempts": prepared.attempts,
+        "retry_reasons": prepared.retry_reasons,
         "stderr_tail": _tail(prepared.result.stderr),
     }
     _update_run(run.id, dependency_install=summary)
     if not prepared.succeeded:
-        raise RunFailed(RuntimeRunStatus.FAILED, "dependency installation failed in the sandbox")
+        raise RunFailed(RuntimeRunStatus.FAILED, install_failure_reason(prepared))
 
 
 def _store_artifacts(
@@ -598,3 +602,25 @@ def _execute(
         "correlated_findings": len(result_corr.correlations),
         "runtime_only_hotspots": len(result_corr.runtime_only),
     }
+
+
+def install_failure_reason(prepared: PreparedEnvironment) -> str:
+    """A specific, actionable reason for a failed dependency install."""
+    result = prepared.result
+    tries = f" after {prepared.attempts} attempts" if prepared.attempts > 1 else ""
+    if result.timed_out:
+        return f"dependency installation timed out in the sandbox{tries}"
+    if result.oom_killed:
+        return f"dependency installation ran out of memory in the sandbox{tries}"
+    lines = [line.strip() for line in (result.stderr or "").splitlines() if line.strip()]
+    errors = [line for line in lines if line.startswith("ERROR")] or lines[-1:]
+    detail = f": {errors[0][:240]}" if errors else ""
+    hint = ""
+    if transient_index_error(result):
+        hint = (
+            " (the package index or mirror did not serve a file; check "
+            "PERFPILOT_SANDBOX_PIP_INDEX_URL or approve the run again later)"
+        )
+    elif any("No matching distribution" in line for line in lines):
+        hint = " (no wheel for this platform; allow source builds only if you trust the package)"
+    return f"dependency installation failed in the sandbox{tries}{detail}{hint}"

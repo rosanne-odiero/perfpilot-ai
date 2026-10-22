@@ -152,6 +152,14 @@ Dependency installation is the only step with network access, and it is approved
 4. The install goes into a staging dir. On success it is renamed to `…/deps`. On failure it is
    removed. Metadata is written to `environment.json`. Later runs mount `deps` read-only with
    `--network none`.
+5. If pip fails because the **package index** failed (an HTTP 404/408/429/5xx while getting a file,
+   a timeout or a dropped connection), the same approved install (same manifest, image and limits,
+   fresh staging dir) is retried up to `PERFPILOT_SANDBOX_INSTALL_ATTEMPTS` times (default 3), with
+   a growing delay (`PERFPILOT_SANDBOX_INSTALL_RETRY_DELAY_SECONDS`, default 10 s × attempt).
+   Mirrors that proxy PyPI on demand (for example Azure Artifacts upstream feeds) can return 404 for
+   a file, including PEP 658 `.whl.metadata`, until the package is cached; a retry then succeeds.
+   Real install errors (no matching distribution, build failures, timeouts, OOM) are not retried.
+   The run records `attempts` and `retry_reasons`, and a failed run's reason quotes pip's error.
 
 ## Threat model
 
