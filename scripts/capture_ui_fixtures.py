@@ -92,6 +92,7 @@ def main() -> None:
         cap.get(f"/audits/{audit_id}/{suffix}")
     for run in cap.get(f"/audits/{audit_id}/runtime")["runs"]:
         cap.get(f"/audits/{audit_id}/runtime/runs/{run['id']}")
+    cap.get(f"/audits/{audit_id}/optimizations/preview")
     for candidate in cap.get(f"/audits/{audit_id}/optimizations"):
         cap.get(f"/repo-optimizations/{candidate['id']}")
         if candidate.get("patched_file_sha256"):

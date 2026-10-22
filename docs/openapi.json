@@ -2020,6 +2020,49 @@
         }
       }
     },
+    "/api/audits/{audit_id}/optimizations/preview": {
+      "get": {
+        "tags": [
+          "repo-optimization"
+        ],
+        "summary": "Preview Repo Optimizations",
+        "description": "Which findings can be patched automatically right now (dry run; nothing is created).",
+        "operationId": "preview_repo_optimizations_api_audits__audit_id__optimizations_preview_get",
+        "parameters": [
+          {
+            "name": "audit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Audit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/repo-optimizations/{candidate_id}": {
       "get": {
         "tags": [
@@ -6552,6 +6595,164 @@
           "recommendation_id"
         ],
         "title": "OptimizationRequest"
+      },
+      "PatchPreviewItem": {
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          },
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "priority_score": {
+            "type": "number",
+            "title": "Priority Score"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "line_start": {
+            "type": "integer",
+            "title": "Line Start"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "measured": {
+            "type": "boolean",
+            "title": "Measured",
+            "description": "The finding has MEASURED runtime evidence"
+          },
+          "automatic_patch": {
+            "type": "boolean",
+            "title": "Automatic Patch",
+            "description": "A deterministic AST rewrite applies safely"
+          },
+          "transform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transform"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Why no automatic patch is possible"
+          },
+          "llm_fallback": {
+            "type": "boolean",
+            "title": "Llm Fallback",
+            "description": "An LLM would be asked when no automatic patch applies (configured + consent)"
+          },
+          "candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Candidate Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_id",
+          "rule_id",
+          "title",
+          "severity",
+          "priority_score",
+          "file_path",
+          "line_start",
+          "symbol",
+          "measured",
+          "automatic_patch",
+          "llm_fallback"
+        ],
+        "title": "PatchPreviewItem",
+        "description": "Whether a finding can get a patch right now, computed without creating anything."
+      },
+      "PatchPreviewOut": {
+        "properties": {
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "total_findings": {
+            "type": "integer",
+            "title": "Total Findings"
+          },
+          "previewed": {
+            "type": "integer",
+            "title": "Previewed"
+          },
+          "automatic_patches": {
+            "type": "integer",
+            "title": "Automatic Patches"
+          },
+          "llm_configured": {
+            "type": "boolean",
+            "title": "Llm Configured"
+          },
+          "llm_consent": {
+            "type": "boolean",
+            "title": "Llm Consent"
+          },
+          "patchable_rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Patchable Rules"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PatchPreviewItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit_id",
+          "total_findings",
+          "previewed",
+          "automatic_patches",
+          "llm_configured",
+          "llm_consent",
+          "patchable_rules",
+          "items"
+        ],
+        "title": "PatchPreviewOut"
       },
       "ProfileRequest": {
         "properties": {

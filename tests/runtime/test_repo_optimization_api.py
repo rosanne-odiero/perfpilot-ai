@@ -500,3 +500,43 @@ def test_llm_proposer_needs_audit_level_consent(
     validated = validate(client, settings, created["id"])
     assert validated["validation"]["status"] == "PASSED", validated["validation"]["summary"]
     assert validated["provenance"] == "AI_HYPOTHESIS"  # validated, but not benchmarked yet
+
+
+def test_preview_lists_patchability_without_creating_anything(
+    client: TestClient, runtime_audit: str
+) -> None:
+    response = client.get(f"/api/audits/{runtime_audit}/optimizations/preview")
+    assert response.status_code == 200
+    preview = response.json()
+    items = preview["items"]
+    assert preview["previewed"] == len(items) == preview["total_findings"] > 0
+    assert client.get(f"/api/audits/{runtime_audit}/optimizations").json() == []
+
+    auto = [i for i in items if i["automatic_patch"]]
+    assert preview["automatic_patches"] == len(auto) > 0
+    assert all(i["transform"] and i["reason"] is None for i in auto)
+    assert {i["rule_id"] for i in auto} <= set(preview["patchable_rules"])
+    blocked = [i for i in items if not i["automatic_patch"]]
+    assert blocked
+    assert all(
+        i["reason"] and i["reason"].startswith("no safe deterministic patch") for i in blocked
+    )
+    assert all(not i["llm_fallback"] for i in items)  # no LLM configured in tests
+    scores = [i["priority_score"] for i in items]
+    assert scores == sorted(scores, reverse=True)
+
+    # The preview's verdict matches what candidate creation then does.
+    nested = next(i for i in auto if i["rule_id"] == "PP-LOOP-002")
+    created = create(client, runtime_audit, nested["finding_id"])
+    assert created["outcome"] == "proposed"
+    n_plus_one = next(i for i in blocked if i["rule_id"] == "PP-DB-001")
+    assert create(client, runtime_audit, n_plus_one["finding_id"])["outcome"] == "no_safe_patch"
+
+    again = client.get(f"/api/audits/{runtime_audit}/optimizations/preview").json()
+    by_id = {i["finding_id"]: i for i in again["items"]}
+    assert by_id[nested["finding_id"]]["candidate_ids"] == [created["id"]]
+    assert len(by_id[n_plus_one["finding_id"]]["candidate_ids"]) == 1
+
+
+def test_preview_of_unknown_audit_is_404(client: TestClient) -> None:
+    assert client.get("/api/audits/nope/optimizations/preview").status_code == 404

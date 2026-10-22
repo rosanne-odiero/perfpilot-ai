@@ -179,3 +179,35 @@ class RepoCandidateOut(BaseModel):
     error: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class PatchPreviewItem(BaseModel):
+    """Whether a finding can get a patch right now, computed without creating anything."""
+
+    finding_id: str
+    rule_id: str
+    title: str
+    severity: str
+    priority_score: float
+    file_path: str
+    line_start: int
+    symbol: str | None
+    measured: bool = Field(description="The finding has MEASURED runtime evidence")
+    automatic_patch: bool = Field(description="A deterministic AST rewrite applies safely")
+    transform: str | None = None
+    reason: str | None = Field(default=None, description="Why no automatic patch is possible")
+    llm_fallback: bool = Field(
+        description="An LLM would be asked when no automatic patch applies (configured + consent)"
+    )
+    candidate_ids: list[str] = Field(default_factory=list)
+
+
+class PatchPreviewOut(BaseModel):
+    audit_id: str
+    total_findings: int
+    previewed: int
+    automatic_patches: int
+    llm_configured: bool
+    llm_consent: bool
+    patchable_rules: list[str]
+    items: list[PatchPreviewItem]

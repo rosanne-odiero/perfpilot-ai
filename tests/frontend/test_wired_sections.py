@@ -465,3 +465,48 @@ def test_history_lists_experiments_and_their_reports(fake_api: FakeApi) -> None:
     at.run()
     assert_clean(at)
     assert at.get("download_button")
+
+
+def test_optimize_tab_lets_you_pick_a_patchable_finding(fake_api: FakeApi, audit_id: str) -> None:
+    fake_api.overrides[f"/audits/{audit_id}/optimizations"] = []
+    preview = fake_api.routes[f"/audits/{audit_id}/optimizations/preview"]
+    at = app("app_pages/audit_results.py", "audit_tab", "Optimize", audit=audit_id)
+    assert_clean(at)
+    body = text(at)
+    assert f"{preview['automatic_patches']} of {preview['previewed']} findings" in body
+    assert "Select a row, then generate a patch for it." in body
+    assert "Validation (tests):" in body  # the fixture audit already has approved commands
+    frame = at.dataframe[0].value
+    assert len(frame) == preview["automatic_patches"]  # "only patchable" filter is on
+    assert set(frame["Patch"]) == {"✅ automatic"}
+
+    at.toggle(key=f"repo_only_patchable_{audit_id}").set_value(False)
+    rerun(at, "audit_tab", "Optimize")
+    assert_clean(at)
+    frame = at.dataframe[0].value
+    assert len(frame) == preview["previewed"]
+    blocked = frame[frame["Patch"] != "✅ automatic"]
+    assert blocked["Why not automatic"].str.startswith("no safe deterministic patch").all()
+
+
+def test_preview_frame_labels_patch_availability() -> None:
+    from frontend.views.audit_optimize import preview_frame
+
+    base = {
+        "severity": "HIGH",
+        "rule_id": "PP-LOOP-002",
+        "title": "t",
+        "file_path": "a.py",
+        "line_start": 3,
+        "priority_score": 10.0,
+    }
+    frame = preview_frame(
+        [
+            {**base, "automatic_patch": True, "transform": "x"},
+            {**base, "automatic_patch": False, "llm_fallback": True, "reason": "r"},
+            {**base, "automatic_patch": False, "llm_fallback": False, "reason": "why"},
+        ]
+    )
+    assert list(frame["Patch"]) == ["✅ automatic", "🤖 via LLM", "— not available"]
+    assert list(frame["Why not automatic"]) == ["", "r", "why"]
+    assert list(frame["Location"]) == ["a.py:3"] * 3

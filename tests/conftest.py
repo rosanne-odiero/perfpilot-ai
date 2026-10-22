@@ -9,6 +9,10 @@ from fastapi.testclient import TestClient
 from backend.core.config import Settings, get_settings, reset_settings_cache
 from backend.models.database import init_engine
 
+# Tests must not depend on a developer's local .env (e.g. a configured LLM, Docker path or
+# local-import allowlist); only variables a test sets explicitly apply.
+Settings.model_config["env_file"] = None
+
 
 @pytest.fixture
 def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Settings]:
