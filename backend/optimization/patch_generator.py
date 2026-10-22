@@ -186,7 +186,14 @@ def generate_patch(target: PatchTarget) -> PatchProposal:
             tree, target.target_function, target.line_start, target.line_end
         )
         context = build_context(
-            target.target_file, text, tree, function, qualname, target.line_start, target.line_end
+            target.target_file,
+            text,
+            tree,
+            function,
+            qualname,
+            target.line_start,
+            target.line_end,
+            source_root=target.source_root,
         )
         result = transform(context)
         patched = result.edits.apply(text)

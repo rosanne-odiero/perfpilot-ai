@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import textwrap
+from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -98,7 +101,11 @@ def _propose(
     root: Path, rule_id: str, function: str = "f", line: int | None = None
 ) -> PatchProposal:
     tree = ast.parse((root / "mod.py").read_text())
-    node = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == function)
+    node = next(
+        n
+        for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef) and n.name == function
+    )
     start = line or node.body[-2].lineno
     return generate_patch(
         PatchTarget(
@@ -178,7 +185,7 @@ def test_formatting_and_comments_are_preserved(tmp_path: Path) -> None:
                     out.append(q)
                 return out
             """,
-            "used inside the loop in other ways",
+            "in other ways than membership tests (`x in known`): line 5 calls `known.append",
         ),
         (
             "PP-LOOP-001",
@@ -230,7 +237,7 @@ def test_formatting_and_comments_are_preserved(tmp_path: Path) -> None:
                         break
                 return s
             """,
-            "read or rebound inside the loop",
+            "`s` is read inside the `for` loop at line 3 (line 5 passes `s` to `len()`)",
         ),
         (
             "PP-STR-001",
@@ -421,6 +428,124 @@ def test_string_builder_keeps_annotation_and_initial_value(tmp_path: Path) -> No
     exec(compile(proposal.patched_source, "mod.py", "exec"), namespace)
     assert namespace["f"](["a", "b"]) == "header\nab"  # type: ignore[operator]
     assert 's: str = "".join(s_parts)' in proposal.patched_source
+
+
+def test_string_builder_in_async_for_and_while_loops(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        """
+        async def collect(resp):
+            answer = ""
+            async for chunk in resp:
+                if chunk:
+                    answer += chunk
+            return answer
+
+
+        def pad(n: int) -> str:
+            out = ">"
+            i = 0
+            while i < n:
+                out = out + str(i)
+                i += 1
+            return out
+        """,
+    )
+    collect = _propose(root, "PP-STR-001", function="collect", line=5)
+    assert collect.status == "proposed", collect.reason
+    assert "answer_parts.append(chunk)" in collect.patched_source
+    pad = _propose(root, "PP-STR-001", function="pad", line=13)
+    assert pad.status == "proposed", pad.reason
+    for proposal in (collect, pad):
+        validated = validate_patch(proposal.diff, workspace_root=root, allowed_files=["mod.py"])
+        assert validated.report.valid, validated.report.violations
+
+    async def chunks() -> AsyncIterator[str]:
+        for piece in ["a", "", "bc", "d"]:
+            yield piece
+
+    for source in ((root / "mod.py").read_text(), collect.patched_source, pad.patched_source):
+        namespace: dict[str, Any] = {}
+        exec(compile(source, "mod.py", "exec"), namespace)
+        assert asyncio.run(namespace["collect"](chunks())) == "abcd"
+        assert namespace["pad"](3) == ">012"
+
+
+def test_string_read_inside_async_for_is_refused_precisely(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        """
+        async def stream(resp):
+            answer = ""
+            async for chunk in resp:
+                answer += chunk
+                yield {"answer": answer}
+        """,
+    )
+    proposal = _propose(root, "PP-STR-001", function="stream", line=4)
+    assert proposal.status == "no_safe_patch"
+    assert "not inside a" not in (proposal.reason or "")
+    assert "`answer` is read inside the `async for` loop at line 3 (line 5 reads `answer`)" in (
+        proposal.reason or ""
+    )
+    assert "each such read would need its own" in (proposal.reason or "")
+
+
+def test_sequence_evidence_from_annotated_callee_and_conditional(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        """
+        def load() -> list[int]:
+            return [1, 2, 3]
+
+
+        def f(queries: list[int], extra: bool) -> list[int]:
+            known = load() if extra else []
+            out = []
+            for q in queries:
+                if q in known:
+                    out.append(q)
+            return out
+        """,
+    )
+    proposal = _propose(root, "PP-LOOP-001", line=9)
+    assert proposal.status == "proposed", proposal.reason
+    assert "known_set = set(known)" in proposal.patched_source
+
+
+def test_unannotated_callee_is_reported_with_its_line(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        """
+        def load():
+            return [1, 2, 3]
+
+
+        def f(queries: list[int]) -> list[int]:
+            known = load()
+            out = []
+            for q in queries:
+                if q in known:
+                    out.append(q)
+            return out
+        """,
+    )
+    reason = _propose(root, "PP-LOOP-001", line=9).reason or ""
+    assert "cannot prove `known` is a list or tuple: line 6 assigns it from `load()`" in reason
+
+
+def test_hoisting_is_refused_when_the_loop_can_await(tmp_path: Path) -> None:
+    root = _write(
+        tmp_path,
+        """
+        async def f(known: list[int], queries: list[int], sink) -> None:
+            for q in queries:
+                if q in known:
+                    await sink(q)
+        """,
+    )
+    reason = _propose(root, "PP-LOOP-001", line=3).reason or ""
+    assert "the `for` loop at line 2 can pause (`await` at line 4)" in reason
 
 
 def test_regex_flags_move_into_compile(tmp_path: Path) -> None:

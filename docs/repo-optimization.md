@@ -56,10 +56,13 @@ separately as `evidence: "MEASURED" | "STATIC"`.
    allowed and labelled `evidence: "STATIC"`.
 2. The target file must be in the snapshot inventory with a content hash. The patch engine verifies
    the file's SHA-256 against it before reading (`409 source_changed`).
-3. Proposers: the deterministic AST templates (`PP-LOOP-001`, `PP-LOOP-002`, `PP-COLL-001`,
-   `PP-STR-001`, `PP-REGEX-001`). When they find no safe patch **and** the audit was created with
-   `llm_consent: true` **and** a model is configured, the LLM proposer (section 6) is asked. Every
-   refusal is kept in `proposer_attempts`. Otherwise the outcome is `no_safe_patch` with the reason.
+3. Proposers: the deterministic AST templates (`PP-LOOP-001`, `PP-LOOP-002` joins and
+   `next(...)`/`any(...)` lookups, `PP-COLL-001`, `PP-STR-001`, `PP-REGEX-001`; see
+   [optimization-workflow.md](optimization-workflow.md)). The source root is the snapshot, so a
+   callee's return annotation in another file of the repository can serve as type evidence.
+   When they find no safe patch **and** the audit was created with `llm_consent: true` **and** a
+   model is configured, the LLM proposer (section 6) is asked. Every refusal is kept in
+   `proposer_attempts`. Otherwise the outcome is `no_safe_patch` with the reason.
 4. The strict patch validator runs against the snapshot: only the finding's file may change; tests,
    fixtures, CI, env/secret files, build files and benchmark harness files are protected, **plus**
    every file the audit's discovered commands measure with (script commands' `.py` files and

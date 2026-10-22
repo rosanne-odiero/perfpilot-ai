@@ -87,7 +87,9 @@ TEMPLATES: dict[str, RuleTemplate] = {
         ),
         proposed=(
             "Group the inner collection by its join key once (dict of lists, original order "
-            "kept) and visit only the matching items per outer item: O(outer + inner)."
+            "kept) and visit only the matching items per outer item: O(outer + inner). For a "
+            "`next(...)`/`any(...)` lookup, index the first item per key (or collect the keys "
+            "in a set) before the loop and look it up instead of scanning."
         ),
         expected_effect=(
             "Hypothesis: the number of comparisons drops from the product to the sum of the "
@@ -98,6 +100,8 @@ TEMPLATES: dict[str, RuleTemplate] = {
             "Join keys must be hashable with __hash__ consistent with __eq__.",
             "The inner collection is read even if the outer loop is empty, and the outer key is "
             "read even if the inner collection is empty (malformed records can fail earlier).",
+            "The inner key is computed for every inner item up front, not only until the first "
+            "match.",
         ],
         transform="nested_loop_join_to_index",
     ),

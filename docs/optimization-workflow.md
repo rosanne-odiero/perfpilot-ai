@@ -84,9 +84,47 @@ imported repositories ([repo-optimization.md](repo-optimization.md)). Steps:
 | `PP-STR-001` | `s += piece` in a loop -> `s_parts.append(piece)` and `s = "".join(s_parts)` after the loop | `s` starts as a string literal before the loop, is only ever appended to inside it, and the loop is not inside `try`/`with` (the partial string would differ after a handled exception) |
 | `PP-REGEX-001` | `re.f(r"literal", ...)` in a loop -> module-level `re.compile` and `PATTERN.f(...)` | literal pattern, constant flags (moved into `compile`), `re` imported at module level |
 | `PP-LOOP-002` | nested-loop equality join -> dict index of the inner list (original order kept) | inner body is a single `if a == b` without `else`, keys are plain names/attributes/constant subscripts, the inner list is invariant and the loop variable is not used elsewhere |
+| `PP-LOOP-002` | `next((V(x) for x in S if K(x) == P), D)` in a loop -> `_S_by_K = {}`; `for _x in S: _S_by_K.setdefault(K(_x), _x)` immediately before the loop, and `(V(_S_by_K[P]) if P in _S_by_K else D)` (a non-trivial `P` is bound once with `:=`) | see *lookup preconditions* below; the first match per key is kept, so results equal `next()`'s |
+| `PP-LOOP-002` | `any(K(x) == P for x in S)` in a loop -> `_S_K_set = {K(_x) for _x in S}` before the loop and `(P in _S_K_set)` | same preconditions |
 
-Anything else returns `status: "no_safe_patch"` with the reason (for example `cannot prove
-parameter known is a list or tuple`), and the candidate goes to `FAILED`. Nothing is guessed.
+For `PP-LOOP-002` the join and lookup transforms are tried in order; when neither applies, the
+reason comes from the one that recognised its code shape (or lists what each expected).
+
+**Lookup preconditions** (`lookup_transforms.py`): one `for` clause and (for `next`) exactly one
+`if` that is a single `==` (either operand order); an explicit default (without one `next()` raises
+StopIteration, which the rewrite would turn into a KeyError); `K` reads only the generator
+variable through attributes, constant subscripts and `.get(<const>[, <const>])`, optionally inside
+`str()/int()/float()/len()`; `P`, `V` and `D` contain no calls besides those, and neither `K` nor
+`P` is a list/dict/set display (unhashable); `S` is a local or parameter (or `self.<attr>` with a
+collection annotation in the class) proven re-iterable, assigned on every path before the loop and
+never rebound, used, or modified inside it; the loop has no `await`, `async for`/`async with` or
+`yield`; nothing in the loop writes a field named in `K`'s access path, writes with a computed
+index, or calls `update/clear/pop/popitem/setdefault/setattr/...` on an object not proven to be a
+fresh local container; when `V` can be the matching item (or an object on its key path), the
+result is only read; the lookup is not in a lambda or comprehension, and not inside `try`/`with`
+when `K` can raise. The index goes before the outermost enclosing loop where all of this holds.
+The notes spell out the remaining trade-offs: hashable keys, `K` evaluated for every element up
+front (and `S` iterated even if the loop never runs), hash-based matching, O(n) memory, and
+aliasing through references the patcher cannot see.
+
+**Type evidence.** `PP-LOOP-001`, `PP-COLL-001` and the join need a list or tuple; the lookups need
+a re-iterable collection (list, tuple, set, dict, str, `Sequence`, `Mapping`, ...; not an
+`Iterable`, iterator or generator). Accepted evidence: a parameter annotation; assignments from
+literals, comprehensions, `list()/tuple()/sorted()` (lookups also `set()/frozenset()/dict()`), or
+conditional expressions of those; or a call (awaited for an `async def`) to an undecorated
+function annotated to return such a type, defined in the same file or imported with
+`from module import name` from a file under the source root (resolved against the importing
+file's directory and its parents; ambiguous or missing modules are not trusted). When a call's
+annotation is the evidence, the proposal says so in its notes.
+
+**Suspension points.** The hoisting transforms (`PP-LOOP-001`, `PP-COLL-001`, both `PP-LOOP-002`
+forms) refuse loops that contain `await`, `async for`, `async with` or `yield`: other code can run
+there and change the collection the hoisted copy was built from. `PP-STR-001` works in `for`,
+`async for` and `while` loops alike.
+
+Anything else returns `status: "no_safe_patch"` with a reason that states what was expected, what
+was found and where (for example ``cannot prove parameter `known` is a list or tuple: it has no
+annotation``), and the candidate goes to `FAILED`. Nothing is guessed.
 Tab indentation and CRLF files are refused. The bundled workloads all get patches. They are
 generated from the original `workload.py`, and they differ from the hand-written
 `reference/optimized.py` files.
