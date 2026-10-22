@@ -531,7 +531,7 @@ def render(context: AuditContext) -> None:
         )
         return
     candidates = list(reversed(items_of(payload)))
-    with st.expander("Pick a finding to patch", expanded=not candidates, icon="🛠️"):
+    with st.container(border=True):
         _pick_finding(context)
     has_tests, has_workload = _prerequisites(context)
     if not candidates:
