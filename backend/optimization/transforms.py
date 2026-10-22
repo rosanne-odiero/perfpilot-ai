@@ -5,289 +5,50 @@ and the flagged line span) and either returns text edits or raises :class:`NoSaf
 reason it refuses. A transform only fires when it can show that the rewrite keeps behavior for
 well-formed inputs; remaining semantic risks are returned as notes and repeated in the
 recommendation. Formatting and comments outside the edited spans are preserved.
+
+The ``PP-LOOP-002`` lookup transforms (``next(...)`` / ``any(...)`` over a collection inside a
+loop) live in :mod:`backend.optimization.lookup_transforms`.
 """
 
 from __future__ import annotations
 
 import ast
-import keyword
-import re
-import symtable
-from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
 
-from backend.optimization.source_edits import Edits, SourceText
+from backend.optimization.lookup_transforms import linear_lookup_to_index
+from backend.optimization.source_edits import Edits
+from backend.optimization.transform_context import (
+    LoopNode,
+    NoSafePatch,
+    NotApplicable,
+    TransformContext,
+    TransformResult,
+    build_context,
+    condition_kind,
+    describe_use,
+    expression_kind,
+    first_applicable,
+    insert_before,
+    line_of,
+    loop_inside,
+    loop_kind,
+    no_multiline_strings,
+    occurrences,
+    require_no_suspension,
+    suspension_point,
+)
 
-LoopNode = ast.For | ast.While
-_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
-_SEQUENCE_TYPES = {"list", "List", "tuple", "Tuple"}
-_SEQUENCE_FACTORIES = {"list", "tuple", "sorted"}
-_IDENTIFIER = re.compile(r"[^0-9A-Za-z_]+")
+__all__ = [
+    "TRANSFORMS",
+    "NoSafePatch",
+    "NotApplicable",
+    "Transform",
+    "TransformContext",
+    "TransformResult",
+    "build_context",
+]
 
-
-class NoSafePatch(Exception):
-    """The transformation cannot be proven safe for this code; nothing is guessed."""
-
-
-@dataclass
-class TransformResult:
-    name: str
-    edits: Edits
-    summary: str
-    notes: list[str] = field(default_factory=list)
-
-
-@dataclass
-class TransformContext:
-    path: str
-    source: SourceText
-    tree: ast.Module
-    function: ast.FunctionDef | ast.AsyncFunctionDef
-    qualname: str
-    line_start: int
-    line_end: int
-    scope: symtable.SymbolTable
-    parents: dict[ast.AST, ast.AST]
-    taken_names: set[str]
-
-    # -- generic queries -------------------------------------------------------------------
-
-    def in_span(self, node: ast.AST) -> bool:
-        start = getattr(node, "lineno", None)
-        end = getattr(node, "end_lineno", None)
-        return (
-            start is not None
-            and end is not None
-            and start <= self.line_end
-            and end >= self.line_start
-        )
-
-    def nodes_in_span(self, predicate: Callable[[ast.AST], bool]) -> list[ast.AST]:
-        found = [n for n in ast.walk(self.function) if self.in_span(n) and predicate(n)]
-        return sorted(found, key=lambda n: (n.lineno, n.col_offset))  # type: ignore[attr-defined]
-
-    def unique_name(self, base: str) -> str:
-        cleaned = _IDENTIFIER.sub("_", base) or "value"
-        if cleaned[0].isdigit() or keyword.iskeyword(cleaned):
-            cleaned = f"_{cleaned}"
-        name, counter = cleaned, 2
-        while name in self.taken_names:
-            name, counter = f"{cleaned}_{counter}", counter + 1
-        self.taken_names.add(name)
-        return name
-
-    def indent(self, lineno: int) -> str:
-        indent = self.source.indent(lineno)
-        if "\t" in indent:
-            raise NoSafePatch("tab indentation is not supported by the deterministic patcher")
-        return indent
-
-    def is_local(self, name: str) -> bool:
-        try:
-            symbol = self.scope.lookup(name)
-        except KeyError:
-            return False
-        return symbol.is_parameter() or (
-            symbol.is_local() and not symbol.is_global() and not symbol.is_nonlocal()
-        )
-
-    def is_module_global(self, name: str) -> bool:
-        try:
-            symbol = self.scope.lookup(name)
-        except KeyError:
-            return True  # not referenced in the function at all: no shadowing
-        return not symbol.is_local() and not symbol.is_parameter() and not symbol.is_free()
-
-    def enclosing_loops(self, node: ast.AST) -> list[LoopNode]:
-        """Loops (innermost first) whose per-iteration code contains ``node``, within the target
-        function. Stops at nested scopes and comprehensions."""
-        loops: list[LoopNode] = []
-        child = node
-        parent = self.parents.get(child)
-        while parent is not None and parent is not self.function:
-            if isinstance(parent, (*_SCOPES, ast.comprehension)):
-                raise NoSafePatch("the flagged code is inside a nested scope or comprehension")
-            if isinstance(parent, LoopNode) and child in loop_inside(parent):
-                loops.append(parent)
-            child, parent = parent, self.parents.get(parent)
-        return loops
-
-    def ancestors(self, node: ast.AST) -> Iterable[ast.AST]:
-        parent = self.parents.get(node)
-        while parent is not None and parent is not self.function:
-            yield parent
-            parent = self.parents.get(parent)
-
-    def containing_block(self, stmt: ast.stmt) -> tuple[list[ast.stmt], int]:
-        parent = self.parents[stmt]
-        for field_name in ("body", "orelse", "finalbody", "handlers"):
-            block = getattr(parent, field_name, None)
-            if isinstance(block, list) and any(item is stmt for item in block):
-                return block, next(i for i, item in enumerate(block) if item is stmt)
-        raise NoSafePatch("could not locate the statement's enclosing block")
-
-    def require_sequence(self, name: str) -> None:
-        """``name`` must be a parameter/local whose binding is provably a list or tuple, because
-        ``in``/``.count`` mean something different on ``str`` (substrings) and ``dict`` (keys)."""
-        if not self.is_local(name):
-            raise NoSafePatch(
-                f"`{name}` is not a parameter or local variable of `{self.qualname}`; another "
-                "function could change it between loop iterations"
-            )
-        args = self.function.args
-        params = [*args.posonlyargs, *args.args, *args.kwonlyargs]
-        param = next((arg for arg in params if arg.arg == name), None)
-        if param is not None and (
-            param.annotation is None or not _is_sequence_annotation(param.annotation)
-        ):
-            raise NoSafePatch(
-                f"cannot prove parameter `{name}` is a list or tuple (it needs a list/tuple "
-                "annotation); `in` and `.count` behave differently on str and dict"
-            )
-        bindings = _sequence_bindings(self, name)
-        if bindings is None or (param is None and bindings == 0):
-            raise NoSafePatch(
-                f"cannot prove `{name}` is always a list or tuple from its assignments"
-            )
-
-
-def loop_inside(loop: LoopNode) -> list[ast.AST]:
-    """Nodes evaluated once per iteration (a ``for`` header's iterable is evaluated once)."""
-    nodes: list[ast.AST] = [*loop.body, *loop.orelse]
-    if isinstance(loop, ast.While):
-        nodes.insert(0, loop.test)
-    return nodes
-
-
-def occurrences(nodes: Iterable[ast.AST], name: str) -> list[ast.Name]:
-    return [n for node in nodes for n in ast.walk(node) if isinstance(n, ast.Name) and n.id == name]
-
-
-def _annotation_node(node: ast.expr) -> ast.expr | None:
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        try:
-            return ast.parse(node.value, mode="eval").body
-        except SyntaxError:
-            return None
-    return node
-
-
-def _is_sequence_annotation(annotation: ast.expr) -> bool:
-    node = _annotation_node(annotation)
-    if isinstance(node, ast.Subscript):
-        node = node.value
-    if isinstance(node, ast.Name):
-        return node.id in _SEQUENCE_TYPES
-    if isinstance(node, ast.Attribute):
-        return node.attr in _SEQUENCE_TYPES and isinstance(node.value, ast.Name)
-    return False
-
-
-def _sequence_bindings(context: TransformContext, name: str) -> int | None:
-    """Number of assignments to ``name`` in the function, or ``None`` if any of them is not
-    provably a list/tuple (or ``name`` is bound by import, def, except, with, for, ...)."""
-    count = 0
-    for node in ast.walk(context.function):
-        if isinstance(node, ast.alias) and (node.asname or node.name) == name:
-            return None
-        if (
-            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
-            and node is not context.function
-            and node.name == name
-        ):
-            return None
-        if isinstance(node, ast.ExceptHandler) and node.name == name:
-            return None
-        if not (isinstance(node, ast.Name) and node.id == name):
-            continue
-        if isinstance(node.ctx, ast.Load):
-            continue
-        parent = context.parents.get(node)
-        if isinstance(parent, ast.Assign) and any(t is node for t in parent.targets):
-            if not _value_is_sequence(parent.value):
-                return None
-        elif isinstance(parent, ast.AnnAssign) and parent.target is node:
-            if parent.value is not None and not _value_is_sequence(parent.value):
-                return None
-        elif not (isinstance(parent, ast.AugAssign) and parent.target is node):
-            return None
-        count += 1
-    return count
-
-
-def _value_is_sequence(value: ast.expr | None) -> bool:
-    if isinstance(value, ast.List | ast.ListComp | ast.Tuple):
-        return True
-    return (
-        isinstance(value, ast.Call)
-        and isinstance(value.func, ast.Name)
-        and value.func.id in _SEQUENCE_FACTORIES
-    )
-
-
-def build_context(
-    path: str,
-    text: str,
-    tree: ast.Module,
-    function: ast.FunctionDef | ast.AsyncFunctionDef,
-    qualname: str,
-    line_start: int,
-    line_end: int,
-) -> TransformContext:
-    parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
-    scope = _function_scope(symtable.symtable(text, path, "exec"), function)
-    taken = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
-    taken |= {n.arg for n in ast.walk(tree) if isinstance(n, ast.arg)}
-    taken |= {
-        alias.asname or alias.name.split(".")[0]
-        for n in ast.walk(tree)
-        if isinstance(n, ast.Import | ast.ImportFrom)
-        for alias in n.names
-    }
-    taken |= {
-        n.name
-        for n in ast.walk(tree)
-        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
-    }
-    context = TransformContext(
-        path,
-        SourceText(text),
-        tree,
-        function,
-        qualname,
-        line_start,
-        line_end,
-        scope,
-        parents,
-        taken,
-    )
-    _reject_shared_bindings(context)
-    return context
-
-
-def _reject_shared_bindings(context: TransformContext) -> None:
-    for node in ast.walk(context.function):
-        if isinstance(node, ast.Global | ast.Nonlocal):
-            raise NoSafePatch(
-                f"`{context.qualname}` uses global/nonlocal declarations; the deterministic "
-                "patcher does not rewrite functions with shared mutable bindings"
-            )
-
-
-def _function_scope(table: symtable.SymbolTable, function: ast.AST) -> symtable.SymbolTable:
-    name = function.name  # type: ignore[attr-defined]
-    lineno = function.lineno  # type: ignore[attr-defined]
-    stack = [table]
-    while stack:
-        current = stack.pop()
-        if (
-            current.get_type() == "function"
-            and current.get_name() == name
-            and current.get_lineno() == lineno
-        ):
-            return current
-        stack.extend(current.get_children())
-    raise NoSafePatch("could not resolve the function's symbol table")
+_NOT_IN_LOOP = "is not inside a `for`, `async for` or `while` loop of"
 
 
 # ------------------------------------------------------------------------------------------
@@ -296,20 +57,33 @@ def _function_scope(table: symtable.SymbolTable, function: ast.AST) -> symtable.
 
 
 def _hoist_loop(
-    context: TransformContext, loops: Sequence[LoopNode], name: str, ok: Callable[[ast.Name], bool]
+    context: TransformContext,
+    loops: Sequence[LoopNode],
+    name: str,
+    ok: Callable[[ast.Name], bool],
+    *,
+    expected: str,
+    artifact: str,
 ) -> LoopNode:
-    """Outermost enclosing loop in which every use of ``name`` satisfies ``ok``."""
+    """Outermost enclosing loop in which every use of ``name`` satisfies ``ok`` and that cannot
+    pause (``await``/``yield``) between iterations."""
     hoist: LoopNode | None = None
     for loop in loops:
-        if all(ok(occurrence) for occurrence in occurrences(loop_inside(loop), name)):
-            hoist = loop
-        else:
+        bad = next((n for n in occurrences(loop_inside(loop), name) if not ok(n)), None)
+        if bad is not None:
+            if hoist is None:
+                raise NoSafePatch(
+                    f"`{name}` is used inside the {loop_kind(loop)} at line {loop.lineno} in "
+                    f"other ways than {expected}: {describe_use(context, bad)}; {artifact} "
+                    "built once before the loop would not follow such changes"
+                )
             break
-    if hoist is None:
-        raise NoSafePatch(
-            f"`{name}` is used inside the loop in other ways (it may be modified or aliased), so "
-            "it cannot be indexed once before the loop"
-        )
+        if suspension_point(loop) is not None:
+            if hoist is None:
+                require_no_suspension(loop, f"`{name}`")
+            break
+        hoist = loop
+    assert hoist is not None
     return hoist
 
 
@@ -354,10 +128,16 @@ def _ensure_import(context: TransformContext, edits: Edits, module: str, name: s
     if reference is not None:
         root = reference.split(".")[0]
         if not context.is_module_global(root):
-            raise NoSafePatch(f"`{root}` is shadowed inside `{context.qualname}`")
+            raise NoSafePatch(
+                f"`{root}` refers to `{module}` at module level but is rebound inside "
+                f"`{context.qualname}`, so `{reference}` would not mean `{module}.{name}` there"
+            )
         return reference
     if name in context.taken_names:
-        raise NoSafePatch(f"the name `{name}` is already used in this module for something else")
+        raise NoSafePatch(
+            f"the name `{name}` is already used in this module for something other than "
+            f"`{module}.{name}`; adding `from {module} import {name}` would shadow it"
+        )
     context.taken_names.add(name)
     statement = f"from {module} import {name}"
     anchor, separate = _import_anchor(context)
@@ -368,21 +148,6 @@ def _ensure_import(context: TransformContext, edits: Edits, module: str, name: s
         gap = "\n\n" if separate else "\n"
         edits.insert(context.source.line_end(end_line), f"{gap}{statement}")
     return name
-
-
-def _insert_before(
-    context: TransformContext, edits: Edits, stmt: ast.stmt, lines: list[str]
-) -> None:
-    indent = context.indent(stmt.lineno)
-    block = "".join(f"{indent}{line}\n" for line in lines)
-    edits.insert(context.source.line_start(stmt.lineno), block)
-
-
-def _no_multiline_strings(nodes: Iterable[ast.AST]) -> None:
-    for node in nodes:
-        for child in ast.walk(node):
-            if isinstance(child, ast.Constant | ast.JoinedStr) and child.lineno != child.end_lineno:
-                raise NoSafePatch("re-indenting code that contains multi-line strings is unsafe")
 
 
 # ------------------------------------------------------------------------------------------
@@ -410,8 +175,10 @@ def membership_to_set(context: TransformContext) -> TransformResult:
         )
     )
     if not compares:
-        raise NoSafePatch(
-            "no `x in <name>` membership test against a plain name at the flagged lines"
+        raise NotApplicable(
+            f"expected a single `x in <variable>` or `x not in <variable>` test at "
+            f"{context.span}, but found none (chained comparisons and tests against attributes "
+            "or calls are not rewritten)"
         )
     first = compares[0]
     assert isinstance(first, ast.Compare)
@@ -420,12 +187,26 @@ def membership_to_set(context: TransformContext) -> TransformResult:
     name = operand.id
     loops = context.enclosing_loops(first)
     if not loops:
-        raise NoSafePatch("the membership test is not inside a loop")
-    context.require_sequence(name)
-    hoist = _hoist_loop(context, loops, name, lambda n: _is_membership_operand(context, n))
+        raise NoSafePatch(
+            f"the membership test against `{name}` at line {first.lineno} {_NOT_IN_LOOP} "
+            f"`{context.qualname}`, so there is no repeated scan to remove"
+        )
+    context.require_sequence(
+        name,
+        "on a str `in` searches substrings and on a dict it tests keys, so only a list or "
+        "tuple can be replaced by a set",
+    )
+    hoist = _hoist_loop(
+        context,
+        loops,
+        name,
+        lambda n: _is_membership_operand(context, n),
+        expected=f"membership tests (`x in {name}`)",
+        artifact="a set",
+    )
     set_name = context.unique_name(f"{name}_set")
     edits = Edits()
-    _insert_before(context, edits, hoist, [f"{set_name} = set({name})"])
+    insert_before(context, edits, hoist, [f"{set_name} = set({name})"])
     for occurrence in occurrences(loop_inside(hoist), name):
         edits.replace(context.source.start(occurrence), context.source.end(occurrence), set_name)
     return TransformResult(
@@ -477,8 +258,9 @@ def list_count_to_counter(context: TransformContext) -> TransformResult:
         )
     )
     if not calls:
-        raise NoSafePatch(
-            "no `<name>.count(x)` call at the flagged lines (only .count is rewritten)"
+        raise NotApplicable(
+            f"expected a `<variable>.count(x)` call at {context.span}, but found none (only "
+            ".count is rewritten; .index and other methods are not)"
         )
     first = calls[0]
     assert isinstance(first, ast.Call)
@@ -487,13 +269,27 @@ def list_count_to_counter(context: TransformContext) -> TransformResult:
     name = first.func.value.id
     loops = context.enclosing_loops(first)
     if not loops:
-        raise NoSafePatch("the .count() call is not inside a loop")
-    context.require_sequence(name)
-    hoist = _hoist_loop(context, loops, name, lambda n: _count_call(context, n) is not None)
+        raise NoSafePatch(
+            f"the `{name}.count()` call at line {first.lineno} {_NOT_IN_LOOP} "
+            f"`{context.qualname}`, so there is no repeated count to remove"
+        )
+    context.require_sequence(
+        name,
+        "`.count()` counts substrings on a str and may mean anything on other types, so only "
+        "a list or tuple can be replaced by a Counter",
+    )
+    hoist = _hoist_loop(
+        context,
+        loops,
+        name,
+        lambda n: _count_call(context, n) is not None,
+        expected=f"single-argument `{name}.count(x)` calls",
+        artifact="a Counter",
+    )
     edits = Edits()
     counter = _ensure_import(context, edits, "collections", "Counter")
     counts_name = context.unique_name(f"{name}_counts")
-    _insert_before(context, edits, hoist, [f"{counts_name} = {counter}({name})"])
+    insert_before(context, edits, hoist, [f"{counts_name} = {counter}({name})"])
     for occurrence in occurrences(loop_inside(hoist), name):
         call = _count_call(context, occurrence)
         assert call is not None
@@ -567,12 +363,7 @@ def _concat_statement(node: ast.AST, name: str) -> ast.expr | None:
 
 
 def _string_init(stmt: ast.stmt, name: str) -> ast.Constant | None:
-    target: ast.expr | None = None
-    value: ast.expr | None = None
-    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
-        target, value = stmt.targets[0], stmt.value
-    elif isinstance(stmt, ast.AnnAssign) and stmt.simple:
-        target, value = stmt.target, stmt.value
+    target, value = _simple_assignment(stmt)
     if (
         isinstance(target, ast.Name)
         and target.id == name
@@ -583,23 +374,41 @@ def _string_init(stmt: ast.stmt, name: str) -> ast.Constant | None:
     return None
 
 
+def _simple_assignment(stmt: ast.stmt) -> tuple[ast.expr | None, ast.expr | None]:
+    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+        return stmt.targets[0], stmt.value
+    if isinstance(stmt, ast.AnnAssign) and stmt.simple:
+        return stmt.target, stmt.value
+    return None, None
+
+
 def string_concat_to_join(context: TransformContext) -> TransformResult:
     statements = context.nodes_in_span(lambda n: _concat_target(n) is not None)
     if not statements:
-        raise NoSafePatch("no `s += ...` string concatenation at the flagged lines")
+        raise NotApplicable(
+            f"expected `s += <piece>` or `s = s + <piece>` on a variable at {context.span}, but "
+            "found none (prepending, `s = piece + s`, and attribute targets are not rewritten)"
+        )
     first = statements[0]
+    assert isinstance(first, ast.stmt)
     name = _concat_target(first)
     assert name is not None
     loops = context.enclosing_loops(first)
     if not loops:
-        raise NoSafePatch("the concatenation is not inside a loop")
+        raise NoSafePatch(
+            f"the concatenation onto `{name}` at line {first.lineno} {_NOT_IN_LOOP} "
+            f"`{context.qualname}`"
+        )
     loop, init = _find_string_loop(context, loops, name)
     for ancestor in [loop, *context.ancestors(loop)]:
         if isinstance(ancestor, ast.Try | ast.TryStar | ast.With | ast.AsyncWith):
+            construct = "try" if isinstance(ancestor, ast.Try | ast.TryStar) else "with"
             raise NoSafePatch(
-                "the loop runs inside try/with; if an exception is handled mid-loop the "
-                "original keeps the partial string, which the rewrite would not"
+                f"the {loop_kind(loop)} at line {loop.lineno} runs inside try/with (`{construct}` "
+                f"at line {ancestor.lineno}); if an exception is handled mid-loop the original "
+                f"keeps the partially built `{name}`, which the rewrite would not"
             )
+    orelse = {id(n) for stmt in loop.orelse for n in ast.walk(stmt)}
     appends: list[tuple[ast.stmt, ast.expr]] = []
     for occurrence in occurrences(loop_inside(loop), name):
         statement = context.parents.get(occurrence)
@@ -607,8 +416,20 @@ def string_concat_to_join(context: TransformContext) -> TransformResult:
             statement = context.parents.get(statement)
         expression = _concat_statement(statement, name) if statement is not None else None
         if statement is None or expression is None or not _is_concat_operand(statement, occurrence):
+            region = (
+                f"the `else` block of the {loop_kind(loop)} at line {loop.lineno}"
+                if id(occurrence) in orelse
+                else f"the {loop_kind(loop)} at line {loop.lineno}"
+            )
+            if isinstance(occurrence.ctx, ast.Load):
+                raise NoSafePatch(
+                    f"`{name}` is read inside {region} ({describe_use(context, occurrence)}), "
+                    "not only extended; with a list of parts each such read would need its own "
+                    f'`"".join(...)`, so collecting parts would not be faster'
+                )
             raise NoSafePatch(
-                f"`{name}` is read or rebound inside the loop other than by `{name} += ...`"
+                f"`{name}` is rebound inside {region} ({describe_use(context, occurrence)}) "
+                f"other than by `{name} += ...`; the rewrite requires it to only grow"
             )
         assert isinstance(statement, ast.stmt)
         if all(existing is not statement for existing, _ in appends):
@@ -669,13 +490,28 @@ def _find_string_loop(
                     if occurrences([previous], name):
                         init = _string_init(previous, name)
                         if init is None:
-                            raise NoSafePatch(
-                                f"`{name}` is used before the loop in a way other than a string "
-                                "literal initialisation"
-                            )
+                            raise NoSafePatch(_not_literal_init(previous, name, loop))
                         return loop, init
             statement = context.parents[statement]
-    raise NoSafePatch(f"`{name}` is not initialised to a string literal before the loop")
+    raise NoSafePatch(
+        f"`{name}` is not initialised to a string literal before the {loop_kind(loops[0])} at "
+        f"line {loops[0].lineno} (it is a parameter or is set outside the enclosing blocks); "
+        f'the rewrite needs `{name} = "..."` before the loop to prove `{name}` is a str'
+    )
+
+
+def _not_literal_init(previous: ast.stmt, name: str, loop: LoopNode) -> str:
+    target, value = _simple_assignment(previous)
+    expected = (
+        f'the rewrite needs a string literal initialisation (such as `{name} = ""`) as the last '
+        f"use of `{name}` before the loop to prove it is a str (`+=` on a list or number means "
+        "something else)"
+    )
+    if isinstance(target, ast.Name) and target.id == name and value is not None:
+        found = f"is set from {expression_kind(value)} at line {previous.lineno}"
+    else:
+        found = f"is last used at line {previous.lineno} without a string literal assignment"
+    return f"before the {loop_kind(loop)} at line {loop.lineno}, `{name}` {found}; {expected}"
 
 
 # ------------------------------------------------------------------------------------------
@@ -699,12 +535,14 @@ _RE_FLAG_NAMES = {
 }  # fmt: skip
 
 
-def _re_alias(context: TransformContext) -> set[str]:
+def _re_aliases(context: TransformContext) -> tuple[set[str], set[str]]:
+    """Top-level aliases of ``re`` usable in the function, and those shadowed inside it."""
     aliases = set()
     for stmt in context.tree.body:
         if isinstance(stmt, ast.Import):
             aliases |= {alias.asname or alias.name for alias in stmt.names if alias.name == "re"}
-    return {alias for alias in aliases if context.is_module_global(alias)}
+    usable = {alias for alias in aliases if context.is_module_global(alias)}
+    return usable, aliases - usable
 
 
 def _static_flags(node: ast.expr, aliases: set[str]) -> bool:
@@ -722,9 +560,17 @@ def _static_flags(node: ast.expr, aliases: set[str]) -> bool:
 
 
 def regex_compile_hoist(context: TransformContext) -> TransformResult:
-    aliases = _re_alias(context)
+    aliases, shadowed = _re_aliases(context)
     if not aliases:
-        raise NoSafePatch("the module does not `import re` at top level (or it is shadowed)")
+        if shadowed:
+            raise NoSafePatch(
+                f"`{sorted(shadowed)[0]}` is imported as `re` at module level but rebound inside "
+                f"`{context.qualname}`, so a module-level compiled pattern would not be equivalent"
+            )
+        raise NotApplicable(
+            "the module has no top-level `import re` (a `from re import ...` import or an "
+            "import inside a function is not rewritten)"
+        )
     calls = context.nodes_in_span(
         lambda n: (
             isinstance(n, ast.Call)
@@ -735,7 +581,11 @@ def regex_compile_hoist(context: TransformContext) -> TransformResult:
         )
     )
     if not calls:
-        raise NoSafePatch("no `re.<function>(pattern, ...)` call at the flagged lines")
+        functions = ", ".join(sorted(_RE_FLAGS_POSITION))
+        raise NotApplicable(
+            f"expected a `re.<function>(pattern, ...)` call at {context.span} with one of: "
+            f"{functions}; found none"
+        )
     edits = Edits()
     hoisted: dict[tuple[str, str | None], str] = {}
     definitions: list[str] = []
@@ -757,10 +607,16 @@ def regex_compile_hoist(context: TransformContext) -> TransformResult:
             f"{hoisted[key]}.{call.func.attr}({replacement})",
         )
     if not definitions:
-        raise NoSafePatch("the regex call is not inside a loop")
+        raise NoSafePatch(
+            f"the `re` call at line {line_of(calls[0])} {_NOT_IN_LOOP} `{context.qualname}`; "
+            "re's own pattern cache already covers a single call"
+        )
     anchor, _ = _import_anchor(context)
     if anchor is None or not isinstance(anchor, ast.Import | ast.ImportFrom):
-        raise NoSafePatch("could not find the import block to place the compiled pattern after")
+        raise NoSafePatch(
+            f"no top-level import statement precedes `{context.qualname}`, so there is no safe "
+            "place to define the compiled pattern before it is used"
+        )
     end_line = anchor.end_lineno or anchor.lineno
     edits.insert(context.source.line_end(end_line), "\n\n" + "\n".join(definitions))
     return TransformResult(
@@ -782,20 +638,31 @@ def _rewrite_re_call(
     context: TransformContext, call: ast.Call, aliases: set[str]
 ) -> tuple[str, tuple[str, str | None]]:
     assert isinstance(call.func, ast.Attribute)
+    where = f"`re.{call.func.attr}()` at line {call.lineno}"
     if not call.args or any(isinstance(a, ast.Starred) for a in call.args):
-        raise NoSafePatch("the pattern must be the first positional argument (no *args)")
+        raise NoSafePatch(
+            f"{where} must receive the pattern as its first positional argument (found "
+            "*args or no positional argument)"
+        )
     if any(k.arg is None or k.arg == "pattern" for k in call.keywords):
-        raise NoSafePatch("**kwargs and pattern= keyword calls are not rewritten")
+        raise NoSafePatch(
+            f"{where} uses **kwargs or `pattern=`; only positional patterns are rewritten"
+        )
     pattern = call.args[0]
     if not (isinstance(pattern, ast.Constant) and isinstance(pattern.value, str | bytes)):
-        raise NoSafePatch("the regex pattern is not a string literal")
+        raise NoSafePatch(
+            f"the pattern passed to {where} is not a string literal (it is "
+            f"{expression_kind(pattern)}), so it cannot be compiled once at import time"
+        )
     flags_position = _RE_FLAGS_POSITION[call.func.attr]
     rest = call.args[1:]
     flags: ast.expr | None = None
     if len(rest) > flags_position:
         flags = rest[flags_position]
         if len(rest) > flags_position + 1:
-            raise NoSafePatch("unexpected extra positional arguments")
+            raise NoSafePatch(
+                f"{where} has more positional arguments than `re.{call.func.attr}` accepts"
+            )
         rest = rest[:flags_position]
     keywords = []
     for keyword_arg in call.keywords:
@@ -804,7 +671,10 @@ def _rewrite_re_call(
         else:
             keywords.append(keyword_arg)
     if flags is not None and not _static_flags(flags, aliases):
-        raise NoSafePatch("regex flags are not a constant expression")
+        raise NoSafePatch(
+            f"the flags of {where} are not built only from `re.<FLAG>` constants and integers, "
+            "so they cannot be fixed at import time"
+        )
     arguments = [context.source.segment(a) for a in rest]
     arguments += [f"{k.arg}={context.source.segment(k.value)}" for k in keywords]
     flags_text = context.source.segment(flags) if flags is not None else None
@@ -840,63 +710,116 @@ def _key_label(node: ast.expr) -> str:
 
 
 def nested_loop_to_index(context: TransformContext) -> TransformResult:
-    inner_loops = context.nodes_in_span(lambda n: isinstance(n, ast.For))
+    inner_loops = context.nodes_in_span(
+        lambda n: isinstance(n, ast.For) and context.line_start <= n.lineno <= context.line_end
+    )
     inner = next((loop for loop in reversed(inner_loops) if context.enclosing_loops(loop)), None)
     if inner is None:
-        raise NoSafePatch("no `for` loop nested inside another loop at the flagged lines")
+        raise NotApplicable(
+            f"expected a `for` loop nested inside another loop starting at {context.span}, but "
+            "found none"
+        )
     assert isinstance(inner, ast.For)
     outer = context.enclosing_loops(inner)[0]
-    if not isinstance(outer, ast.For) or not any(stmt is inner for stmt in outer.body):
-        raise NoSafePatch("the inner loop must be a direct statement of an outer `for` loop")
+    if not isinstance(outer, ast.For | ast.AsyncFor) or not any(
+        stmt is inner for stmt in outer.body
+    ):
+        raise NoSafePatch(
+            f"the inner `for` loop at line {inner.lineno} must be a direct statement of an outer "
+            f"`for` loop; it is nested in the {loop_kind(outer)} at line {outer.lineno} through "
+            "other statements"
+            if isinstance(outer, ast.For | ast.AsyncFor)
+            else f"the inner `for` loop at line {inner.lineno} is inside a `while` loop (line "
+            f"{outer.lineno}); only `for` loops are rewritten"
+        )
     if inner.orelse or len(inner.body) != 1 or not isinstance(inner.body[0], ast.If):
-        raise NoSafePatch("the inner loop body must be exactly one `if` with no `else`")
+        found = (
+            "a `for ... else`"
+            if inner.orelse
+            else f"{len(inner.body)} statement(s) starting with `{type(inner.body[0]).__name__}`"
+        )
+        raise NoSafePatch(
+            f"the inner loop body at line {inner.lineno} must be exactly one `if` with no "
+            f"`else`; found {found}"
+        )
     condition = inner.body[0]
     if condition.orelse:
-        raise NoSafePatch("the join condition has an `else` branch")
+        raise NoSafePatch(
+            f"the join condition at line {condition.lineno} has an `else` branch, which runs for "
+            "non-matching items and cannot be skipped by an index"
+        )
     if not isinstance(inner.target, ast.Name) or not isinstance(inner.iter, ast.Name):
-        raise NoSafePatch("the inner loop must be `for <name> in <name>:`")
+        raise NoSafePatch(
+            f"the inner loop at line {inner.lineno} must be `for <name> in <variable>:` "
+            "(unpacking targets and iterables such as calls, attributes or enumerate() are not "
+            "rewritten)"
+        )
     item, collection = inner.target.id, inner.iter.id
     test = condition.test
     if not (
         isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Eq)
     ):
-        raise NoSafePatch("the join condition must be a single `==` comparison")
+        raise NoSafePatch(
+            f"the join condition must be a single `==` comparison; line {condition.lineno} has "
+            f"{condition_kind(test)}"
+        )
     left, right = test.left, test.comparators[0]
     if item in _names(left) and item not in _names(right):
         inner_key, outer_key = left, right
     elif item in _names(right) and item not in _names(left):
         inner_key, outer_key = right, left
     else:
-        raise NoSafePatch("exactly one side of `==` must depend on the inner loop variable")
+        raise NoSafePatch(
+            f"exactly one side of the `==` at line {condition.lineno} must depend on the inner "
+            f"loop variable `{item}`"
+        )
     if _names(inner_key) != {item} or not _pure_key(inner_key) or not _pure_key(outer_key):
-        raise NoSafePatch("join keys must be plain names, attributes, or constant subscripts")
-    context.require_sequence(collection)
+        raise NoSafePatch(
+            f"join keys must be plain names, attributes, or constant subscripts (line "
+            f"{condition.lineno}); calls and computed indexes may have side effects or change "
+            "between evaluations"
+        )
+    context.require_sequence(
+        collection,
+        "the inner collection is scanned again for every outer item, and only a list or tuple "
+        "is guaranteed to yield the same items each time (an iterator would be exhausted)",
+    )
     body_nodes: list[ast.AST] = list(condition.body)
     _check_join_body(context, body_nodes, item, _names(outer_key))
     uses = occurrences(loop_inside(outer), collection)
-    if any(use is not inner.iter for use in uses):
+    other = next((use for use in uses if use is not inner.iter), None)
+    if other is not None:
         raise NoSafePatch(
-            f"`{collection}` is used inside the outer loop other than as the join input"
+            f"`{collection}` is used inside the outer loop other than as the join input "
+            f"({describe_use(context, other)}); an index built once could go stale"
         )
+    require_no_suspension(outer, f"`{collection}`")
     for use in occurrences([context.function], item):
         if isinstance(use.ctx, ast.Load) and not _within(context, use, inner):
-            raise NoSafePatch(f"`{item}` is read outside the inner loop")
+            raise NoSafePatch(
+                f"`{item}` is read outside the inner loop at line {use.lineno}; after the "
+                "rewrite it would hold the last matching item instead of the last scanned one"
+            )
     first_body = condition.body[0]
     header_end = test.end_lineno or condition.lineno
     if first_body.lineno <= header_end:
-        raise NoSafePatch("the `if` body must start on its own line")
-    _no_multiline_strings(body_nodes)
+        raise NoSafePatch(
+            f"the body of the `if` at line {condition.lineno} must start on its own line"
+        )
+    no_multiline_strings(body_nodes)
     if_indent = context.indent(condition.lineno)
     body_indent = context.indent(first_body.lineno)
     if not body_indent.startswith(if_indent) or len(body_indent) <= len(if_indent):
-        raise NoSafePatch("unexpected indentation of the join body")
+        raise NoSafePatch(
+            f"the join body at line {first_body.lineno} is not indented deeper than its `if`"
+        )
     dedent = len(body_indent) - len(if_indent)
     step = " " * dedent
 
     index = context.unique_name(f"{collection}_by_{_key_label(inner_key)}")
     inner_key_text = context.source.segment(inner_key)
     edits = Edits()
-    _insert_before(
+    insert_before(
         context,
         edits,
         outer,
@@ -920,7 +843,9 @@ def nested_loop_to_index(context: TransformContext) -> TransformResult:
         if not line.strip():
             continue
         if not line.startswith(step):
-            raise NoSafePatch("a line in the join body is less indented than expected")
+            raise NoSafePatch(
+                f"line {lineno} of the join body is indented less than the body's first line"
+            )
         start = context.source.line_start(lineno)
         edits.replace(start, start + dedent, "")
     return TransformResult(
@@ -958,20 +883,30 @@ def _check_join_body(
     for node in body:
         for child in ast.walk(node):
             stores = not isinstance(getattr(child, "ctx", ast.Load()), ast.Load)
+            line = getattr(child, "lineno", "?")
             if isinstance(child, ast.Name) and stores and child.id in outer_names:
-                raise NoSafePatch(f"the join body rebinds `{child.id}`, which the key uses")
+                raise NoSafePatch(
+                    f"the join body rebinds `{child.id}` at line {line}, and the outer join key "
+                    "uses it"
+                )
             if (
                 isinstance(child, ast.Subscript | ast.Attribute)
                 and stores
                 and item in _names(child.value)
             ):
-                raise NoSafePatch(f"the join body modifies `{item}`, which may change its key")
+                raise NoSafePatch(
+                    f"the join body modifies `{item}` at line {line}, which may change its key "
+                    "after it was indexed"
+                )
             if (
                 isinstance(child, ast.Call)
                 and isinstance(child.func, ast.Attribute)
                 and item in _names(child.func.value)
             ):
-                raise NoSafePatch(f"the join body calls a method on `{item}`")
+                raise NoSafePatch(
+                    f"the join body calls a method on `{item}` at line {line}; it could change "
+                    "the item's key after it was indexed"
+                )
 
 
 Transform = Callable[[TransformContext], TransformResult]
@@ -981,5 +916,7 @@ TRANSFORMS: dict[str, Transform] = {
     "PP-COLL-001": list_count_to_counter,
     "PP-STR-001": string_concat_to_join,
     "PP-REGEX-001": regex_compile_hoist,
-    "PP-LOOP-002": nested_loop_to_index,
+    "PP-LOOP-002": first_applicable(
+        "nested_loop_or_lookup_to_index", [nested_loop_to_index, linear_lookup_to_index]
+    ),
 }
