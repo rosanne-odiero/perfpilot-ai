@@ -117,11 +117,13 @@ def test_side_by_side_folds_unchanged_lines_around_the_change() -> None:
     page = side_by_side_html(before, after, before_title="a", after_title="b", context=3)
     assert "96 unchanged lines" in page
     assert "97 unchanged lines" in page
-    assert "line 100 changed" in page
-    assert "line 50" not in page
+    # Highlighting splits text into token spans, so check the line-number cells.
+    assert 'class="pp-ln">100<' in page
+    assert "changed" in page
+    assert 'class="pp-ln">50<' not in page
     full = side_by_side_html(before, after, before_title="a", after_title="b", context=None)
     assert "unchanged line" not in full
-    assert "line 50" in full
+    assert 'class="pp-ln">50<' in full
 
 
 def test_generation_message_points_at_the_result() -> None:
